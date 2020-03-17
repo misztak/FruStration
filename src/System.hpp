@@ -1,12 +1,15 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "Types.hpp"
 
+namespace CPU {
 class CPU;
+}
+
 class BUS;
 
 class System {
@@ -18,6 +21,6 @@ public:
     void Run();
 
 private:
-    std::unique_ptr<CPU> cpu;
+    std::unique_ptr<CPU::CPU> cpu;
     std::unique_ptr<BUS> bus;
 };

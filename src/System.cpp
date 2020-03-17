@@ -8,7 +8,7 @@ System::System() = default;
 System::~System() = default;
 
 void System::Init() {
-    cpu = std::make_unique<CPU>();
+    cpu = std::make_unique<CPU::CPU>();
     bus = std::make_unique<BUS>();
 
     cpu->Init(bus.get());

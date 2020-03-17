@@ -37,15 +37,14 @@ u32 BUS::Load32(u32 address) {
         case 0xBFC: {
             printf("Load from BIOS at address 0x%08X\n", address);
             u32 rel_address = address - 0xBFC00000;
-            Assert(rel_address < 0x80000)
+            Assert(rel_address < 0x80000);
             return *reinterpret_cast<u32 *>(bios.data() + rel_address);
         }
         default:
-            printf("Load at address 0x%08X\n", address);
-            Panic("Unimplemented address range")
+            Panic("Tried to load from unimplemented address 0x%08X", address);
     }
 
     // unreachable
 }
 
-void BUS::Store32(u32 address, u32 value) { Panic("Not implemented") }
+void BUS::Store32(u32 address, u32 value) { Panic("Not implemented"); }
