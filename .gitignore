@@ -1,0 +1,13 @@
+# build folders
+cmake-build-debug
+cmake-build-release
+
+# IDEs
+.idea
+.vscode
+.ccls-cache
+compile_commands.json
+
+# misc
+docs
+bios
