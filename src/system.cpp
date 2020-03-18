@@ -1,7 +1,7 @@
-#include "System.hpp"
+#include "system.h"
 
-#include "BUS.hpp"
-#include "CPU.hpp"
+#include "bus.h"
+#include "cpu.h"
 
 System::System() = default;
 

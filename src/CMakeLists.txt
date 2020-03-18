@@ -1,7 +1,7 @@
 add_executable(frog
-        Main.cpp
-        System.cpp
-        CPU.cpp
-        BUS.cpp)
+        main.cpp
+        system.cpp
+        cpu.cpp
+        bus.cpp)
 
 target_include_directories(frog PUBLIC .)

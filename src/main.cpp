@@ -1,4 +1,4 @@
-#include "System.hpp"
+#include "system.h"
 
 int main(int, char**) {
     const std::string bios_path = "../../bios/SCPH1001.BIN";

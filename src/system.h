@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "Types.hpp"
+#include "types.h"
 
 namespace CPU {
 class CPU;
