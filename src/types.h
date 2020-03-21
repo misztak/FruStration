@@ -26,14 +26,17 @@ using u16 = uint16_t;
 using u32 = uint32_t;
 using u64 = uint64_t;
 
-#define Panic(Message, ...)                                                                                     \
-    char msg[128];                                                                                              \
-    std::snprintf(msg, sizeof(msg), Message, ##__VA_ARGS__);                                                    \
-    char buf[256];                                                                                              \
-    std::snprintf(buf, sizeof(buf), "Panic: %s in function %s (%s:%u)", msg, __FUNCTION__, __FILE__, __LINE__); \
-    fputs(buf, stderr);                                                                                         \
-    fflush(stderr);                                                                                             \
-    abort()
+#define Panic(Message, ...)                                                                                         \
+    {                                                                                                               \
+        char msg[128];                                                                                              \
+        std::snprintf(msg, sizeof(msg), Message, ##__VA_ARGS__);                                                    \
+        char buf[256];                                                                                              \
+        std::snprintf(buf, sizeof(buf), "Panic: %s in function %s (%s:%u)", msg, __FUNCTION__, __FILE__, __LINE__); \
+        fputs(buf, stderr);                                                                                         \
+        fflush(stderr);                                                                                             \
+        abort();                                                                                                    \
+    }                                                                                                               \
+    void semicolon()
 
 #define Assert(Expr)                                                                                             \
     if (!(Expr)) {                                                                                               \
@@ -44,7 +47,7 @@ using u64 = uint64_t;
         fflush(stderr);                                                                                          \
         abort();                                                                                                 \
     }                                                                                                            \
-    while (0)
+    void semicolon()
 
 #define AssertMsg(Expr, Msg)                                                                                    \
     if (!(Expr)) {                                                                                              \
@@ -55,6 +58,6 @@ using u64 = uint64_t;
         fflush(stderr);                                                                                         \
         abort();                                                                                                \
     }                                                                                                           \
-    while (0)
+    void semicolon()
 
 // end
