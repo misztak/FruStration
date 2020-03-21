@@ -8,20 +8,27 @@ namespace CPU {
 enum class PrimaryOpcode : u32 {
     special = 0x00,
     jmp = 0x02,
+    jal = 0x03,
+    beq = 0x04,
     bne = 0x05,
     addi = 0x08,
     addiu = 0x09,
+    andi = 0x0C,
     ori = 0x0D,
     lui = 0x0F,
     mtc0 = 0x10,
     mtc2 = 0x12,
+    lb = 0x20,
     lw = 0x23,
+    sb = 0x28,
+    sh = 0x29,
     sw = 0x2B,
 };
 
 enum class SecondaryOpcode : u32 {
     sll = 0x00,
     sra = 0x03,
+    jr = 0x08,
     addu = 0x21,
     orr = 0x25,
     sltu = 0x2B,

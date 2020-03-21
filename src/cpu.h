@@ -14,7 +14,10 @@ public:
     void Step();
     u32 Load32(u32 address);
     void Store32(u32 address, u32 value);
-
+    u16 Load16(u32 address);
+    void Store16(u32 address, u16 value);
+    u8 Load8(u32 address);
+    void Store8(u32 address, u8 value);
 private:
     void Set(u32 index, u32 value);
     u32 Get(u32 index);

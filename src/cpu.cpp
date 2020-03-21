@@ -12,7 +12,9 @@ void CPU::Init(BUS* b) { bus = b; }
 void CPU::Step() {
     instr.value = next_instr.value;
     next_instr.value = Load32(sp.pc);
-    printf("Executing instruction 0x%02X [0x%08X]\n", instr.n.op.GetValue(), instr.value);
+    printf("Executing instruction 0x%02X [0x%08X]\n",
+           (instr.n.op == PrimaryOpcode::special) ? (u32)instr.s.sop.GetValue() : (u32)instr.n.op.GetValue(),
+           instr.value);
 
     sp.pc += 4;
 
@@ -22,6 +24,12 @@ void CPU::Step() {
                 case SecondaryOpcode::sll:
                     Set(instr.s.rd, Get(instr.s.rt) << instr.s.sa);
                     break;
+                case SecondaryOpcode::jr: {
+                    u32 return_address = Get(instr.s.rs);
+                    if ((return_address & 0x3) != 0) Panic("Unaligned return address!");
+                    sp.pc = return_address;
+                    break;
+                }
                 case SecondaryOpcode::orr:
                     Set(instr.s.rd, instr.s.rs | instr.s.rt);
                     break;
@@ -39,10 +47,21 @@ void CPU::Step() {
             sp.pc &= 0xF0000000;
             sp.pc |= instr.jump_target << 2;
             break;
+        case PrimaryOpcode::jal:
+            gp.ra = sp.pc;
+            sp.pc &= 0xF0000000;
+            sp.pc |= instr.jump_target << 2;
+            break;
+        case PrimaryOpcode::beq:
+            if (Get(instr.n.rs) == Get(instr.n.rt)) {
+                sp.pc += instr.imm_se() << 2;
+                //sp.pc -= 4;
+            }
+            break;
         case PrimaryOpcode::bne:
             if (Get(instr.n.rs) != Get(instr.n.rt)) {
                 sp.pc += instr.imm_se() << 2;
-                // sp.pc -= 4;
+                //sp.pc -= 4;
             }
             break;
         case PrimaryOpcode::addi: {
@@ -58,6 +77,9 @@ void CPU::Step() {
         case PrimaryOpcode::addiu:
             Set(instr.n.rt, Get(instr.n.rs) + instr.imm_se());
             break;
+        case PrimaryOpcode::andi:
+            Set(instr.n.rt, Get(instr.n.rs) & instr.n.imm);
+            break;
         case PrimaryOpcode::ori:
             Set(instr.n.rt, Get(instr.n.rs) | instr.n.imm);
             break;
@@ -67,10 +89,29 @@ void CPU::Step() {
         case PrimaryOpcode::mtc0:
             SetCP0(instr.cop.rd, Get(instr.cop.rt));
             break;
+        case PrimaryOpcode::lb: {
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            if (cp.sr & 0x10000) break;
+            u32 value = static_cast<s8>(Load8(address));
+            SetDelayEntry(instr.n.rt, value);
+            break;
+        }
         case PrimaryOpcode::lw: {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             if (cp.sr & 0x10000) break;
             SetDelayEntry(instr.n.rt, Load32(address));
+            break;
+        }
+        case PrimaryOpcode::sb: {
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            u8 byte = static_cast<u8>(Get(instr.n.rt) & 0xFF);
+            Store8(address, byte);
+            break;
+        }
+        case PrimaryOpcode::sh: {
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            u16 halfword = static_cast<u16>(Get(instr.n.rt) & 0xFFFF);
+            Store16(address, halfword);
             break;
         }
         case PrimaryOpcode::sw: {
@@ -85,11 +126,25 @@ void CPU::Step() {
     UpdateDelayEntries();
 }
 
-u32 CPU::Load32(u32 address) { return bus->Load32(address); }
+u32 CPU::Load32(u32 address) { return bus->Load<u32>(address); }
 
 void CPU::Store32(u32 address, u32 value) {
     if (cp.sr & 0x10000) return;
-    bus->Store32(address, value);
+    bus->Store(address, value);
+}
+
+u16 CPU::Load16(u32 address) { return bus->Load<u16>(address); }
+
+void CPU::Store16(u32 address, u16 value) {
+    if (cp.sr & 0x10000) return;
+    bus->Store(address, value);
+}
+
+u8 CPU::Load8(u32 address) { return bus->Load<u8>(address); }
+
+void CPU::Store8(u32 address, u8 value) {
+    if (cp.sr & 0x10000) return;
+    bus->Store(address, value);
 }
 
 void CPU::Set(u32 index, u32 value) {
@@ -122,7 +177,7 @@ u32 CPU::GetCP0(u32 index) {
 void CPU::SetDelayEntry(u32 reg, u32 value) {
     Assert(reg < 32);
     if (reg == 0) return;
-    //if (delay_entries[0].reg == reg) {
+    // if (delay_entries[0].reg == reg) {
     //    delay_entries[0].reg = 0;
     //    delay_entries[0].value = 0;
     //}

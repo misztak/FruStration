@@ -11,8 +11,8 @@ public:
     void Init();
     bool LoadBIOS(const std::string& path);
 
-    u32 Load32(u32 address);
-    void Store32(u32 address, u32 value);
+    template <typename ValueType> ValueType Load(u32 address);
+    template <typename Value> void Store(u32 address, Value value);
 private:
     ALWAYS_INLINE u32 MaskRegion(u32 address);
 
