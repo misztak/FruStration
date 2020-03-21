@@ -21,10 +21,15 @@ private:
     void SetCP0(u32 index, u32 value);
     u32 GetCP0(u32 index);
 
+    void SetDelayEntry(u32 reg, u32 value);
+    void UpdateDelayEntries();
+
     GP_Registers gp;
     SP_Registers sp;
     CP0_Registers cp;
+    //u32 next_pc = sp.pc;
 
+    LoadDelayEntry delay_entries[2] = {};
     Instruction instr, next_instr;
 
     BUS* bus = nullptr;
