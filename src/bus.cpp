@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-BUS::BUS() : bios(BIOS_FILE_SIZE) {}
+BUS::BUS() : bios(BIOS_FILE_SIZE), ram(RAM_SIZE, 0xCA) {}
 
 // use once BUS needs CPU member
 void BUS::Init() {}
@@ -29,19 +29,75 @@ bool BUS::LoadBIOS(const std::string& path) {
     return true;
 }
 
+u32 BUS::MaskRegion(u32 address) { return address & MEM_REGION_MASKS[address >> 29]; }
+
 u32 BUS::Load32(u32 address) {
     Assert((address & 0x3) == 0);
-    u32 mask = (address & 0xFFF00000) >> 20;
+    u32 masked_address = MaskRegion(address);
+    u32 mask = (masked_address & 0xFF000000) >> 24;
 
     switch (mask) {
-        case 0xBFC: {
-            //printf("Load from BIOS at address 0x%08X\n", address);
-            u32 rel_address = address - 0xBFC00000;
-            Assert(rel_address < 0x80000);
-            return *reinterpret_cast<u32*>(bios.data() + rel_address);
+        case 0x00:  // RAM
+            Assert(masked_address < RAM_SIZE);
+            return *reinterpret_cast<u32*>(ram.data() + masked_address);
+        case 0x1F:
+            switch ((masked_address & 0xF00000) >> 20) {
+                case 0x0:
+                case 0x1:
+                case 0x2:
+                case 0x3:
+                case 0x4:
+                case 0x5:
+                case 0x6:
+                case 0x7:  // Expansion Region 1
+                    Panic("Tried to load from Expansion Region 1 [0x%08X]", address);
+                case 0x8:
+                    switch ((masked_address & 0xF000) >> 12) {
+                        case 0x0: {  // Scratchpad
+                            u32 rel_address = masked_address - 0x1F800000;
+                            Assert(rel_address < 1024);
+                            Panic("Tried to load from Scratchpad [0x%08X]", address);
+                            break;
+                        }
+                        case 0x1: {  // IO Ports
+                            u32 rel_address = masked_address - 0x1F801000;
+                            Assert(rel_address < 1024 * 8);
+                            Panic("Tried to load from IO Ports [0x%08X]", address);
+                            break;
+                        }
+                        case 0x2: {  // Expansion Region 2
+                            u32 rel_address = masked_address - 0x1F802000;
+                            Assert(rel_address < 1024 * 8);
+                            Panic("Tried to load from Expansion Region 2 [0x%08X]", address);
+                            break;
+                        }
+                        default:
+                            Panic("Tried to load from invalid address range [0x%08X]", address);
+                    }
+                    break;
+                case 0xA: {  // Expansion Region 3
+                    u32 rel_address = masked_address - 0x1FA00000;
+                    Assert(rel_address < 1024 * 2048);
+                    Panic("Tried to load from Expansion Region 3 [0x%08X]", address);
+                    break;
+                }
+                case 0xC: {  // BIOS
+                    // printf("Load from BIOS at address 0x%08X\n", address);
+                    u32 rel_address = masked_address - 0x1FC00000;
+                    Assert(rel_address < BIOS_FILE_SIZE);
+                    return *reinterpret_cast<u32*>(bios.data() + rel_address);
+                }
+                default:
+                    Panic("Tried to load from invalid address range [0x%08X]", address);
+            }
+        case 0xFF: {  // Cache Control
+            u32 rel_address = masked_address - 0xFFFE0000;
+            Assert(rel_address < 512);
+            Panic("Tried to load from Cache Control [0x%08X]", address);
+            break;
         }
         default:
-            Panic("Tried to load from unimplemented address range [0x%08X]", address);
+            Panic("Tried to load from invalid address range [0x%08X]", address);
     }
 
     // unreachable
@@ -49,40 +105,71 @@ u32 BUS::Load32(u32 address) {
 
 void BUS::Store32(u32 address, u32 value) {
     Assert((address & 0x3) == 0);
-    u32 mask = (address & 0xFFF00000) >> 20;
+    u32 masked_address = MaskRegion(address);
+    u32 mask = (masked_address & 0xFF000000) >> 24;
 
     switch (mask) {
-        case 0x1F8:
-            switch ((address & 0xF000) >> 12) {
-                case 0: {
-                    Panic("Scratchpad not implemented [0x%X @ 0x%08X]", value, address);
-                    break;
-                }
-                case 1: {
-                    switch (address) {
-                        case 0x1F801060:
-                            printf("Store call to IO Port RAM_SIZE [0x%X @ 0x%08X] - Ignored\n", value, address);
+        case 0x00:  // RAM
+            Assert(masked_address < RAM_SIZE);
+            std::copy(reinterpret_cast<u8*>(&value), reinterpret_cast<u8*>(&value) + 4, ram.data() + masked_address);
+            break;
+        case 0x1F:
+            switch ((masked_address & 0xF00000) >> 20) {
+                case 0x0:
+                case 0x1:
+                case 0x2:
+                case 0x3:
+                case 0x4:
+                case 0x5:
+                case 0x6:
+                case 0x7:  // Expansion Region 1
+                    Panic("Tried to store in Expansion Region 1 [0x%08X]", address);
+                case 0x8:
+                    switch ((masked_address & 0xF000) >> 12) {
+                        case 0x0: {  // Scratchpad
+                            u32 rel_address = masked_address - 0x1F800000;
+                            Assert(rel_address < 1024);
+                            Panic("Tried to store in Scratchpad [0x%08X]", address);
                             break;
-                        default:
+                        }
+                        case 0x1: {  // IO Ports
+                            u32 rel_address = masked_address - 0x1F801000;
+                            Assert(rel_address < 1024 * 8);
                             printf("Store call to IO Ports [0x%X @ 0x%08X] - Ignored\n", value, address);
+                            break;
+                        }
+                        case 0x2: {  // Expansion Region 2
+                            u32 rel_address = masked_address - 0x1F802000;
+                            Assert(rel_address < 1024 * 8);
+                            Panic("Tried to store in Expansion Region 2 [0x%08X]", address);
+                            break;
+                        }
+                        default:
+                            Panic("Tried to store in invalid address range [0x%08X]", address);
                     }
                     break;
-                }
-                case 2: {
-                    Panic("Expansion Region 2 (IO Ports) not implemented [0x%X @ 0x%08X]", value, address);
+                case 0xA: {  // Expansion Region 3
+                    u32 rel_address = masked_address - 0x1FA00000;
+                    Assert(rel_address < 1024 * 2048);
+                    Panic("Tried to store in Expansion Region 3 [0x%08X]", address);
                     break;
                 }
+                case 0xC: {  // BIOS
+                    printf("Tried to store value in BIOS address range [0x%08X] - Ignored\n", address);
+                    break;
+                }
+                default:
+                    Panic("Tried to store in invalid address range [0x%08X]", address);
             }
             break;
-        case 0xBFC:
-            printf("Tried to store value in BIOS address range [0x%08X] - Ignored\n", address);
-            break;
-        case 0xFFF:
-            // TODO: check for correct start value (0xFFFE0000) and range (512)
+        case 0xFF: {  // Cache Control
+            u32 rel_address = masked_address - 0xFFFE0000;
+            Assert(rel_address < 512);
             printf("Store call to Cache Control [0x%X @ 0x%08X] - Ignored\n", value, address);
             break;
+        }
         default:
-            Panic("Tried to store into unimplemented address range [0x%08X]", address);
+            Panic("Tried to store in invalid address range [0x%08X]", address);
     }
 
     // unreachable
