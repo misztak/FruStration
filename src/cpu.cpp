@@ -22,6 +22,9 @@ void CPU::Step() {
                 case SecondaryOpcode::sll:
                     Set(instr.s.rd, Get(instr.s.rt) << instr.s.sa);
                     break;
+                case SecondaryOpcode::orr:
+                    Set(instr.s.rd, instr.s.rs | instr.s.rt);
+                    break;
                 default:
                     Panic("Unimplemented special opcode 0x%02X [0x%08X]", instr.s.sop.GetValue(), instr.value);
             }
@@ -39,11 +42,16 @@ void CPU::Step() {
         case PrimaryOpcode::lui:
             Set(instr.n.rt, instr.n.imm << 16);
             break;
+        case PrimaryOpcode::mtc0:
+            SetCP0(instr.cop.rd, Get(instr.cop.rt));
+            break;
         case PrimaryOpcode::sw: {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             Store32(address, Get(instr.n.rt));
             break;
         }
+        case PrimaryOpcode::mtc1:
+        case PrimaryOpcode::mtc3:
         default:
             Panic("Unimplemented opcode 0x%02X [0x%08X]", instr.n.op.GetValue(), instr.value);
     }
@@ -51,7 +59,10 @@ void CPU::Step() {
 
 u32 CPU::Load32(u32 address) { return bus->Load32(address); }
 
-void CPU::Store32(u32 address, u32 value) { bus->Store32(address, value); }
+void CPU::Store32(u32 address, u32 value) {
+    if (cp.sr & 0x10000) return;
+    bus->Store32(address, value);
+}
 
 void CPU::Set(u32 index, u32 value) {
     Assert(index < 32);
@@ -60,8 +71,19 @@ void CPU::Set(u32 index, u32 value) {
 }
 
 u32 CPU::Get(u32 index) {
+    // TODO: behaviour for CP0 registers 16-63
     Assert(index < 32);
     return gp.r[index];
+}
+
+void CPU::SetCP0(u32 index, u32 value) {
+    Assert(index < 16);
+    cp.cpr[index] = value;
+}
+
+u32 CPU::GetCP0(u32 index) {
+    Assert(index < 16);
+    return cp.cpr[index];
 }
 
 }  // namespace CPU

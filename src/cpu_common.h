@@ -11,12 +11,17 @@ enum class PrimaryOpcode : u32 {
     addiu = 0x09,
     ori = 0x0D,
     lui = 0x0F,
+    mtc0 = 0x10,
+    mtc1 = 0x11,
+    mtc2 = 0x12,
+    mtc3 = 0x13,
     sw = 0x2B,
 };
 
 enum class SecondaryOpcode : u32 {
     sll = 0x00,
     sra = 0x03,
+    orr = 0x25,
 };
 
 union GP_Registers {
@@ -64,6 +69,29 @@ struct SP_Registers {
     u32 lo = 0;
 };
 
+union CP0_Registers {
+    u32 cpr[16] = {};
+
+    struct {
+        u32 cop0r0;
+        u32 cop0r1;
+        u32 cop0r2;
+        u32 bpc;        // breakpoint on execute (R/W)
+        u32 cop0r4;
+        u32 bda;        // breakpoint on data access (R/W)
+        u32 jumpdest;   // randomly memorized jump address (R)
+        u32 dcic;       // breakpoint control (R/W)
+        u32 bad_vaddr;  // bad virtual address (R)
+        u32 bdam;       // data access breakpoint mask (R/W)
+        u32 cop0r10;
+        u32 bpcm;       // execute breakpoint mask (R/W)
+        u32 sr;         // system status register (R/W)
+        u32 cause;      // describes the most recently recognised exception (R)
+        u32 epc;        // return address from trap (R)
+        u32 prid;       // processor ID (R)
+    };
+};
+
 union Instruction {
     u32 value = 0;
 
@@ -85,12 +113,13 @@ union Instruction {
 
     BitField<u32, u32, 0, 26> jump_target;
 
-    //struct {
-    //    u32 imm : 16;
-    //    u32 rt : 5;
-    //    u32 rs : 5;
-    //    PrimaryOpcode op : 6;
-    //};
+    union {
+        BitField<u32, u32, 11, 5> rd;
+        BitField<u32, u32, 16, 5> rt;
+        BitField<u32, u32, 21, 5> mt;
+        BitField<u32, u32, 26, 2> nr;
+        BitField<u32, u32, 26, 6> op;
+    } cop;
 
     ALWAYS_INLINE u32 imm_se() { return static_cast<s16>(n.imm); }
 };

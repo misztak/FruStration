@@ -18,9 +18,12 @@ public:
 private:
     void Set(u32 index, u32 value);
     u32 Get(u32 index);
+    void SetCP0(u32 index, u32 value);
+    u32 GetCP0(u32 index);
 
     GP_Registers gp;
     SP_Registers sp;
+    CP0_Registers cp;
 
     Instruction instr, next_instr;
 

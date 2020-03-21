@@ -55,27 +55,31 @@ void BUS::Store32(u32 address, u32 value) {
         case 0x1F8:
             switch ((address & 0xF000) >> 12) {
                 case 0: {
-                    Panic("Scratchpad not implemented [0x%08X]", address);
+                    Panic("Scratchpad not implemented [0x%X @ 0x%08X]", value, address);
                     break;
                 }
                 case 1: {
                     switch (address) {
                         case 0x1F801060:
-                            printf("Store call to IO Port RAM_SIZE [0x%08X] - Ignored\n", address);
+                            printf("Store call to IO Port RAM_SIZE [0x%X @ 0x%08X] - Ignored\n", value, address);
                             break;
                         default:
-                            printf("Store call to IO Ports [0x%08X] - Ignored\n", address);
+                            printf("Store call to IO Ports [0x%X @ 0x%08X] - Ignored\n", value, address);
                     }
                     break;
                 }
                 case 2: {
-                    Panic("Expansion Region 2 (IO Ports) not implemented [0x%08X]", address);
+                    Panic("Expansion Region 2 (IO Ports) not implemented [0x%X @ 0x%08X]", value, address);
                     break;
                 }
             }
             break;
         case 0xBFC:
-            printf("Tried to store value in BIOS address range [0x%08X]\n", address);
+            printf("Tried to store value in BIOS address range [0x%08X] - Ignored\n", address);
+            break;
+        case 0xFFF:
+            // TODO: check for correct start value (0xFFFE0000) and range (512)
+            printf("Store call to Cache Control [0x%X @ 0x%08X] - Ignored\n", value, address);
             break;
         default:
             Panic("Tried to store into unimplemented address range [0x%08X]", address);
