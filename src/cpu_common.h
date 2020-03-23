@@ -16,8 +16,8 @@ enum class PrimaryOpcode : u32 {
     andi = 0x0C,
     ori = 0x0D,
     lui = 0x0F,
-    mtc0 = 0x10,
-    mtc2 = 0x12,
+    cop0 = 0x10,
+    cop2 = 0x12,
     lb = 0x20,
     lw = 0x23,
     sb = 0x28,
@@ -29,9 +29,16 @@ enum class SecondaryOpcode : u32 {
     sll = 0x00,
     sra = 0x03,
     jr = 0x08,
+    jalr = 0x09,
     addu = 0x21,
+    andd = 0x24,
     orr = 0x25,
     sltu = 0x2B,
+};
+
+enum class CoprocessorOpcode : u32 {
+    mf = 0x00,
+    mt = 0x04,
 };
 
 union GP_Registers {
@@ -74,7 +81,7 @@ union GP_Registers {
 };
 
 struct SP_Registers {
-    u32 pc = 0xbfc00000;
+    u32 pc = 0; // we set the pc to 0xbfc00000 during cpu init
     u32 hi = 0;
     u32 lo = 0;
 };
@@ -126,7 +133,7 @@ union Instruction {
     union {
         BitField<u32, u32, 11, 5> rd;
         BitField<u32, u32, 16, 5> rt;
-        BitField<u32, u32, 21, 5> mt;
+        BitField<u32, CoprocessorOpcode, 21, 5> cop_op;
         BitField<u32, u32, 26, 2> nr;
         BitField<u32, u32, 26, 6> op;
     } cop;
