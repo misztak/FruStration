@@ -14,9 +14,9 @@ void CPU::Init(BUS* b) {
 
 void CPU::Step() {
     instr.value = Load32(sp.pc);
-    printf("Executing instruction 0x%02X [0x%08X] at address 0x%08X\n",
-           (instr.n.op == PrimaryOpcode::special) ? (u32)instr.s.sop.GetValue() : (u32)instr.n.op.GetValue(),
-           instr.value, sp.pc - 0xBFC00000);
+    // printf("Executing instruction 0x%02X [0x%08X] at address 0x%08X\n",
+    //       (instr.n.op == PrimaryOpcode::special) ? (u32)instr.s.sop.GetValue() : (u32)instr.n.op.GetValue(),
+    //       instr.value, sp.pc - 0xBFC00000);
 
     UpdatePC(next_pc);
 
@@ -26,21 +26,40 @@ void CPU::Step() {
                 case SecondaryOpcode::sll:
                     Set(instr.s.rd, Get(instr.s.rt) << instr.s.sa);
                     break;
+                case SecondaryOpcode::sra:
+                    Set(instr.s.rd, static_cast<s32>(Get(instr.s.rt)) >> instr.s.sa);
+                    break;
                 case SecondaryOpcode::jr: {
-                    u32 return_address = Get(instr.s.rs);
-                    if ((return_address & 0x3) != 0) Panic("Unaligned return address!");
-                    next_pc = return_address;
+                    u32 jump_address = Get(instr.s.rs);
+                    if ((jump_address & 0x3) != 0) Panic("Unaligned return address!");
+                    next_pc = jump_address;
+                    break;
+                }
+                case SecondaryOpcode::jalr: {
+                    u32 jump_address = Get(instr.s.rs);
+                    if ((jump_address & 0x3) != 0) Panic("Unaligned return address!");
+                    Set(instr.s.rd, next_pc);
+                    next_pc = jump_address;
                     break;
                 }
                 case SecondaryOpcode::orr:
                     Set(instr.s.rd, Get(instr.s.rs) | Get(instr.s.rt));
                     break;
-                //case SecondaryOpcode::jalr:
-                //    if ((Get(instr.s.rs) & 0x3) != 0) Panic("Unaligned return address!");
-                //    Set(instr.s.rd, sp.pc);
-                //    next_pc = Get(instr.s.rs);
+                case SecondaryOpcode::add: {
+                    const u32 a = Get(instr.s.rt);
+                    const u32 b = Get(instr.s.rs);
+                    const u32 result = a + b;
+                    if (!((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000)) {
+                        Panic("ADD: Integer overflow!");
+                    }
+                    Set(instr.s.rd, result);
+                    break;
+                }
                 case SecondaryOpcode::addu:
                     Set(instr.s.rd, Get(instr.s.rs) + Get(instr.s.rt));
+                    break;
+                case SecondaryOpcode::subu:
+                    Set(instr.s.rd, Get(instr.s.rs) - Get(instr.s.rt));
                     break;
                 case SecondaryOpcode::andd:
                     Set(instr.s.rd, Get(instr.s.rs) & Get(instr.s.rt));
@@ -52,6 +71,19 @@ void CPU::Step() {
                     Panic("Unimplemented special opcode 0x%02X [0x%08X]", instr.s.sop.GetValue(), instr.value);
             }
             break;
+        case PrimaryOpcode::bxxx: {
+            const bool is_bgez = instr.n.rt & 0x01;
+            const bool is_link = instr.n.rt & 0x10;
+
+            // check if lz
+            u32 test = static_cast<s32>(Get(instr.n.rs)) < 0;
+            // flip check for gez
+            test ^= is_bgez;
+
+            if (is_link) gp.ra = next_pc;
+            if (test) next_pc = sp.pc + (instr.imm_se() << 2);
+            break;
+        }
         case PrimaryOpcode::jmp:
             next_pc &= 0xF0000000;
             next_pc |= instr.jump_target << 2;
@@ -71,6 +103,16 @@ void CPU::Step() {
                 next_pc = sp.pc + (instr.imm_se() << 2);
             }
             break;
+        case PrimaryOpcode::blez:
+            if (static_cast<s32>(Get(instr.n.rs)) <= 0) {
+                next_pc = sp.pc + (instr.imm_se() << 2);
+            }
+            break;
+        case PrimaryOpcode::bgtz:
+            if (static_cast<s32>(Get(instr.n.rs)) > 0) {
+                next_pc = sp.pc + (instr.imm_se() << 2);
+            }
+            break;
         case PrimaryOpcode::addi: {
             const u32 old = Get(instr.n.rs);
             const u32 add = instr.imm_se();
@@ -83,6 +125,9 @@ void CPU::Step() {
         }
         case PrimaryOpcode::addiu:
             Set(instr.n.rt, Get(instr.n.rs) + instr.imm_se());
+            break;
+        case PrimaryOpcode::slti:
+            Set(instr.n.rt, (static_cast<s32>(Get(instr.n.rs)) < static_cast<s32>(instr.imm_se())) ? 1 : 0);
             break;
         case PrimaryOpcode::andi:
             Set(instr.n.rt, Get(instr.n.rs) & instr.n.imm);
@@ -116,6 +161,12 @@ void CPU::Step() {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             if (cp.sr & 0x10000) Panic("lw with isolated cache");
             SetDelayEntry(instr.n.rt, Load32(address));
+            break;
+        }
+        case PrimaryOpcode::lbu: {
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            if (cp.sr & 0x10000) Panic("lbu with isolated cache");
+            SetDelayEntry(instr.n.rt, Load8(address));
             break;
         }
         case PrimaryOpcode::sb: {
@@ -193,7 +244,7 @@ u32 CPU::GetCP0(u32 index) {
 void CPU::SetDelayEntry(u32 reg, u32 value) {
     Assert(reg < 32);
     if (reg == 0) return;
-    //if (delay_entries[0].reg == reg) {
+    // if (delay_entries[0].reg == reg) {
     //    delay_entries[0].reg = 0;
     //    delay_entries[0].value = 0;
     //}
