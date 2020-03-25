@@ -182,6 +182,12 @@ void BUS::Store(u32 address, Value value) {
     // unreachable
 }
 
+void BUS::DumpRAM(const std::string& path) {
+    std::ofstream out_file(path);
+    out_file.write((char*) ram.data(), ram.size());
+    printf("Dumped RAM into file %s\n", path.c_str());
+}
+
 template u32 BUS::Load<u32>(u32 address);
 template u16 BUS::Load<u16>(u32 address);
 template u8 BUS::Load<u8>(u32 address);

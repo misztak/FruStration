@@ -11,6 +11,8 @@ public:
     void Init();
     bool LoadBIOS(const std::string& path);
 
+    void DumpRAM(const std::string& path);
+
     template <typename ValueType> ValueType Load(u32 address);
     template <typename Value> void Store(u32 address, Value value);
 private:
