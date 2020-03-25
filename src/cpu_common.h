@@ -60,7 +60,10 @@ enum class CoprocessorOpcode : u32 {
 };
 
 enum class ExceptionCode : u32 {
+    LoadAddress = 0x04,
+    StoreAddress = 0x05,
     Syscall = 0x08,
+    Overflow = 0x0C,
 };
 
 union GP_Registers {

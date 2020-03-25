@@ -35,7 +35,6 @@ template <typename ValueType>
 ValueType BUS::Load(u32 address) {
     static_assert(std::is_same<ValueType, u32>::value || std::is_same<ValueType, u16>::value ||
                   std::is_same<ValueType, u8>::value);
-    Assert((address % sizeof(ValueType)) == 0);
     u32 masked_address = MaskRegion(address);
     u32 mask = (masked_address & 0xFF000000) >> 24;
 
@@ -112,7 +111,6 @@ template <typename Value>
 void BUS::Store(u32 address, Value value) {
     static_assert(std::is_same<decltype(value), u32>::value || std::is_same<decltype(value), u16>::value ||
                   std::is_same<decltype(value), u8>::value);
-    Assert((address % sizeof(value)) == 0);
     u32 masked_address = MaskRegion(address);
     u32 mask = (masked_address & 0xFF000000) >> 24;
 

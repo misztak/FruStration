@@ -22,6 +22,11 @@ void CPU::Step() {
     // at this point the pc contains the address of the delay slot instruction
     // next_pc points to the instruction right after the delay slot
 
+    if (current_pc & 0x3) {
+        Exception(ExceptionCode::LoadAddress);
+        return;
+    }
+
     in_delay_slot = branch_taken;
     branch_taken = false;
 
@@ -105,9 +110,7 @@ void CPU::Step() {
                     const u32 a = Get(instr.s.rt);
                     const u32 b = Get(instr.s.rs);
                     const u32 result = a + b;
-                    if (!((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000)) {
-                        Panic("ADD: Integer overflow!");
-                    }
+                    if (!((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000)) Exception(ExceptionCode::Overflow);
                     Set(instr.s.rd, result);
                     break;
                 }
@@ -185,9 +188,7 @@ void CPU::Step() {
             const u32 old = Get(instr.n.rs);
             const u32 add = instr.imm_se();
             const u32 result = old + add;
-            if (!((old ^ add) & 0x80000000) && ((result ^ old) & 0x80000000)) {
-                Panic("ADDI: Integer overflow!");
-            }
+            if (!((old ^ add) & 0x80000000) && ((result ^ old) & 0x80000000)) Exception(ExceptionCode::Overflow);
             Set(instr.n.rt, result);
             break;
         }
@@ -239,7 +240,10 @@ void CPU::Step() {
         case PrimaryOpcode::lw: {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             if (cp.sr & 0x10000) Panic("lw with isolated cache");
-            SetDelayEntry(instr.n.rt, Load32(address));
+            if (address & 0x3)
+                Exception(ExceptionCode::LoadAddress);
+            else
+                SetDelayEntry(instr.n.rt, Load32(address));
             break;
         }
         case PrimaryOpcode::lbu: {
@@ -257,12 +261,18 @@ void CPU::Step() {
         case PrimaryOpcode::sh: {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u16 halfword = static_cast<u16>(Get(instr.n.rt) & 0xFFFF);
-            Store16(address, halfword);
+            if (address & 0x1)
+                Exception(ExceptionCode::StoreAddress);
+            else
+                Store16(address, halfword);
             break;
         }
         case PrimaryOpcode::sw: {
             u32 address = Get(instr.n.rs) + instr.imm_se();
-            Store32(address, Get(instr.n.rt));
+            if (address & 0x3)
+                Exception(ExceptionCode::StoreAddress);
+            else
+                Store32(address, Get(instr.n.rt));
             break;
         }
         default:
