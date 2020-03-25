@@ -22,6 +22,9 @@ void CPU::Step() {
     // at this point the pc contains the address of the delay slot instruction
     // next_pc points to the instruction right after the delay slot
 
+    in_delay_slot = branch_taken;
+    branch_taken = false;
+
     switch (instr.n.op) {
         case PrimaryOpcode::special:
             switch (instr.s.sop) {
@@ -38,6 +41,7 @@ void CPU::Step() {
                     u32 jump_address = Get(instr.s.rs);
                     if ((jump_address & 0x3) != 0) Panic("Unaligned return address!");
                     next_pc = jump_address;
+                    branch_taken = true;
                     break;
                 }
                 case SecondaryOpcode::jalr: {
@@ -45,6 +49,7 @@ void CPU::Step() {
                     if ((jump_address & 0x3) != 0) Panic("Unaligned return address!");
                     Set(instr.s.rd, next_pc);
                     next_pc = jump_address;
+                    branch_taken = true;
                     break;
                 }
                 case SecondaryOpcode::syscall:
@@ -135,36 +140,45 @@ void CPU::Step() {
             test ^= is_bgez;
 
             if (is_link) gp.ra = next_pc;
-            if (test) next_pc = sp.pc + (instr.imm_se() << 2);
+            if (test) {
+                next_pc = sp.pc + (instr.imm_se() << 2);
+                branch_taken = true;
+            }
             break;
         }
         case PrimaryOpcode::jmp:
             next_pc &= 0xF0000000;
             next_pc |= instr.jump_target << 2;
+            branch_taken = true;
             break;
         case PrimaryOpcode::jal:
             gp.ra = next_pc;
             next_pc &= 0xF0000000;
             next_pc |= instr.jump_target << 2;
+            branch_taken = true;
             break;
         case PrimaryOpcode::beq:
             if (Get(instr.n.rs) == Get(instr.n.rt)) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
+                branch_taken = true;
             }
             break;
         case PrimaryOpcode::bne:
             if (Get(instr.n.rs) != Get(instr.n.rt)) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
+                branch_taken = true;
             }
             break;
         case PrimaryOpcode::blez:
             if (static_cast<s32>(Get(instr.n.rs)) <= 0) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
+                branch_taken = true;
             }
             break;
         case PrimaryOpcode::bgtz:
             if (static_cast<s32>(Get(instr.n.rs)) > 0) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
+                branch_taken = true;
             }
             break;
         case PrimaryOpcode::addi: {
@@ -268,9 +282,13 @@ void CPU::Exception(ExceptionCode cause) {
     // update pair values
     cp.sr |= (mode << 2) & 0x3F;
 
-    // TODO: interrupt pending bits, bit 31?
+    // TODO: interrupt pending bits?
     cp.cause = static_cast<u32>(cause) << 2;
     cp.epc = current_pc;
+    if (in_delay_slot) {
+        cp.epc -= 4;
+        cp.cause |= 1 << 31;
+    }
 
     sp.pc = handler;
     next_pc = handler + 4;
