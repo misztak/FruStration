@@ -80,8 +80,8 @@ void CPU::Step() {
                     break;
                 }
                 case SecondaryOpcode::divu: {
-                    const s32 n = Get(instr.s.rs);
-                    const s32 d = Get(instr.s.rt);
+                    const u32 n = Get(instr.s.rs);
+                    const u32 d = Get(instr.s.rt);
 
                     // check for special case
                     if (d == 0) {
