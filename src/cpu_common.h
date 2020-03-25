@@ -17,6 +17,7 @@ enum class PrimaryOpcode : u32 {
     addi = 0x08,
     addiu = 0x09,
     slti = 0x0A,
+    sltiu = 0x0B,
     andi = 0x0C,
     ori = 0x0D,
     lui = 0x0F,
@@ -32,20 +33,34 @@ enum class PrimaryOpcode : u32 {
 
 enum class SecondaryOpcode : u32 {
     sll = 0x00,
+    srl = 0x02,
     sra = 0x03,
     jr = 0x08,
     jalr = 0x09,
+    syscall = 0x0C,
+    mfhi = 0x10,
+    mthi = 0x11,
+    mflo = 0x12,
+    mtlo = 0x13,
+    div = 0x1A,
+    divu = 0x1B,
     add = 0x20,
     addu = 0x21,
     subu = 0x23,
     andd = 0x24,
     orr = 0x25,
+    slt = 0x2A,
     sltu = 0x2B,
 };
 
 enum class CoprocessorOpcode : u32 {
     mf = 0x00,
     mt = 0x04,
+    rfe = 0x10,
+};
+
+enum class ExceptionCode : u32 {
+    Syscall = 0x08,
 };
 
 union GP_Registers {

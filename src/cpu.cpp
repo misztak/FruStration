@@ -19,12 +19,17 @@ void CPU::Step() {
     //       instr.value, sp.pc - 0xBFC00000);
 
     UpdatePC(next_pc);
+    // at this point the pc contains the address of the delay slot instruction
+    // next_pc points to the instruction right after the delay slot
 
     switch (instr.n.op) {
         case PrimaryOpcode::special:
             switch (instr.s.sop) {
                 case SecondaryOpcode::sll:
                     Set(instr.s.rd, Get(instr.s.rt) << instr.s.sa);
+                    break;
+                case SecondaryOpcode::srl:
+                    Set(instr.s.rd, Get(instr.s.rt) >> instr.s.sa);
                     break;
                 case SecondaryOpcode::sra:
                     Set(instr.s.rd, static_cast<s32>(Get(instr.s.rt)) >> instr.s.sa);
@@ -40,6 +45,52 @@ void CPU::Step() {
                     if ((jump_address & 0x3) != 0) Panic("Unaligned return address!");
                     Set(instr.s.rd, next_pc);
                     next_pc = jump_address;
+                    break;
+                }
+                case SecondaryOpcode::syscall:
+                    Exception(ExceptionCode::Syscall);
+                    break;
+                case SecondaryOpcode::mfhi:
+                    Set(instr.s.rd, sp.hi);
+                    break;
+                case SecondaryOpcode::mthi:
+                    sp.hi = Get(instr.s.rs);
+                    break;
+                case SecondaryOpcode::mflo:
+                    Set(instr.s.rd, sp.lo);
+                    break;
+                case SecondaryOpcode::mtlo:
+                    sp.lo = Get(instr.s.rs);
+                    break;
+                case SecondaryOpcode::div: {
+                    const s32 n = static_cast<s32>(Get(instr.s.rs));
+                    const s32 d = static_cast<s32>(Get(instr.s.rt));
+
+                    // check for special cases
+                    if (d == 0) {
+                        sp.hi = static_cast<u32>(n);
+                        sp.lo = (n >= 0) ? 0xFFFFFFFF : 0x1;
+                    } else if (static_cast<u32>(n) == 0x80000000 && d == -1) {
+                        sp.hi = 0x0;
+                        sp.lo = 0x80000000;
+                    } else {
+                        sp.hi = static_cast<u32>(n % d);
+                        sp.lo = static_cast<u32>(n / d);
+                    }
+                    break;
+                }
+                case SecondaryOpcode::divu: {
+                    const s32 n = Get(instr.s.rs);
+                    const s32 d = Get(instr.s.rt);
+
+                    // check for special case
+                    if (d == 0) {
+                        sp.hi = n;
+                        sp.lo = 0xFFFFFFFF;
+                    } else {
+                        sp.hi = n % d;
+                        sp.lo = n / d;
+                    }
                     break;
                 }
                 case SecondaryOpcode::orr:
@@ -63,6 +114,9 @@ void CPU::Step() {
                     break;
                 case SecondaryOpcode::andd:
                     Set(instr.s.rd, Get(instr.s.rs) & Get(instr.s.rt));
+                    break;
+                case SecondaryOpcode::slt:
+                    Set(instr.s.rd, (static_cast<s32>(Get(instr.s.rs)) < static_cast<s32>(Get(instr.s.rt))) ? 1 : 0);
                     break;
                 case SecondaryOpcode::sltu:
                     Set(instr.s.rd, (Get(instr.s.rs) < Get(instr.s.rt)) ? 1 : 0);
@@ -129,6 +183,9 @@ void CPU::Step() {
         case PrimaryOpcode::slti:
             Set(instr.n.rt, (static_cast<s32>(Get(instr.n.rs)) < static_cast<s32>(instr.imm_se())) ? 1 : 0);
             break;
+        case PrimaryOpcode::sltiu:
+            Set(instr.n.rt, (Get(instr.n.rs) < instr.imm_se()) ? 1 : 0);
+            break;
         case PrimaryOpcode::andi:
             Set(instr.n.rt, Get(instr.n.rs) & instr.n.imm);
             break;
@@ -146,6 +203,14 @@ void CPU::Step() {
                 case CoprocessorOpcode::mt:
                     SetCP0(instr.cop.rd, Get(instr.cop.rt));
                     break;
+                case CoprocessorOpcode::rfe: {
+                    if ((instr.value & 0x3F) != 0b010000) Panic("Invalid CP0 instruction 0x%08X!", instr.value);
+                    // restore the interrupt/user pairs that we changed before jumping into the exception handler
+                    const u32 mode = cp.sr & 0x3F;
+                    cp.sr &= ~0x3F;
+                    cp.sr |= (mode >> 2);
+                    break;
+                }
                 default:
                     Panic("Invalid coprocessor opcode 0x%02X!", instr.cop.cop_op.GetValue());
             }
@@ -191,6 +256,25 @@ void CPU::Step() {
     }
 
     UpdateDelayEntries();
+}
+
+void CPU::Exception(ExceptionCode cause) {
+    const u32 handler = (cp.sr & (1u << 22)) ? 0xBFC00180 : 0x80000080;
+
+    // get interrupt/user pairs
+    const u32 mode = cp.sr & 0x3F;
+    // clear old values
+    cp.sr &= ~0x3F;
+    // update pair values
+    cp.sr |= (mode << 2) & 0x3F;
+
+    // TODO: interrupt pending bits, bit 31?
+    cp.cause = static_cast<u32>(cause) << 2;
+    cp.epc = current_pc;
+
+    sp.pc = handler;
+    next_pc = handler + 4;
+    printf("CPU Exception 0x%02X\n", cause);
 }
 
 u32 CPU::Load32(u32 address) { return bus->Load<u32>(address); }
@@ -259,6 +343,7 @@ void CPU::UpdateDelayEntries() {
 }
 
 void CPU::UpdatePC(u32 address) {
+    current_pc = sp.pc;
     sp.pc = address;
     next_pc = address + 4;
 }

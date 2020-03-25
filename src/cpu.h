@@ -26,14 +26,15 @@ private:
 
     void SetDelayEntry(u32 reg, u32 value);
     void UpdateDelayEntries();
-
     void UpdatePC(u32 address);
+
+    void Exception(ExceptionCode cause);
 
     GP_Registers gp;
     SP_Registers sp;
     CP0_Registers cp;
 
-    u32 next_pc = 0;
+    u32 next_pc = 0, current_pc = 0;
 
     LoadDelayEntry delay_entries[2] = {};
     Instruction instr;
