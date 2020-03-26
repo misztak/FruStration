@@ -65,7 +65,9 @@ ValueType BUS::Load(u32 address) {
                         case 0x1: {  // IO Ports
                             u32 rel_address = masked_address - 0x1F801000;
                             Assert(rel_address < 1024 * 8);
-                            if (masked_address == 0x1F801074) return 0x00;
+                            if (masked_address == 0x1F801074) return 0;
+                            if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) return 0;
+                            if (masked_address >= 0x1F801080 && masked_address <= 0x1F8010F4) return 0;
                             Panic("Tried to load from IO Ports [0x%08X]", address);
                             break;
                         }

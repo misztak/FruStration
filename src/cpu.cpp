@@ -42,6 +42,15 @@ void CPU::Step() {
                 case SecondaryOpcode::sra:
                     Set(instr.s.rd, static_cast<s32>(Get(instr.s.rt)) >> instr.s.sa);
                     break;
+                case SecondaryOpcode::sllv:
+                    Set(instr.s.rd, Get(instr.s.rt) << (Get(instr.s.rs) & 0x1F));
+                    break;
+                case SecondaryOpcode::srlv:
+                    Set(instr.s.rd, Get(instr.s.rt) >> (Get(instr.s.rs) & 0x1F));
+                    break;
+                case SecondaryOpcode::srav:
+                    Set(instr.s.rd, static_cast<s32>(Get(instr.s.rt)) >> (Get(instr.s.rs) & 0x1F));
+                    break;
                 case SecondaryOpcode::jr: {
                     u32 jump_address = Get(instr.s.rs);
                     if ((jump_address & 0x3) != 0) Panic("Unaligned return address!");
@@ -72,6 +81,15 @@ void CPU::Step() {
                 case SecondaryOpcode::mtlo:
                     sp.lo = Get(instr.s.rs);
                     break;
+                case SecondaryOpcode::multu: {
+                    const u64 a = Get(instr.s.rs);
+                    const u64 b = Get(instr.s.rt);
+                    const u64 result = a * b;
+
+                    sp.lo = static_cast<u32>(result);
+                    sp.hi = static_cast<u32>(result >> 32);
+                    break;
+                }
                 case SecondaryOpcode::div: {
                     const s32 n = static_cast<s32>(Get(instr.s.rs));
                     const s32 d = static_cast<s32>(Get(instr.s.rt));
@@ -105,6 +123,9 @@ void CPU::Step() {
                 }
                 case SecondaryOpcode::orr:
                     Set(instr.s.rd, Get(instr.s.rs) | Get(instr.s.rt));
+                    break;
+                case SecondaryOpcode::nor:
+                    Set(instr.s.rd, ~(Get(instr.s.rs) | Get(instr.s.rt)));
                     break;
                 case SecondaryOpcode::add: {
                     const u32 a = Get(instr.s.rt);
@@ -232,14 +253,22 @@ void CPU::Step() {
             break;
         case PrimaryOpcode::lb: {
             u32 address = Get(instr.n.rs) + instr.imm_se();
-            if (cp.sr & 0x10000) Panic("lb with isolated cache");
             u32 value = static_cast<s8>(Load8(address));
             SetDelayEntry(instr.n.rt, value);
             break;
         }
+        case PrimaryOpcode::lh: {
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            u32 value = static_cast<s16>(Load16(address));
+            if (address & 0x1)
+                Exception(ExceptionCode::LoadAddress);
+            else
+                SetDelayEntry(instr.n.rt, value);
+            break;
+        }
         case PrimaryOpcode::lw: {
             u32 address = Get(instr.n.rs) + instr.imm_se();
-            if (cp.sr & 0x10000) Panic("lw with isolated cache");
+            if (cp.sr & 0x10000) Panic("Load with isolated cache");
             if (address & 0x3)
                 Exception(ExceptionCode::LoadAddress);
             else
@@ -248,8 +277,15 @@ void CPU::Step() {
         }
         case PrimaryOpcode::lbu: {
             u32 address = Get(instr.n.rs) + instr.imm_se();
-            if (cp.sr & 0x10000) Panic("lbu with isolated cache");
             SetDelayEntry(instr.n.rt, Load8(address));
+            break;
+        }
+        case PrimaryOpcode::lhu: {
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            if (address & 0x1)
+                Exception(ExceptionCode::LoadAddress);
+            else
+                SetDelayEntry(instr.n.rt, Load16(address));
             break;
         }
         case PrimaryOpcode::sb: {
@@ -312,14 +348,20 @@ void CPU::Store32(u32 address, u32 value) {
     bus->Store(address, value);
 }
 
-u16 CPU::Load16(u32 address) { return bus->Load<u16>(address); }
+u16 CPU::Load16(u32 address) {
+    if (cp.sr & 0x10000) Panic("Load with isolated cache");
+    return bus->Load<u16>(address);
+}
 
 void CPU::Store16(u32 address, u16 value) {
     if (cp.sr & 0x10000) return;
     bus->Store(address, value);
 }
 
-u8 CPU::Load8(u32 address) { return bus->Load<u8>(address); }
+u8 CPU::Load8(u32 address) {
+    if (cp.sr & 0x10000) Panic("Load with isolated cache");
+    return bus->Load<u8>(address);
+}
 
 void CPU::Store8(u32 address, u8 value) {
     if (cp.sr & 0x10000) return;
@@ -343,7 +385,7 @@ u32 CPU::Get(u32 index) {
 
 void CPU::SetCP0(u32 index, u32 value) {
     Assert(index < 16);
-    Assert(value == 0 || (index == 12 && value == 0x10000));
+    // Assert(value == 0 || (index == 12 && value == 0x10000));
     cp.cpr[index] = value;
 }
 
