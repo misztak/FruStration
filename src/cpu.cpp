@@ -174,8 +174,8 @@ void CPU::Step() {
                     Set(instr.s.rd, (Get(instr.s.rs) < Get(instr.s.rt)) ? 1 : 0);
                     break;
                 default:
+                    printf("Invalid special opcode 0x%02X [0x%08X]", (u32)instr.s.sop.GetValue(), instr.value);
                     Exception(ExceptionCode::ReservedInstr);
-                    printf("Unimplemented special opcode 0x%02X [0x%08X]", (u32)instr.s.sop.GetValue(), instr.value);
             }
             break;
         case PrimaryOpcode::bxxx: {
@@ -423,7 +423,7 @@ void CPU::Step() {
             Exception(ExceptionCode::CopError);
             break;
         default:
-            printf("Unimplemented opcode 0x%02X [0x%08X]", (u32)instr.n.op.GetValue(), instr.value);
+            printf("Invalid opcode 0x%02X [0x%08X]", (u32)instr.n.op.GetValue(), instr.value);
             Exception(ExceptionCode::ReservedInstr);
     }
 
