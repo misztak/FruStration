@@ -151,7 +151,7 @@ void CPU::Step() {
                     Set(instr.s.rd, (Get(instr.s.rs) < Get(instr.s.rt)) ? 1 : 0);
                     break;
                 default:
-                    Panic("Unimplemented special opcode 0x%02X [0x%08X]", instr.s.sop.GetValue(), instr.value);
+                    Panic("Unimplemented special opcode 0x%02X [0x%08X]", (u32) instr.s.sop.GetValue(), instr.value);
             }
             break;
         case PrimaryOpcode::bxxx: {
@@ -248,7 +248,7 @@ void CPU::Step() {
                     break;
                 }
                 default:
-                    Panic("Invalid coprocessor opcode 0x%02X!", instr.cop.cop_op.GetValue());
+                    Panic("Invalid coprocessor opcode 0x%02X!", (u32) instr.cop.cop_op.GetValue());
             }
             break;
         case PrimaryOpcode::lb: {
@@ -312,7 +312,7 @@ void CPU::Step() {
             break;
         }
         default:
-            Panic("Unimplemented opcode 0x%02X [0x%08X]", instr.n.op.GetValue(), instr.value);
+            Panic("Unimplemented opcode 0x%02X [0x%08X]", (u32) instr.n.op.GetValue(), instr.value);
     }
 
     UpdateDelayEntries();
@@ -338,7 +338,7 @@ void CPU::Exception(ExceptionCode cause) {
 
     sp.pc = handler;
     next_pc = handler + 4;
-    printf("CPU Exception 0x%02X\n", cause);
+    printf("CPU Exception 0x%02X\n", (u32) cause);
 }
 
 u32 CPU::Load32(u32 address) { return bus->Load<u32>(address); }
