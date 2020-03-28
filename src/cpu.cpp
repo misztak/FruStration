@@ -69,6 +69,9 @@ void CPU::Step() {
                 case SecondaryOpcode::syscall:
                     Exception(ExceptionCode::Syscall);
                     break;
+                case SecondaryOpcode::breakpoint:
+                    Exception(ExceptionCode::Break);
+                    break;
                 case SecondaryOpcode::mfhi:
                     Set(instr.s.rd, sp.hi);
                     break;
@@ -81,6 +84,15 @@ void CPU::Step() {
                 case SecondaryOpcode::mtlo:
                     sp.lo = Get(instr.s.rs);
                     break;
+                case SecondaryOpcode::mult: {
+                    const s64 a = static_cast<s32>(Get(instr.s.rs));
+                    const s64 b = static_cast<s32>(Get(instr.s.rt));
+                    const u64 result = static_cast<u64>(a * b);
+
+                    sp.lo = static_cast<u32>(result);
+                    sp.hi = static_cast<u32>(result >> 32);
+                    break;
+                }
                 case SecondaryOpcode::multu: {
                     const u64 a = Get(instr.s.rs);
                     const u64 b = Get(instr.s.rt);
@@ -121,12 +133,6 @@ void CPU::Step() {
                     }
                     break;
                 }
-                case SecondaryOpcode::orr:
-                    Set(instr.s.rd, Get(instr.s.rs) | Get(instr.s.rt));
-                    break;
-                case SecondaryOpcode::nor:
-                    Set(instr.s.rd, ~(Get(instr.s.rs) | Get(instr.s.rt)));
-                    break;
                 case SecondaryOpcode::add: {
                     const u32 a = Get(instr.s.rt);
                     const u32 b = Get(instr.s.rs);
@@ -138,11 +144,28 @@ void CPU::Step() {
                 case SecondaryOpcode::addu:
                     Set(instr.s.rd, Get(instr.s.rs) + Get(instr.s.rt));
                     break;
+                case SecondaryOpcode::sub: {
+                    const u32 a = Get(instr.s.rt);
+                    const u32 b = Get(instr.s.rs);
+                    const u32 result = a - b;
+                    if (((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000)) Exception(ExceptionCode::Overflow);
+                    Set(instr.s.rd, result);
+                    break;
+                }
                 case SecondaryOpcode::subu:
                     Set(instr.s.rd, Get(instr.s.rs) - Get(instr.s.rt));
                     break;
-                case SecondaryOpcode::andd:
+                case SecondaryOpcode::andr:
                     Set(instr.s.rd, Get(instr.s.rs) & Get(instr.s.rt));
+                    break;
+                case SecondaryOpcode::orr:
+                    Set(instr.s.rd, Get(instr.s.rs) | Get(instr.s.rt));
+                    break;
+                case SecondaryOpcode::xorr:
+                    Set(instr.s.rd, Get(instr.s.rs) ^ Get(instr.s.rt));
+                    break;
+                case SecondaryOpcode::nor:
+                    Set(instr.s.rd, ~(Get(instr.s.rs) | Get(instr.s.rt)));
                     break;
                 case SecondaryOpcode::slt:
                     Set(instr.s.rd, (static_cast<s32>(Get(instr.s.rs)) < static_cast<s32>(Get(instr.s.rt))) ? 1 : 0);
@@ -151,7 +174,8 @@ void CPU::Step() {
                     Set(instr.s.rd, (Get(instr.s.rs) < Get(instr.s.rt)) ? 1 : 0);
                     break;
                 default:
-                    Panic("Unimplemented special opcode 0x%02X [0x%08X]", (u32) instr.s.sop.GetValue(), instr.value);
+                    Exception(ExceptionCode::ReservedInstr);
+                    printf("Unimplemented special opcode 0x%02X [0x%08X]", (u32)instr.s.sop.GetValue(), instr.value);
             }
             break;
         case PrimaryOpcode::bxxx: {
@@ -228,6 +252,9 @@ void CPU::Step() {
         case PrimaryOpcode::ori:
             Set(instr.n.rt, Get(instr.n.rs) | instr.n.imm);
             break;
+        case PrimaryOpcode::xori:
+            Set(instr.n.rt, Get(instr.n.rs) ^ instr.n.imm);
+            break;
         case PrimaryOpcode::lui:
             Set(instr.n.rt, instr.n.imm << 16);
             break;
@@ -248,8 +275,15 @@ void CPU::Step() {
                     break;
                 }
                 default:
-                    Panic("Invalid coprocessor opcode 0x%02X!", (u32) instr.cop.cop_op.GetValue());
+                    Panic("Invalid coprocessor opcode 0x%02X!", (u32)instr.cop.cop_op.GetValue());
             }
+            break;
+        case PrimaryOpcode::cop2:
+            Panic("GTE not implemented");
+            break;
+        case PrimaryOpcode::cop1:
+        case PrimaryOpcode::cop3:
+            Exception(ExceptionCode::CopError);
             break;
         case PrimaryOpcode::lb: {
             u32 address = Get(instr.n.rs) + instr.imm_se();
@@ -264,6 +298,23 @@ void CPU::Step() {
                 Exception(ExceptionCode::LoadAddress);
             else
                 SetDelayEntry(instr.n.rt, value);
+            break;
+        }
+        case PrimaryOpcode::lwl:{
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            if (cp.sr & 0x10000) Panic("Load with isolated cache");
+
+            u32 aligned_value = Load32(address & ~0x3);
+            u32 old_value = (delay_entries[0].reg == instr.n.rt) ? delay_entries[0].value : Get(instr.n.rt);
+
+            u32 new_value = 0;
+            switch (address % 4) {
+                case 0: new_value = (old_value & 0x00FFFFFF) | (aligned_value << 24); break;
+                case 1: new_value = (old_value & 0x0000FFFF) | (aligned_value << 16); break;
+                case 2: new_value = (old_value & 0x000000FF) | (aligned_value << 8); break;
+                case 3: new_value = (old_value & 0x00000000) | (aligned_value); break;
+            }
+            SetDelayEntry(instr.n.rt, new_value);
             break;
         }
         case PrimaryOpcode::lw: {
@@ -288,6 +339,23 @@ void CPU::Step() {
                 SetDelayEntry(instr.n.rt, Load16(address));
             break;
         }
+        case PrimaryOpcode::lwr: {
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            if (cp.sr & 0x10000) Panic("Load with isolated cache");
+
+            u32 aligned_value = Load32(address & ~0x3);
+            u32 old_value = (delay_entries[0].reg == instr.n.rt) ? delay_entries[0].value : Get(instr.n.rt);
+
+            u32 new_value = 0;
+            switch (address % 4) {
+                case 0: new_value = (old_value & 0x00000000) | (aligned_value); break;
+                case 1: new_value = (old_value & 0xFF000000) | (aligned_value >> 8); break;
+                case 2: new_value = (old_value & 0xFFFF0000) | (aligned_value >> 16); break;
+                case 3: new_value = (old_value & 0xFFFFFF00) | (aligned_value >> 24); break;
+            }
+            SetDelayEntry(instr.n.rt, new_value);
+            break;
+        }
         case PrimaryOpcode::sb: {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u8 byte = static_cast<u8>(Get(instr.n.rt) & 0xFF);
@@ -303,6 +371,21 @@ void CPU::Step() {
                 Store16(address, halfword);
             break;
         }
+        case PrimaryOpcode::swl: {
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            u32 aligned_value = Load32(address & ~0x3);
+            u32 old_value = Get(instr.n.rt);
+
+            u32 new_value = 0;
+            switch (address % 4) {
+                case 0: new_value = (aligned_value & 0xFFFFFF00) | (old_value >> 24); break;
+                case 1: new_value = (aligned_value & 0xFFFF0000) | (old_value >> 16); break;
+                case 2: new_value = (aligned_value & 0xFF000000) | (old_value >> 8); break;
+                case 3: new_value = (aligned_value & 0x00000000) | (old_value); break;
+            }
+            Store32(address & ~0x3, new_value);
+            break;
+        }
         case PrimaryOpcode::sw: {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             if (address & 0x3)
@@ -311,8 +394,37 @@ void CPU::Step() {
                 Store32(address, Get(instr.n.rt));
             break;
         }
+        case PrimaryOpcode::swr: {
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            u32 aligned_value = Load32(address & ~0x3);
+            u32 old_value = Get(instr.n.rt);
+
+            u32 new_value = 0;
+            switch (address % 4) {
+                case 0: new_value = (aligned_value & 0x00000000) | (old_value); break;
+                case 1: new_value = (aligned_value & 0x000000FF) | (old_value << 8); break;
+                case 2: new_value = (aligned_value & 0x0000FFFF) | (old_value << 16); break;
+                case 3: new_value = (aligned_value & 0x00FFFFFF) | (old_value << 24); break;
+            }
+            Store32(address & ~0x3, new_value);
+            break;
+        }
+        case PrimaryOpcode::lwc2:
+            Panic("LWC2 (GTE) not implemented");
+            break;
+        case PrimaryOpcode::swc2:
+            Panic("SWC2 (GTE) not implemented");
+            break;
+        case PrimaryOpcode::lwc0:
+        case PrimaryOpcode::lwc1:
+        case PrimaryOpcode::lwc3:
+        case PrimaryOpcode::swc0:
+        case PrimaryOpcode::swc1:
+            Exception(ExceptionCode::CopError);
+            break;
         default:
-            Panic("Unimplemented opcode 0x%02X [0x%08X]", (u32) instr.n.op.GetValue(), instr.value);
+            printf("Unimplemented opcode 0x%02X [0x%08X]", (u32)instr.n.op.GetValue(), instr.value);
+            Exception(ExceptionCode::ReservedInstr);
     }
 
     UpdateDelayEntries();
@@ -338,7 +450,7 @@ void CPU::Exception(ExceptionCode cause) {
 
     sp.pc = handler;
     next_pc = handler + 4;
-    printf("CPU Exception 0x%02X\n", (u32) cause);
+    printf("CPU Exception 0x%02X\n", (u32)cause);
 }
 
 u32 CPU::Load32(u32 address) { return bus->Load<u32>(address); }
