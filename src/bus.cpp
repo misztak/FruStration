@@ -66,8 +66,8 @@ ValueType BUS::Load(u32 address) {
                             u32 rel_address = masked_address - 0x1F801000;
                             Assert(rel_address < 1024 * 8);
                             if (masked_address == 0x1F801074) return 0;
-                            if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) return 0;
-                            if (masked_address >= 0x1F801080 && masked_address <= 0x1F8010F4) return 0;
+                            if (masked_address >= 0x1F801080 && masked_address <= 0x1F8010F4) return 0; // DMA
+                            if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) return 0; // SPU
                             Panic("Tried to load from IO Ports [0x%08X]", address);
                             break;
                         }
@@ -144,6 +144,7 @@ void BUS::Store(u32 address, Value value) {
                         case 0x1: {  // IO Ports
                             u32 rel_address = masked_address - 0x1F801000;
                             Assert(rel_address < 1024 * 8);
+                            if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) return; // SPU
                             printf("Store call to IO Ports [0x%X @ 0x%08X] - Ignored\n", value, address);
                             break;
                         }
