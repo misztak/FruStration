@@ -36,7 +36,7 @@ using u64 = uint64_t;
         fflush(stderr);                                                                                             \
         abort();                                                                                                    \
     }                                                                                                               \
-    void semicolon()
+    while (0)
 
 #define Assert(Expr)                                                                                             \
     if (!(Expr)) {                                                                                               \
@@ -47,7 +47,22 @@ using u64 = uint64_t;
         fflush(stderr);                                                                                          \
         abort();                                                                                                 \
     }                                                                                                            \
-    void semicolon()
+    while (0)
+
+#ifdef DEBUG
+#define DebugAssert(Expr)                                                                                        \
+    if (!(Expr)) {                                                                                               \
+        char buf[128];                                                                                           \
+        std::snprintf(buf, sizeof(buf), "%s in function %s (%s:%u)", "Assert failed: '" #Expr "'", __FUNCTION__, \
+                      __FILE__, __LINE__);                                                                       \
+        fputs(buf, stderr);                                                                                      \
+        fflush(stderr);                                                                                          \
+        abort();                                                                                                 \
+    }                                                                                                            \
+    while (0)
+#else
+#define DebugAssert(Expr) while (0)
+#endif
 
 #define AssertMsg(Expr, Msg)                                                                                    \
     if (!(Expr)) {                                                                                              \
@@ -58,6 +73,6 @@ using u64 = uint64_t;
         fflush(stderr);                                                                                         \
         abort();                                                                                                \
     }                                                                                                           \
-    void semicolon()
+    while (0)
 
 // end
