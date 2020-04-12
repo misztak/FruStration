@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 
 // force inline helper
 #ifndef ALWAYS_INLINE
@@ -32,22 +33,22 @@ using u64 = uint64_t;
         std::snprintf(msg, sizeof(msg), Message, ##__VA_ARGS__);                                                    \
         char buf[256];                                                                                              \
         std::snprintf(buf, sizeof(buf), "Panic: %s in function %s (%s:%u)", msg, __FUNCTION__, __FILE__, __LINE__); \
-        fputs(buf, stderr);                                                                                         \
-        fflush(stderr);                                                                                             \
-        abort();                                                                                                    \
+        std::fputs(buf, stderr);                                                                                    \
+        std::fflush(stderr);                                                                                        \
+        std::abort();                                                                                               \
     }                                                                                                               \
-    while (0)
+    void semicolon()
 
 #define Assert(Expr)                                                                                             \
     if (!(Expr)) {                                                                                               \
         char buf[128];                                                                                           \
         std::snprintf(buf, sizeof(buf), "%s in function %s (%s:%u)", "Assert failed: '" #Expr "'", __FUNCTION__, \
                       __FILE__, __LINE__);                                                                       \
-        fputs(buf, stderr);                                                                                      \
-        fflush(stderr);                                                                                          \
-        abort();                                                                                                 \
+        std::fputs(buf, stderr);                                                                                 \
+        std::fflush(stderr);                                                                                     \
+        std::abort();                                                                                            \
     }                                                                                                            \
-    while (0)
+    void semicolon()
 
 #ifdef DEBUG
 #define DebugAssert(Expr)                                                                                        \
@@ -55,11 +56,11 @@ using u64 = uint64_t;
         char buf[128];                                                                                           \
         std::snprintf(buf, sizeof(buf), "%s in function %s (%s:%u)", "Assert failed: '" #Expr "'", __FUNCTION__, \
                       __FILE__, __LINE__);                                                                       \
-        fputs(buf, stderr);                                                                                      \
-        fflush(stderr);                                                                                          \
-        abort();                                                                                                 \
+        std::fputs(buf, stderr);                                                                                 \
+        std::fflush(stderr);                                                                                     \
+        std::abort();                                                                                            \
     }                                                                                                            \
-    while (0)
+    void semicolon()
 #else
 #define DebugAssert(Expr) while (0)
 #endif
@@ -69,10 +70,10 @@ using u64 = uint64_t;
         char buf[128];                                                                                          \
         std::snprintf(buf, sizeof(buf), "%s in function %s (%s:%u)", "Assert failed: '" #Msg "'", __FUNCTION__, \
                       __FILE__, __LINE__);                                                                      \
-        fputs(buf, stderr);                                                                                     \
-        fflush(stderr);                                                                                         \
-        abort();                                                                                                \
+        std::fputs(buf, stderr);                                                                                \
+        std::fflush(stderr);                                                                                    \
+        std::abort();                                                                                           \
     }                                                                                                           \
-    while (0)
+    void semicolon()
 
 // end
