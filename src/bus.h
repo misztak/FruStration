@@ -5,10 +5,12 @@
 
 #include "types.h"
 
+class DMA;
+
 class BUS {
 public:
     BUS();
-    void Init();
+    void Init(DMA* dma);
     bool LoadBIOS(const std::string& path);
 
     void DumpRAM(const std::string& path);
@@ -31,6 +33,8 @@ private:
         // KSEG2 - 1024 MB
         0xFFFFFFFF, 0xFFFFFFFF,
     };
+
+    DMA* dma = nullptr;
 
     std::vector<u8> bios;
     std::vector<u8> ram;

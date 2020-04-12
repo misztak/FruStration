@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "types.h"
 
@@ -11,6 +10,7 @@ class CPU;
 }
 
 class BUS;
+class DMA;
 
 class System {
 public:
@@ -23,4 +23,5 @@ public:
 private:
     std::unique_ptr<CPU::CPU> cpu;
     std::unique_ptr<BUS> bus;
+    std::unique_ptr<DMA> dma;
 };

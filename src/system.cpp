@@ -2,6 +2,7 @@
 
 #include "bus.h"
 #include "cpu.h"
+#include "dma.h"
 
 System::System() = default;
 
@@ -10,8 +11,10 @@ System::~System() = default;
 void System::Init() {
     cpu = std::make_unique<CPU::CPU>();
     bus = std::make_unique<BUS>();
+    dma = std::make_unique<DMA>();
 
     cpu->Init(bus.get());
+    bus->Init(dma.get());
 }
 
 bool System::LoadBIOS(const std::string& bios_path) {
