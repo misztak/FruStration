@@ -15,6 +15,7 @@ void System::Init() {
 
     cpu->Init(bus.get());
     bus->Init(dma.get());
+    dma->Init(bus.get());
 }
 
 bool System::LoadBIOS(const std::string& bios_path) {

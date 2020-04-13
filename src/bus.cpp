@@ -68,8 +68,9 @@ ValueType BUS::Load(u32 address) {
                             u32 rel_address = masked_address - 0x1F801000;
                             Assert(rel_address < 1024 * 8);
                             if (masked_address == 0x1F801074) return 0;
+                            if (masked_address == 0x1F801110) return 0; // Timer 1 (horizontal retrace)
                             if (masked_address == 0x1F801810) return 0; // GPUREAD
-                            if (masked_address == 0x1F801814) return 0x10000000; // GPUSTAT
+                            if (masked_address == 0x1F801814) return 0x1C000000; // GPUSTAT
                             if (masked_address >= 0x1F801080 && masked_address <= 0x1F8010F4) return (ValueType) dma->Load(rel_address - 0x80); // DMA
                             if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) return 0; // SPU
                             Panic("Tried to load from IO Ports [0x%08X]", address);
@@ -150,6 +151,7 @@ void BUS::Store(u32 address, Value value) {
                             Assert(rel_address < 1024 * 8);
                             if (masked_address >= 0x1F801080 && masked_address <= 0x1F8010F4) dma->Store(rel_address - 0x80, value); // DMA
                             if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) return; // SPU
+                            if (masked_address >= 0x1F801800 && masked_address <= 0x1F801803) Panic("CDROM");
                             printf("Store<%lu> call to IO Ports [0x%X @ 0x%08X] - Ignored\n", sizeof(Value)*8, value, address);
                             break;
                         }

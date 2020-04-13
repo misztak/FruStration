@@ -3,14 +3,20 @@
 #include "bitfield.h"
 #include "types.h"
 
+class BUS;
+
 class DMA {
 public:
     DMA();
+    void Init(BUS* bus);
     u32 Load(u32 address);
     void Store(u32 address, u32 value);
 
 private:
     void UpdateIRQStatus();
+    void StartTransfer(u32 channel);
+    void TransferToRAM(u32 index);
+    void TransferToDevice(u32 index);
 
     enum class DMA_Channel : u32 {
         MDECin = 0,
@@ -55,14 +61,19 @@ private:
 
             BitField<u32, Direction, 0, 1> transfer_direction;
             BitField<u32, Step, 1, 1> mem_address_step;
-            BitField<u32, u32, 8, 1> chopping_enable;
+            BitField<u32, bool, 8, 1> chopping_enable;
             BitField<u32, SyncMode, 9, 2> sync_mode;
             BitField<u32, u32, 16, 3> chopping_dma_win_size;
             BitField<u32, u32, 20, 3> chopping_cpu_win_size;
-            BitField<u32, u32, 24, 1> start_busy;
-            BitField<u32, u32, 28, 1> start_trigger;
-            BitField<u32, u32, 29, 1> pause;
+            BitField<u32, bool, 24, 1> start_busy;
+            BitField<u32, bool, 28, 1> start_trigger;
+            BitField<u32, bool, 29, 1> pause;
         } control;
+
+        bool ready() {
+            bool trigger = (control.sync_mode == SyncMode::Manual) ? control.start_trigger : true;
+            return control.start_busy && trigger;
+        }
     };
     Channel channel[7] = {};
 
@@ -100,4 +111,6 @@ private:
         BitField<u32, u32, 24, 7> irq_ack;
         BitField<u32, u32, 31, 1> irq_master_flag;
     } interrupt;
+
+    BUS* bus = nullptr;
 };
