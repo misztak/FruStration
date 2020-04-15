@@ -17,7 +17,7 @@ void System::Init() {
 
     cpu->Init(bus.get());
     bus->Init(dma.get(), gpu.get());
-    dma->Init(bus.get());
+    dma->Init(bus.get(), gpu.get());
 }
 
 bool System::LoadBIOS(const std::string& bios_path) {

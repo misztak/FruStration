@@ -4,11 +4,12 @@
 #include "types.h"
 
 class BUS;
+class GPU;
 
 class DMA {
 public:
     DMA();
-    void Init(BUS* bus);
+    void Init(BUS* bus, GPU* gpu);
     u32 Load(u32 address);
     void Store(u32 address, u32 value);
 
@@ -114,4 +115,5 @@ private:
     } interrupt;
 
     BUS* bus = nullptr;
+    GPU* gpu = nullptr;
 };

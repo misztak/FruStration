@@ -1,10 +1,14 @@
 #include "dma.h"
 
 #include "bus.h"
+#include "gpu.h"
 
 DMA::DMA() {}
 
-void DMA::Init(BUS* b) { bus = b; }
+void DMA::Init(BUS* b, GPU* g) {
+    bus = b;
+    gpu = g;
+}
 
 u32 DMA::Load(u32 address) {
     printf("DMA IO Load [relative address 0x%X]\n", address);
@@ -165,6 +169,7 @@ void DMA::TransferToDevice(u32 index) {
             break;
         case SyncMode::Request:
             transfer_count = ch.bcr.block_count * ch.bcr.block_size;
+            if (index == 2) printf("Possible start of CopyRectToVRAM with size %u\n", transfer_count);
             break;
         case SyncMode::LinkedList:
             // only allow GPU channel (for now?)
@@ -189,7 +194,7 @@ void DMA::TransferToDevice(u32 index) {
                     while (element_count > 0) {
                         address = (address + 4) & ADDR_MASK;
                         u32 gpu_command = bus->Load<u32>(address);
-                        printf("DMA pushed command 0x%X to GPU\n", gpu_command);
+                        gpu->SendGP0Cmd(gpu_command);
                         element_count--;
                     }
                     // keep the loop going if the tail marker was not reached
@@ -199,7 +204,7 @@ void DMA::TransferToDevice(u32 index) {
                     address = header & ADDR_MASK;
                 } else {
                     u32 gpu_data = bus->Load<u32>(address);
-                    printf("DMA pushed data 0x%X to GPU\n", gpu_data);
+                    gpu->SendGP0Cmd(gpu_data);
                 }
                 break;
             case DMA_Channel::CDROM:
