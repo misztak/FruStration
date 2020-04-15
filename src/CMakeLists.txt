@@ -3,6 +3,7 @@ add_executable(frog
         system.cpp
         cpu.cpp
         bus.cpp
-        dma.cpp)
+        dma.cpp
+        gpu.cpp)
 
 target_include_directories(frog PUBLIC .)

@@ -6,11 +6,12 @@
 #include "types.h"
 
 class DMA;
+class GPU;
 
 class BUS {
 public:
     BUS();
-    void Init(DMA* dma);
+    void Init(DMA* dma, GPU* gpu);
     bool LoadBIOS(const std::string& path);
 
     void DumpRAM(const std::string& path);
@@ -35,6 +36,7 @@ private:
     };
 
     DMA* dma = nullptr;
+    GPU* gpu = nullptr;
 
     std::vector<u8> bios;
     std::vector<u8> ram;

@@ -11,6 +11,7 @@ class CPU;
 
 class BUS;
 class DMA;
+class GPU;
 
 class System {
 public:
@@ -24,4 +25,5 @@ private:
     std::unique_ptr<CPU::CPU> cpu;
     std::unique_ptr<BUS> bus;
     std::unique_ptr<DMA> dma;
+    std::unique_ptr<GPU> gpu;
 };
