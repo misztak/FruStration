@@ -49,7 +49,7 @@ void DMA::Store(u32 address, u32 value) {
     DebugAssert(channel_index <= 7);
 
     if (channel_address == 0x0) {
-        channel[channel_index].base_address = value & 0x00FFFFFF;
+        channel[channel_index].base_address = value & 0xFF'FFFF;
         return;
     }
     if (channel_address == 0x4) {
@@ -113,10 +113,11 @@ void DMA::TransferToRAM(u32 index) {
             break;
     }
 
+    Assert(transfer_count > 0);
     auto channel_type = static_cast<DMA_Channel>(index);
     while (transfer_count > 0) {
         // align address and wrap it
-        u32 current_address = address & 0x1FFFFC;
+        u32 current_address = address & ADDR_MASK;
         u32 data = 0;
 
         switch (channel_type) {
@@ -132,10 +133,10 @@ void DMA::TransferToRAM(u32 index) {
                 // create an empty linked list, does not actually transfer data from any device
                 if (transfer_count == 1)
                     // tail marker
-                    data = 0xFFFFFF;
+                    data = 0xFF'FFFF;
                 else
                     // pointer to previous element
-                    data = (address - 4) & 0x1FFFFF;
+                    data = (current_address - 4) & 0xFF'FFFF;
                 break;
         }
 
@@ -155,7 +156,7 @@ void DMA::TransferToDevice(u32 index) {
     auto& ch = channel[index];
     s32 step = (ch.control.mem_address_step == Step::Inc) ? 4 : -4;
     // align address and wrap it
-    u32 address = ch.base_address & 0x1FFFFC;
+    u32 address = ch.base_address & ADDR_MASK;
 
     u32 transfer_count = 0;
     switch (ch.control.sync_mode) {
@@ -172,6 +173,7 @@ void DMA::TransferToDevice(u32 index) {
             break;
     }
 
+    Assert(transfer_count > 0);
     auto channel_type = static_cast<DMA_Channel>(index);
     while (transfer_count > 0) {
         switch (channel_type) {
@@ -185,15 +187,16 @@ void DMA::TransferToDevice(u32 index) {
                     u32 element_count = header >> 24;
 
                     while (element_count > 0) {
-                        address = (address + 4) & 0x1FFFFC;
+                        address = (address + 4) & ADDR_MASK;
                         u32 gpu_command = bus->Load<u32>(address);
                         printf("DMA pushed command 0x%X to GPU\n", gpu_command);
                         element_count--;
                     }
                     // keep the loop going if the tail marker was not reached
-                    if ((header & 0x800000) == 0) transfer_count++;
+                    //if ((header & 0x800000) == 0) transfer_count++;
+                    if ((header & 0xFFFFFF) != 0xFFFFFF) transfer_count++;
                     // jump to the next element of the linked list
-                    address = header & 0x1FFFFC;
+                    address = header & ADDR_MASK;
                 } else {
                     u32 gpu_data = bus->Load<u32>(address);
                     printf("DMA pushed data 0x%X to GPU\n", gpu_data);
@@ -209,7 +212,7 @@ void DMA::TransferToDevice(u32 index) {
                 break;
         }
 
-        if (ch.control.sync_mode != SyncMode::LinkedList) address = (address + step) & 0x1FFFFC;
+        if (ch.control.sync_mode != SyncMode::LinkedList) address = (address + step) & ADDR_MASK;
         transfer_count--;
     }
 

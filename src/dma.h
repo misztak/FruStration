@@ -18,6 +18,7 @@ private:
     void TransferToRAM(u32 index);
     void TransferToDevice(u32 index);
 
+    static constexpr u32 ADDR_MASK = 0x1F'FFFC;
     enum class DMA_Channel : u32 {
         MDECin = 0,
         MDECout = 1,

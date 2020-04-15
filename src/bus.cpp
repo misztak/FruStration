@@ -150,9 +150,9 @@ void BUS::Store(u32 address, Value value) {
                             u32 rel_address = masked_address - 0x1F801000;
                             Assert(rel_address < 1024 * 8);
                             if (masked_address >= 0x1F801080 && masked_address <= 0x1F8010F4) dma->Store(rel_address - 0x80, value); // DMA
-                            if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) return; // SPU
-                            if (masked_address >= 0x1F801800 && masked_address <= 0x1F801803) Panic("CDROM");
-                            printf("Store<%lu> call to IO Ports [0x%X @ 0x%08X] - Ignored\n", sizeof(Value)*8, value, address);
+                            else if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) break; // SPU
+                            else if (masked_address >= 0x1F801800 && masked_address <= 0x1F801803) {Panic("CDROM");}
+                            else printf("Store<%lu> call to IO Ports [0x%X @ 0x%08X] - Ignored\n", sizeof(Value)*8, value, address);
                             break;
                         }
                         case 0x2: {  // Expansion Region 2
