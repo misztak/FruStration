@@ -5,18 +5,24 @@
 
 namespace CPU {
 
-CPU::CPU() = default;
+bool DISASM_INSTRUCTION = false;
+
+CPU::CPU() : disassembler(this) {}
 
 void CPU::Init(BUS* b) {
     bus = b;
+    cp.prid = 0x2;
     UpdatePC(0xBFC00000);
 }
 
 void CPU::Step() {
     instr.value = Load32(sp.pc);
+#ifdef DEBUG
     // printf("Executing instruction 0x%02X [0x%08X] at address 0x%08X\n",
     //       (instr.n.op == PrimaryOpcode::special) ? (u32)instr.s.sop.GetValue() : (u32)instr.n.op.GetValue(),
     //       instr.value, sp.pc - 0xBFC00000);
+    if (DISASM_INSTRUCTION) disassembler.DisassembleInstruction(sp.pc, instr.value);
+#endif
 
     UpdatePC(next_pc);
     // at this point the pc contains the address of the delay slot instruction

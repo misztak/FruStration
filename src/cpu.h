@@ -1,12 +1,14 @@
 #pragma once
 
 #include "cpu_common.h"
+#include "cpu_disasm.h"
 
 class BUS;
 
 namespace CPU {
 
 class CPU {
+friend class Disassembler;
 public:
     CPU();
     void Init(BUS* bus);
@@ -42,6 +44,8 @@ private:
     Instruction instr;
 
     BUS* bus = nullptr;
+
+    Disassembler disassembler;
 };
 
 }  // namespace CPU
