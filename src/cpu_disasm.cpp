@@ -8,7 +8,7 @@
 
 namespace CPU {
 
-Disassembler::Disassembler(CPU *cpu) : cpu(cpu) {}
+Disassembler::Disassembler(CPU* cpu) : cpu(cpu) {}
 
 void Disassembler::DisassembleInstruction(u32 address, u32 value) {
     Instruction i{value};
@@ -238,8 +238,11 @@ void Disassembler::PrintInstruction(const char* name, const std::vector<u32>& in
     }
 
     string.append(fmt::format("{:>{}}# ", " ", 40 - string.size()));
+    u32 pos = 0;
     for (auto& index : indices) {
-        string.append(fmt::format("{}={:x}, ", rnames[index], cpu->gp.r[index]));
+        string.append(
+            fmt::format("{}={:x}{} ", rnames[index], cpu->gp.r[index], (pos == indices.size() - 1) ? "" : ","));
+        pos++;
     }
     fmt::print("{}", string.c_str());
 }
@@ -253,8 +256,11 @@ void Disassembler::PrintInstructionWithConstant(const char* name, const std::vec
     string.append(fmt::format(" {:08x}", constant));
 
     string.append(fmt::format("{:>{}}# ", " ", 40 - string.size()));
+    u32 pos = 0;
     for (auto& index : indices) {
-        string.append(fmt::format("{}={:x}, ", rnames[index], cpu->gp.r[index]));
+        string.append(
+            fmt::format("{}={:x}{} ", rnames[index], cpu->gp.r[index], (pos == indices.size() - 1) ? "" : ","));
+        pos++;
     }
     fmt::print("{}", string.c_str());
 }
@@ -262,8 +268,8 @@ void Disassembler::PrintInstructionWithConstant(const char* name, const std::vec
 void Disassembler::PrintCP0Instruction(const char* name, u32 reg1, u32 reg2) {
     std::string string = fmt::format("{} ${} ${}", name, rnames[reg1], coprnames[reg2]);
 
-    string.append(fmt::format("{:>{}}# {}(GPR)={:08x}, {}(COP0)={:08x}", " ", 40 - string.size(),
-        rnames[reg1], cpu->gp.r[reg1], coprnames[reg2], cpu->cp.cpr[reg2]));
+    string.append(fmt::format("{:>{}}# {}(GPR)={:08x}, {}(COP0)={:08x}", " ", 40 - string.size(), rnames[reg1],
+                              cpu->gp.r[reg1], coprnames[reg2], cpu->cp.cpr[reg2]));
     fmt::print("{}", string.c_str());
 }
 
