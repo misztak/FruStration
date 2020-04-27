@@ -174,40 +174,40 @@ void Disassembler::DisassembleInstruction(u32 address, u32 value) {
             fmt::print("gte");
             break;
         case PrimaryOpcode::lb:
-            PrintInstructionWithConstant("lb", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("lb", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::lh:
-            PrintInstructionWithConstant("lh", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("lh", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::lwl:
-            PrintInstructionWithConstant("lwl", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("lwl", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::lw:
-            PrintInstructionWithConstant("lw", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("lw", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::lbu:
-            PrintInstructionWithConstant("lbu", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("lbu", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::lhu:
-            PrintInstructionWithConstant("lhu", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("lhu", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::lwr:
-            PrintInstructionWithConstant("lwr", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("lwr", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::sb:
-            PrintInstructionWithConstant("sb", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("sb", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::sh:
-            PrintInstructionWithConstant("sh", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("sh", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::swl:
-            PrintInstructionWithConstant("swl", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("swl", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::sw:
-            PrintInstructionWithConstant("sw", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("sw", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::swr:
-            PrintInstructionWithConstant("swr", {i.n.rt}, cpu->gp.r[i.n.rs] + i.imm_se());
+            PrintLoadStoreInstruction("swr", i.n.rt, i.n.rs, (s32) i.imm_se());
             break;
         case PrimaryOpcode::lwc2:
             fmt::print("lwc2");
@@ -231,6 +231,7 @@ void Disassembler::DisassembleInstruction(u32 address, u32 value) {
 }
 
 void Disassembler::PrintInstruction(const char* name, const std::vector<u32>& indices) {
+    // TODO: find out how inefficient these print functions are
     std::string string = fmt::format("{}", name);
 
     for (auto& index : indices) {
@@ -244,7 +245,7 @@ void Disassembler::PrintInstruction(const char* name, const std::vector<u32>& in
             fmt::format("{}={:x}{} ", rnames[index], cpu->gp.r[index], (pos == indices.size() - 1) ? "" : ","));
         pos++;
     }
-    fmt::print("{}", string.c_str());
+    fmt::print(string);
 }
 
 void Disassembler::PrintInstructionWithConstant(const char* name, const std::vector<u32>& indices, u32 constant) {
@@ -262,7 +263,14 @@ void Disassembler::PrintInstructionWithConstant(const char* name, const std::vec
             fmt::format("{}={:x}{} ", rnames[index], cpu->gp.r[index], (pos == indices.size() - 1) ? "" : ","));
         pos++;
     }
-    fmt::print("{}", string.c_str());
+    fmt::print(string);
+}
+
+void Disassembler::PrintLoadStoreInstruction(const char* name, u32 rt, u32 base, s32 offset) {
+    std::string string = fmt::format("{} ${} {}(${})", name, rnames[rt], offset, rnames[base]);
+    string.append(fmt::format("{:>{}}# {}={:x}, address={:08x}", " ", 40 - string.size(), rnames[rt], cpu->gp.r[rt],
+                              cpu->gp.r[base] + offset));
+    fmt::print(string);
 }
 
 void Disassembler::PrintCP0Instruction(const char* name, u32 reg1, u32 reg2) {
@@ -270,7 +278,7 @@ void Disassembler::PrintCP0Instruction(const char* name, u32 reg1, u32 reg2) {
 
     string.append(fmt::format("{:>{}}# {}(GPR)={:08x}, {}(COP0)={:08x}", " ", 40 - string.size(), rnames[reg1],
                               cpu->gp.r[reg1], coprnames[reg2], cpu->cp.cpr[reg2]));
-    fmt::print("{}", string.c_str());
+    fmt::print(string);
 }
 
 }  // namespace CPU

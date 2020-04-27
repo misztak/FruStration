@@ -15,6 +15,7 @@ public:
 private:
     void PrintInstruction(const char* name, const std::vector<u32>& indices);
     void PrintInstructionWithConstant(const char* name, const std::vector<u32>& indices, u32 constant);
+    void PrintLoadStoreInstruction(const char* name, u32 rt, u32 base, s32 offset);
     void PrintCP0Instruction(const char* name, u32 reg1, u32 reg2);
 
     const char* rnames[32] = {
