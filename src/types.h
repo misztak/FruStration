@@ -37,7 +37,7 @@ using u64 = uint64_t;
         std::fflush(stderr);                                                                                        \
         std::abort();                                                                                               \
     }                                                                                                               \
-    void semicolon()
+    while (0)
 
 #define Assert(Expr)                                                                                             \
     if (!(Expr)) {                                                                                               \
@@ -48,7 +48,7 @@ using u64 = uint64_t;
         std::fflush(stderr);                                                                                     \
         std::abort();                                                                                            \
     }                                                                                                            \
-    void semicolon()
+    while (0)
 
 #ifdef DEBUG
 #define DebugAssert(Expr)                                                                                        \
@@ -60,7 +60,7 @@ using u64 = uint64_t;
         std::fflush(stderr);                                                                                     \
         std::abort();                                                                                            \
     }                                                                                                            \
-    void semicolon()
+    while (0)
 #else
 #define DebugAssert(Expr) while (0)
 #endif
@@ -74,6 +74,6 @@ using u64 = uint64_t;
         std::fflush(stderr);                                                                                    \
         std::abort();                                                                                           \
     }                                                                                                           \
-    void semicolon()
+    while (0)
 
 // end
