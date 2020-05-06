@@ -19,28 +19,28 @@ void Disassembler::DisassembleInstruction(u32 address, u32 value) {
         case PrimaryOpcode::special:
             switch (i.s.sop) {
                 case SecondaryOpcode::sll:
-                    PrintInstruction("sll", {i.s.rd, i.s.rt});
+                    PrintInstruction("sll", i.s.rd, i.s.rt);
                     break;
                 case SecondaryOpcode::srl:
-                    PrintInstruction("srl", {i.s.rd, i.s.rt});
+                    PrintInstruction("srl", i.s.rd, i.s.rt);
                     break;
                 case SecondaryOpcode::sra:
-                    PrintInstruction("sra", {i.s.rd, i.s.rt});
+                    PrintInstruction("sra", i.s.rd, i.s.rt);
                     break;
                 case SecondaryOpcode::sllv:
-                    PrintInstruction("sllv", {i.s.rd, i.s.rt, i.s.rs});
+                    PrintInstruction("sllv", i.s.rd, i.s.rt, i.s.rs);
                     break;
                 case SecondaryOpcode::srlv:
-                    PrintInstruction("srlv", {i.s.rd, i.s.rt, i.s.rs});
+                    PrintInstruction("srlv", i.s.rd, i.s.rt, i.s.rs);
                     break;
                 case SecondaryOpcode::srav:
-                    PrintInstruction("srav", {i.s.rd, i.s.rt, i.s.rs});
+                    PrintInstruction("srav", i.s.rd, i.s.rt, i.s.rs);
                     break;
                 case SecondaryOpcode::jr:
-                    PrintInstruction("jr", {i.s.rs});
+                    PrintInstruction("jr", i.s.rs);
                     break;
                 case SecondaryOpcode::jalr:
-                    PrintInstruction("jalr", {i.s.rd, i.s.rs});
+                    PrintInstruction("jalr", i.s.rd, i.s.rs);
                     break;
                 case SecondaryOpcode::syscall:
                     fmt::print("syscall");
@@ -49,58 +49,58 @@ void Disassembler::DisassembleInstruction(u32 address, u32 value) {
                     fmt::print("breakpoint");
                     break;
                 case SecondaryOpcode::mfhi:
-                    PrintInstruction("mfhi", {i.s.rd});
+                    PrintInstruction("mfhi", i.s.rd);
                     break;
                 case SecondaryOpcode::mthi:
-                    PrintInstruction("mthi", {i.s.rs});
+                    PrintInstruction("mthi", i.s.rs);
                     break;
                 case SecondaryOpcode::mflo:
-                    PrintInstruction("mflo", {i.s.rd});
+                    PrintInstruction("mflo", i.s.rd);
                     break;
                 case SecondaryOpcode::mtlo:
-                    PrintInstruction("mtlo", {i.s.rs});
+                    PrintInstruction("mtlo", i.s.rs);
                     break;
                 case SecondaryOpcode::mult:
-                    PrintInstruction("mult", {i.s.rs, i.s.rt});
+                    PrintInstruction("mult", i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::multu:
-                    PrintInstruction("multu", {i.s.rs, i.s.rt});
+                    PrintInstruction("multu", i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::div:
-                    PrintInstruction("div", {i.s.rs, i.s.rt});
+                    PrintInstruction("div", i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::divu:
-                    PrintInstruction("divu", {i.s.rs, i.s.rt});
+                    PrintInstruction("divu", i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::add:
-                    PrintInstruction("add", {i.s.rd, i.s.rs, i.s.rt});
+                    PrintInstruction("add", i.s.rd, i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::addu:
-                    PrintInstruction("addu", {i.s.rd, i.s.rs, i.s.rt});
+                    PrintInstruction("addu", i.s.rd, i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::sub:
-                    PrintInstruction("sub", {i.s.rd, i.s.rs, i.s.rt});
+                    PrintInstruction("sub", i.s.rd, i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::subu:
-                    PrintInstruction("subu", {i.s.rd, i.s.rs, i.s.rt});
+                    PrintInstruction("subu", i.s.rd, i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::andr:
-                    PrintInstruction("and", {i.s.rd, i.s.rs, i.s.rt});
+                    PrintInstruction("and", i.s.rd, i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::orr:
-                    PrintInstruction("or", {i.s.rd, i.s.rs, i.s.rt});
+                    PrintInstruction("or", i.s.rd, i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::xorr:
-                    PrintInstruction("xor", {i.s.rd, i.s.rs, i.s.rt});
+                    PrintInstruction("xor", i.s.rd, i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::nor:
-                    PrintInstruction("nor", {i.s.rd, i.s.rs, i.s.rt});
+                    PrintInstruction("nor", i.s.rd, i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::slt:
-                    PrintInstruction("slt", {i.s.rd, i.s.rs, i.s.rt});
+                    PrintInstruction("slt", i.s.rd, i.s.rs, i.s.rt);
                     break;
                 case SecondaryOpcode::sltu:
-                    PrintInstruction("sltu", {i.s.rd, i.s.rs, i.s.rt});
+                    PrintInstruction("sltu", i.s.rd, i.s.rs, i.s.rt);
                     break;
             }
             break;
@@ -113,49 +113,49 @@ void Disassembler::DisassembleInstruction(u32 address, u32 value) {
                 case 0x11: name = "bgezal"; break;
                 default: Panic("Invalid bxxx opcode");
             }
-            PrintInstructionWithConstant(name, {i.n.rs}, cpu->sp.pc + (i.imm_se() << 2));
+            PrintInstructionWithConstant(name, cpu->sp.pc + (i.imm_se() << 2), i.n.rs);
             break;
         case PrimaryOpcode::jmp:
-            PrintInstructionWithConstant("jmp", {}, (cpu->next_pc & 0xF0000000) | (i.jump_target << 2));
+            PrintInstructionWithConstant("jmp", (cpu->next_pc & 0xF0000000) | (i.jump_target << 2));
             break;
         case PrimaryOpcode::jal:
-            PrintInstructionWithConstant("jal", {}, (cpu->next_pc & 0xF0000000) | (i.jump_target << 2));
+            PrintInstructionWithConstant("jal", (cpu->next_pc & 0xF0000000) | (i.jump_target << 2));
             break;
         case PrimaryOpcode::beq:
-            PrintInstructionWithConstant("beq", {i.n.rs, i.n.rt}, cpu->sp.pc + (i.imm_se() << 2));
+            PrintInstructionWithConstant("beq", cpu->sp.pc + (i.imm_se() << 2), i.n.rs, i.n.rt);
             break;
         case PrimaryOpcode::bne:
-            PrintInstructionWithConstant("bne", {i.n.rs, i.n.rt}, cpu->sp.pc + (i.imm_se() << 2));
+            PrintInstructionWithConstant("bne", cpu->sp.pc + (i.imm_se() << 2), i.n.rs, i.n.rt);
             break;
         case PrimaryOpcode::blez:
-            PrintInstructionWithConstant("blez", {i.n.rs}, cpu->sp.pc + (i.imm_se() << 2));
+            PrintInstructionWithConstant("blez", cpu->sp.pc + (i.imm_se() << 2), i.n.rs);
             break;
         case PrimaryOpcode::bgtz:
-            PrintInstructionWithConstant("bgtz", {i.n.rs}, cpu->sp.pc + (i.imm_se() << 2));
+            PrintInstructionWithConstant("bgtz", cpu->sp.pc + (i.imm_se() << 2), i.n.rs);
             break;
         case PrimaryOpcode::addi:
-            PrintInstructionWithConstant("addi", {i.n.rt, i.n.rs}, i.imm_se());
+            PrintInstructionWithConstant("addi", i.imm_se(), i.n.rt, i.n.rs);
             break;
         case PrimaryOpcode::addiu:
-            PrintInstructionWithConstant("addiu", {i.n.rt, i.n.rs}, i.imm_se());
+            PrintInstructionWithConstant("addiu", i.imm_se(), i.n.rt, i.n.rs);
             break;
         case PrimaryOpcode::slti:
-            PrintInstructionWithConstant("slti", {i.n.rt, i.n.rs}, i.imm_se());
+            PrintInstructionWithConstant("slti", i.imm_se(), i.n.rt, i.n.rs);
             break;
         case PrimaryOpcode::sltiu:
-            PrintInstructionWithConstant("sltiu", {i.n.rt, i.n.rs}, i.imm_se());
+            PrintInstructionWithConstant("sltiu", i.imm_se(), i.n.rt, i.n.rs);
             break;
         case PrimaryOpcode::andi:
-            PrintInstructionWithConstant("andi", {i.n.rt, i.n.rs}, i.imm_se());
+            PrintInstructionWithConstant("andi", i.imm_se(), i.n.rt, i.n.rs);
             break;
         case PrimaryOpcode::ori:
-            PrintInstructionWithConstant("ori", {i.n.rt, i.n.rs}, i.imm_se());
+            PrintInstructionWithConstant("ori", i.imm_se(), i.n.rt, i.n.rs);
             break;
         case PrimaryOpcode::xori:
-            PrintInstructionWithConstant("xori", {i.n.rt, i.n.rs}, i.imm_se());
+            PrintInstructionWithConstant("xori", i.imm_se(), i.n.rt, i.n.rs);
             break;
         case PrimaryOpcode::lui:
-            PrintInstructionWithConstant("lui", {i.n.rt}, i.n.imm);
+            PrintInstructionWithConstant("lui", i.n.imm, i.n.rt);
             break;
         case PrimaryOpcode::cop0:
             switch (i.cop.cop_op) {
@@ -174,40 +174,40 @@ void Disassembler::DisassembleInstruction(u32 address, u32 value) {
             fmt::print("gte");
             break;
         case PrimaryOpcode::lb:
-            PrintLoadStoreInstruction("lb", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("lb", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::lh:
-            PrintLoadStoreInstruction("lh", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("lh", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::lwl:
-            PrintLoadStoreInstruction("lwl", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("lwl", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::lw:
-            PrintLoadStoreInstruction("lw", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("lw", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::lbu:
-            PrintLoadStoreInstruction("lbu", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("lbu", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::lhu:
-            PrintLoadStoreInstruction("lhu", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("lhu", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::lwr:
-            PrintLoadStoreInstruction("lwr", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("lwr", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::sb:
-            PrintLoadStoreInstruction("sb", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("sb", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::sh:
-            PrintLoadStoreInstruction("sh", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("sh", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::swl:
-            PrintLoadStoreInstruction("swl", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("swl", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::sw:
-            PrintLoadStoreInstruction("sw", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("sw", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::swr:
-            PrintLoadStoreInstruction("swr", i.n.rt, i.n.rs, (s32) i.imm_se());
+            PrintLoadStoreInstruction("swr", i.n.rt, i.n.rs, (s32)i.imm_se());
             break;
         case PrimaryOpcode::lwc2:
             fmt::print("lwc2");
@@ -230,53 +230,46 @@ void Disassembler::DisassembleInstruction(u32 address, u32 value) {
     fmt::print("\n");
 }
 
-void Disassembler::PrintInstruction(const char* name, const std::vector<u32>& indices) {
-    // TODO: find out how inefficient these print functions are
-    std::string string = fmt::format("{}", name);
-
-    for (auto& index : indices) {
-        string.append(fmt::format(" ${}", rnames[index]));
-    }
+void Disassembler::PrintInstruction(const char* name, u32 r1, u32 r2, u32 r3) {
+    std::string string = fmt::format("{} ${}", name, rnames[r1]);
+    if (r2 != 32) string.append(fmt::format(" ${}", rnames[r2]));
+    if (r3 != 32) string.append(fmt::format(" ${}", rnames[r3]));
 
     string.append(fmt::format("{:>{}}# ", " ", 40 - string.size()));
-    u32 pos = 0;
-    for (auto& index : indices) {
-        string.append(
-            fmt::format("{}={:x}{} ", rnames[index], cpu->gp.r[index], (pos == indices.size() - 1) ? "" : ","));
-        pos++;
-    }
+
+    string.append(fmt::format("{}=0x{:X}", rnames[r1], cpu->gp.r[r1]));
+    if (r2 != 32) string.append(fmt::format(", {}=0x{:X}", rnames[r2], cpu->gp.r[r2]));
+    if (r3 != 32) string.append(fmt::format(", {}=0x{:X}", rnames[r3], cpu->gp.r[r3]));
+
     fmt::print(string);
 }
 
-void Disassembler::PrintInstructionWithConstant(const char* name, const std::vector<u32>& indices, u32 constant) {
+void Disassembler::PrintInstructionWithConstant(const char* name, u32 constant, u32 r1, u32 r2, u32 r3) {
     std::string string = fmt::format("{}", name);
-
-    for (auto& index : indices) {
-        string.append(fmt::format(" ${}", rnames[index]));
-    }
-    string.append(fmt::format(" {:08x}", constant));
+    if (r1 != 32) string.append(fmt::format(" ${}", rnames[r1]));
+    if (r2 != 32) string.append(fmt::format(" ${}", rnames[r2]));
+    if (r3 != 32) string.append(fmt::format(" ${}", rnames[r3]));
+    string.append(fmt::format(" 0x{:08X}", constant));
 
     string.append(fmt::format("{:>{}}# ", " ", 40 - string.size()));
-    u32 pos = 0;
-    for (auto& index : indices) {
-        string.append(
-            fmt::format("{}={:x}{} ", rnames[index], cpu->gp.r[index], (pos == indices.size() - 1) ? "" : ","));
-        pos++;
-    }
+
+    if (r1 != 32) string.append(fmt::format("{}=0x{:X}", rnames[r1], cpu->gp.r[r1]));
+    if (r2 != 32) string.append(fmt::format(", {}=0x{:X}", rnames[r2], cpu->gp.r[r2]));
+    if (r3 != 32) string.append(fmt::format(", {}=0x{:X}", rnames[r3], cpu->gp.r[r3]));
+
     fmt::print(string);
 }
 
 void Disassembler::PrintLoadStoreInstruction(const char* name, u32 rt, u32 base, s32 offset) {
     std::string string = fmt::format("{} ${} {}(${})", name, rnames[rt], offset, rnames[base]);
-    string.append(fmt::format("{:>{}}# {}={:x}, address={:08x}", " ", 40 - string.size(), rnames[rt], cpu->gp.r[rt],
+    string.append(fmt::format("{:>{}}# {}=0x{:X}, address=0x{:08X}", " ", 40 - string.size(), rnames[rt], cpu->gp.r[rt],
                               cpu->gp.r[base] + offset));
     fmt::print(string);
 }
 
 void Disassembler::PrintCP0Instruction(const char* name, u32 reg1, u32 reg2) {
     std::string string = fmt::format("{} ${} ${}", name, rnames[reg1], coprnames[reg2]);
-
-    string.append(fmt::format("{:>{}}# {}(GPR)={:08x}, {}(COP0)={:08x}", " ", 40 - string.size(), rnames[reg1],
+    string.append(fmt::format("{:>{}}# {}(GPR)=0x{:08X}, {}(COP0)=0x{:08X}", " ", 40 - string.size(), rnames[reg1],
                               cpu->gp.r[reg1], coprnames[reg2], cpu->cp.cpr[reg2]));
     fmt::print(string);
 }

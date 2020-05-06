@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 #include "types.h"
 
 namespace CPU {
@@ -13,8 +11,8 @@ public:
     explicit Disassembler(CPU* cpu);
     void DisassembleInstruction(u32 address, u32 value);
 private:
-    void PrintInstruction(const char* name, const std::vector<u32>& indices);
-    void PrintInstructionWithConstant(const char* name, const std::vector<u32>& indices, u32 constant);
+    void PrintInstruction(const char* name, u32 r1, u32 r2 = 32, u32 r3 = 32);
+    void PrintInstructionWithConstant(const char* name, u32 constant, u32 r1 = 32, u32 r2 = 32, u32 r3 = 32);
     void PrintLoadStoreInstruction(const char* name, u32 rt, u32 base, s32 offset);
     void PrintCP0Instruction(const char* name, u32 reg1, u32 reg2);
 
