@@ -11,12 +11,10 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 endif()
 
-message("CXX debug flags: ${CMAKE_CXX_FLAGS_DEBUG}")
-message("CXX release flags: ${CMAKE_CXX_FLAGS_RELEASE}")
+#message("CXX debug flags: ${CMAKE_CXX_FLAGS_DEBUG}")
+#message("CXX release flags: ${CMAKE_CXX_FLAGS_RELEASE}")
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lGL -ldl")
 
-add_library(fmt STATIC libs/fmt/src/format.cc)
-target_include_directories(fmt PUBLIC libs/fmt)
-
+add_subdirectory(libs)
 add_subdirectory(src)
