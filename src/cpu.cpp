@@ -102,8 +102,8 @@ void CPU::Step() {
                     const s64 b = static_cast<s32>(Get(instr.s.rt));
                     const u64 result = static_cast<u64>(a * b);
 
-                    sp.lo = static_cast<u32>(result);
-                    sp.hi = static_cast<u32>(result >> 32);
+                    sp.lo = result & 0xFFFFFFFF;
+                    sp.hi = result >> 32;
                     break;
                 }
                 case SecondaryOpcode::multu: {
@@ -111,8 +111,8 @@ void CPU::Step() {
                     const u64 b = Get(instr.s.rt);
                     const u64 result = a * b;
 
-                    sp.lo = static_cast<u32>(result);
-                    sp.hi = static_cast<u32>(result >> 32);
+                    sp.lo = result & 0xFFFFFFFF;
+                    sp.hi = result >> 32;
                     break;
                 }
                 case SecondaryOpcode::div: {
@@ -187,7 +187,7 @@ void CPU::Step() {
                     Set(instr.s.rd, (Get(instr.s.rs) < Get(instr.s.rt)) ? 1 : 0);
                     break;
                 default:
-                    printf("Invalid special opcode 0x%02X [0x%08X]", (u32)instr.s.sop.GetValue(), instr.value);
+                    printf("Invalid special opcode 0x%02X [0x%08X]\n", (u32)instr.s.sop.GetValue(), instr.value);
                     Exception(ExceptionCode::ReservedInstr);
             }
             break;
@@ -321,25 +321,25 @@ void CPU::Step() {
             break;
         }
         case PrimaryOpcode::lwl:{
-            u32 address = Get(instr.n.rs) + instr.imm_se();
             if (cp.sr & 0x10000) Panic("Load with isolated cache");
+            u32 address = Get(instr.n.rs) + instr.imm_se();
 
             u32 aligned_value = Load32(address & ~0x3);
             u32 old_value = (delay_entries[0].reg == instr.n.rt) ? delay_entries[0].value : Get(instr.n.rt);
 
             u32 new_value = 0;
-            switch (address % 4) {
+            switch (address & 0x3) {
                 case 0: new_value = (old_value & 0x00FFFFFF) | (aligned_value << 24); break;
                 case 1: new_value = (old_value & 0x0000FFFF) | (aligned_value << 16); break;
                 case 2: new_value = (old_value & 0x000000FF) | (aligned_value << 8); break;
-                case 3: new_value = (old_value & 0x00000000) | (aligned_value); break;
+                case 3: new_value = aligned_value; break;
             }
             SetDelayEntry(instr.n.rt, new_value);
             break;
         }
         case PrimaryOpcode::lw: {
-            u32 address = Get(instr.n.rs) + instr.imm_se();
             if (cp.sr & 0x10000) Panic("Load with isolated cache");
+            u32 address = Get(instr.n.rs) + instr.imm_se();
             if (address & 0x3)
                 Exception(ExceptionCode::LoadAddress);
             else
@@ -360,15 +360,15 @@ void CPU::Step() {
             break;
         }
         case PrimaryOpcode::lwr: {
-            u32 address = Get(instr.n.rs) + instr.imm_se();
             if (cp.sr & 0x10000) Panic("Load with isolated cache");
+            u32 address = Get(instr.n.rs) + instr.imm_se();
 
             u32 aligned_value = Load32(address & ~0x3);
             u32 old_value = (delay_entries[0].reg == instr.n.rt) ? delay_entries[0].value : Get(instr.n.rt);
 
             u32 new_value = 0;
-            switch (address % 4) {
-                case 0: new_value = (old_value & 0x00000000) | (aligned_value); break;
+            switch (address & 0x3) {
+                case 0: new_value = aligned_value; break;
                 case 1: new_value = (old_value & 0xFF000000) | (aligned_value >> 8); break;
                 case 2: new_value = (old_value & 0xFFFF0000) | (aligned_value >> 16); break;
                 case 3: new_value = (old_value & 0xFFFFFF00) | (aligned_value >> 24); break;
@@ -397,11 +397,11 @@ void CPU::Step() {
             u32 old_value = Get(instr.n.rt);
 
             u32 new_value = 0;
-            switch (address % 4) {
+            switch (address & 0x3) {
                 case 0: new_value = (aligned_value & 0xFFFFFF00) | (old_value >> 24); break;
                 case 1: new_value = (aligned_value & 0xFFFF0000) | (old_value >> 16); break;
                 case 2: new_value = (aligned_value & 0xFF000000) | (old_value >> 8); break;
-                case 3: new_value = (aligned_value & 0x00000000) | (old_value); break;
+                case 3: new_value = old_value; break;
             }
             Store32(address & ~0x3, new_value);
             break;
@@ -420,8 +420,8 @@ void CPU::Step() {
             u32 old_value = Get(instr.n.rt);
 
             u32 new_value = 0;
-            switch (address % 4) {
-                case 0: new_value = (aligned_value & 0x00000000) | (old_value); break;
+            switch (address & 0x3) {
+                case 0: new_value = old_value; break;
                 case 1: new_value = (aligned_value & 0x000000FF) | (old_value << 8); break;
                 case 2: new_value = (aligned_value & 0x0000FFFF) | (old_value << 16); break;
                 case 3: new_value = (aligned_value & 0x00FFFFFF) | (old_value << 24); break;
@@ -443,7 +443,7 @@ void CPU::Step() {
             Exception(ExceptionCode::CopError);
             break;
         default:
-            printf("Invalid opcode 0x%02X [0x%08X]", (u32)instr.n.op.GetValue(), instr.value);
+            printf("Invalid opcode 0x%02X [0x%08X]\n", (u32)instr.n.op.GetValue(), instr.value);
             Exception(ExceptionCode::ReservedInstr);
     }
 
@@ -548,6 +548,7 @@ void CPU::UpdateDelayEntries() {
     gp.r[delay_entries[0].reg] = delay_entries[0].value;
     delay_entries[0] = delay_entries[1];
     delay_entries[1] = {0, 0};
+    gp.zero = 0;
 }
 
 void CPU::UpdatePC(u32 address) {
