@@ -14,7 +14,7 @@ endif()
 #message("CXX debug flags: ${CMAKE_CXX_FLAGS_DEBUG}")
 #message("CXX release flags: ${CMAKE_CXX_FLAGS_RELEASE}")
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lGL -ldl")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--start-group -lGL -ldl")
 
 add_subdirectory(libs)
 add_subdirectory(src)
