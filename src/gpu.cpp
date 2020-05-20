@@ -15,7 +15,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
             send_mode = SendMode::Command;
             command_counter = 0;
         } else {
-            printf("GPU received GP0 image data 0x%08X\n", cmd);
+            //printf("GPU received GP0 image data 0x%08X\n", cmd);
             words_remaining--;
         }
         return;
@@ -245,8 +245,8 @@ void GPU::Reset() {
 }
 
 u32 GPU::ReadStat() {
-    //u32 hack = status.value;
-    //hack &= ~(1 << 19);
-    //return hack;
-    return status.value;
+    u32 hack = status.value;
+    hack &= ~(1u << 19);
+    return hack;
+    //return status.value;
 }
