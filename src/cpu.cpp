@@ -192,11 +192,11 @@ void CPU::Step() {
             }
             break;
         case PrimaryOpcode::bxxx: {
-            const bool is_bgez = instr.n.rt & 0x01;
-            const bool is_link = instr.n.rt & 0x10;
+            const bool is_bgez = (instr.n.rt & 0x01) != 0;
+            const bool is_link = (instr.n.rt & 0x1E) == 0x10;
 
             // check if lz
-            u32 test = static_cast<s32>(Get(instr.n.rs)) < 0;
+            bool test = static_cast<s32>(Get(instr.n.rs)) < 0;
             // flip check for gez
             test ^= is_bgez;
 
