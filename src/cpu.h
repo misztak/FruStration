@@ -37,8 +37,8 @@ private:
     CP0_Registers cp;
 
     u32 next_pc = 0, current_pc = 0;
-    bool branch_taken = false;
-    bool in_delay_slot = false;
+    bool branch_taken = false, was_branch_taken = false;
+    bool in_delay_slot = false, was_in_delay_slot = false;
 
     LoadDelayEntry delay_entries[2] = {};
     Instruction instr;

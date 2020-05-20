@@ -16,7 +16,14 @@ void CPU::Init(BUS* b) {
 }
 
 void CPU::Step() {
+    was_in_delay_slot = in_delay_slot;
+    was_branch_taken = branch_taken;
+
+    in_delay_slot = false;
+    branch_taken = false;
+
     instr.value = Load32(sp.pc);
+
 #ifdef DEBUG
     // printf("Executing instruction 0x%02X [0x%08X] at address 0x%08X\n",
     //       (instr.n.op == PrimaryOpcode::special) ? (u32)instr.s.sop.GetValue() : (u32)instr.n.op.GetValue(),
@@ -32,9 +39,6 @@ void CPU::Step() {
         Exception(ExceptionCode::LoadAddress);
         return;
     }
-
-    in_delay_slot = branch_taken;
-    branch_taken = false;
 
     switch (instr.n.op) {
         case PrimaryOpcode::special:
@@ -61,6 +65,7 @@ void CPU::Step() {
                     u32 jump_address = Get(instr.s.rs);
                     if ((jump_address & 0x3) != 0) Panic("Unaligned return address!");
                     next_pc = jump_address;
+                    in_delay_slot = true;
                     branch_taken = true;
                     break;
                 }
@@ -69,6 +74,7 @@ void CPU::Step() {
                     if ((jump_address & 0x3) != 0) Panic("Unaligned return address!");
                     Set(instr.s.rd, next_pc);
                     next_pc = jump_address;
+                    in_delay_slot = true;
                     branch_taken = true;
                     break;
                 }
@@ -193,6 +199,7 @@ void CPU::Step() {
             // flip check for gez
             test ^= is_bgez;
 
+            in_delay_slot = true;
             if (is_link) gp.ra = next_pc;
             if (test) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
@@ -203,33 +210,39 @@ void CPU::Step() {
         case PrimaryOpcode::jmp:
             next_pc &= 0xF0000000;
             next_pc |= instr.jump_target << 2;
+            in_delay_slot = true;
             branch_taken = true;
             break;
         case PrimaryOpcode::jal:
             gp.ra = next_pc;
             next_pc &= 0xF0000000;
             next_pc |= instr.jump_target << 2;
+            in_delay_slot = true;
             branch_taken = true;
             break;
         case PrimaryOpcode::beq:
+            in_delay_slot = true;
             if (Get(instr.n.rs) == Get(instr.n.rt)) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
                 branch_taken = true;
             }
             break;
         case PrimaryOpcode::bne:
+            in_delay_slot = true;
             if (Get(instr.n.rs) != Get(instr.n.rt)) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
                 branch_taken = true;
             }
             break;
         case PrimaryOpcode::blez:
+            in_delay_slot = true;
             if (static_cast<s32>(Get(instr.n.rs)) <= 0) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
                 branch_taken = true;
             }
             break;
         case PrimaryOpcode::bgtz:
+            in_delay_slot = true;
             if (static_cast<s32>(Get(instr.n.rs)) > 0) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
                 branch_taken = true;
@@ -275,8 +288,8 @@ void CPU::Step() {
                 case CoprocessorOpcode::rfe: {
                     if ((instr.value & 0x3F) != 0b010000) Panic("Invalid CP0 instruction 0x%08X!", instr.value);
                     // restore the interrupt/user pairs that we changed before jumping into the exception handler
-                    const u32 mode = cp.sr & 0x3F;
-                    cp.sr &= ~0x3F;
+                    const u32 mode = cp.sr & 0x3C;
+                    cp.sr &= ~0xFu; // bits 4-5 are left unchanged
                     cp.sr |= (mode >> 2);
                     break;
                 }
@@ -437,7 +450,7 @@ void CPU::Step() {
 }
 
 void CPU::Exception(ExceptionCode cause) {
-    const u32 handler = (cp.sr & (1u << 22)) ? 0xBFC00180 : 0x80000080;
+    const u32 handler = ((cp.sr & (1u << 22)) != 0) ? 0xBFC00180 : 0x80000080;
 
     // get interrupt/user pairs
     const u32 mode = cp.sr & 0x3F;
@@ -447,11 +460,17 @@ void CPU::Exception(ExceptionCode cause) {
     cp.sr |= (mode << 2) & 0x3F;
 
     // TODO: interrupt pending bits?
+    u32 old_cause = cp.cause & 0xFF00;
     cp.cause = static_cast<u32>(cause) << 2;
+    cp.cause |= old_cause;
     cp.epc = current_pc;
-    if (in_delay_slot) {
+    if (was_in_delay_slot) {
         cp.epc -= 4;
         cp.cause |= 1 << 31;
+        cp.jumpdest = sp.pc;
+        if (was_branch_taken) {
+            cp.cause |= 1 << 30;
+        }
     }
 
     sp.pc = handler;
