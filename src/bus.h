@@ -19,9 +19,9 @@ public:
     template <typename ValueType> ValueType Load(u32 address);
     template <typename Value> void Store(u32 address, Value value);
 private:
-    ALWAYS_INLINE u32 MaskRegion(u32 address);
+    ALWAYS_INLINE u32 MaskRegion(u32 address) { return address & MEM_REGION_MASKS[address >> 29]; }
 
-    enum : u32 { BIOS_FILE_SIZE = 512 * 1024 };
+    static constexpr u32 BIOS_FILE_SIZE = 512 * 1024;
     static constexpr u32 RAM_SIZE = 2048 * 1024;
 
     const u32 MEM_REGION_MASKS[8] = {

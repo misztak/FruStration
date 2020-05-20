@@ -33,8 +33,6 @@ bool BUS::LoadBIOS(const std::string& path) {
     return true;
 }
 
-u32 BUS::MaskRegion(u32 address) { return address & MEM_REGION_MASKS[address >> 29]; }
-
 template <typename ValueType>
 ValueType BUS::Load(u32 address) {
     static_assert(std::is_same<ValueType, u32>::value || std::is_same<ValueType, u16>::value ||
@@ -69,7 +67,7 @@ ValueType BUS::Load(u32 address) {
                         case 0x1: {  // IO Ports
                             u32 rel_address = masked_address - 0x1F801000;
                             Assert(rel_address < 1024 * 8);
-                            if (masked_address == 0x1F801074) return 0;
+                            if (masked_address == 0x1F801074) return 0; // Interrupt mask register
                             if (masked_address == 0x1F801110) return 0; // Timer 1 (horizontal retrace)
                             if (masked_address == 0x1F801810) return 0; // GPUREAD
                             if (masked_address == 0x1F801814) return (ValueType) gpu->ReadStat(); // GPUSTAT
