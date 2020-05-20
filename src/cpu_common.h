@@ -178,7 +178,6 @@ union Instruction {
         BitField<u32, u32, 11, 5> rd;
         BitField<u32, u32, 16, 5> rt;
         BitField<u32, u32, 21, 5> rs;
-        BitField<u32, u32, 26, 5> special;
     } s;
 
     BitField<u32, u32, 0, 26> jump_target;
