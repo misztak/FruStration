@@ -29,6 +29,7 @@ void CPU::Step() {
     //       (instr.n.op == PrimaryOpcode::special) ? (u32)instr.s.sop.GetValue() : (u32)instr.n.op.GetValue(),
     //       instr.value, sp.pc - 0xBFC00000);
     if (DISASM_INSTRUCTION) disassembler.DisassembleInstruction(sp.pc, instr.value);
+    static u64 instr_counter = 0; instr_counter++;
 #endif
 
     UpdatePC(next_pc);
