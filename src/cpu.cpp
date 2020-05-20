@@ -147,8 +147,8 @@ void CPU::Step() {
                     break;
                 }
                 case SecondaryOpcode::add: {
-                    const u32 a = Get(instr.s.rt);
-                    const u32 b = Get(instr.s.rs);
+                    const u32 a = Get(instr.s.rs);
+                    const u32 b = Get(instr.s.rt);
                     const u32 result = a + b;
                     if (!((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000)) Exception(ExceptionCode::Overflow);
                     Set(instr.s.rd, result);
@@ -158,8 +158,8 @@ void CPU::Step() {
                     Set(instr.s.rd, Get(instr.s.rs) + Get(instr.s.rt));
                     break;
                 case SecondaryOpcode::sub: {
-                    const u32 a = Get(instr.s.rt);
-                    const u32 b = Get(instr.s.rs);
+                    const u32 a = Get(instr.s.rs);
+                    const u32 b = Get(instr.s.rt);
                     const u32 result = a - b;
                     if (((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000)) Exception(ExceptionCode::Overflow);
                     Set(instr.s.rd, result);
