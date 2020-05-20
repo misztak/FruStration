@@ -11,14 +11,16 @@ void DMA::Init(BUS* b, GPU* g) {
 }
 
 u32 DMA::Load(u32 address) {
-    printf("DMA IO Load [relative address 0x%X]\n", address);
+#if 0
+    static u32 dma_load_ctr = 0; dma_load_ctr++;
+    printf("[%u] DMA IO Load [relative address 0x%X]\n", dma_load_ctr, address);
+#endif
 
     if (address == 0x70) return control.value;
     if (address == 0x74) return interrupt.value;
 
-    const u32 channel_index = address >> 4;
+    const u32 channel_index = (address & 0x70) >> 4;
     const u32 channel_address = address & 0xF;
-    DebugAssert(channel_index <= 7);
 
     if (channel_address == 0x0) {
         return channel[channel_index].base_address;
@@ -33,9 +35,12 @@ u32 DMA::Load(u32 address) {
     Panic("Invalid DMA register");
     return 0;
 }
-void DMA::Store(u32 address, u32 value) {
-    printf("DMA IO Store [0x%X @ relative address 0x%X]\n", value, address);
 
+void DMA::Store(u32 address, u32 value) {
+#if 0
+    printf("DMA IO Store [0x%X @ relative address 0x%X]\n", value, address);
+#endif
+    
     if (address == 0x70) {
         control.value = value;
         return;
@@ -48,9 +53,8 @@ void DMA::Store(u32 address, u32 value) {
         return;
     }
 
-    const u32 channel_index = address >> 4;
+    const u32 channel_index = (address & 0x70) >> 4;
     const u32 channel_address = address & 0xF;
-    DebugAssert(channel_index <= 7);
 
     if (channel_address == 0x0) {
         channel[channel_index].base_address = value & 0xFF'FFFF;
@@ -69,166 +73,128 @@ void DMA::Store(u32 address, u32 value) {
     Panic("Invalid DMA register");
 }
 
-// Commonly used DMA Control Register values for starting DMA transfers
-//
-// DMA0 MDEC.IN  01000201h (always)
-// DMA1 MDEC.OUT 01000200h (always)
-// DMA2 GPU      01000200h (VramRead), 01000201h (VramWrite), 01000401h (List)
-// DMA3 CDROM    11000000h (normal), 11400100h (chopped, rarely used)
-// DMA4 SPU      01000201h (write), 01000200h (read, rarely used)
-// DMA5 PIO      N/A       (not used by any known games)
-// DMA6 OTC      11000002h (always)
-
-void DMA::StartTransfer(u32 channel_index) {
-    auto dir = static_cast<Direction>(channel[channel_index].control.transfer_direction);
+void DMA::StartTransfer(u32 index) {
+    auto dir = static_cast<Direction>(channel[index].control.transfer_direction);
     // TODO: write a better log message
     printf("Starting DMA transfer to %s on channel %u in mode %u starting at address 0x%08X\n",
-           (dir == Direction::ToRAM) ? "RAM" : "device", channel_index,
-           (u32)channel[channel_index].control.sync_mode.GetValue(), channel[channel_index].base_address);
+           (dir == Direction::ToRAM) ? "RAM" : "device", index,
+           (u32)channel[index].control.sync_mode.GetValue(), channel[index].base_address);
     // TODO: chopping and priority handling
-
-    switch (dir) {
-        case Direction::ToRAM:
-            TransferToRAM(channel_index);
+    
+    switch (channel[index].control.sync_mode) {
+        case SyncMode::LinkedList:
+            TransferLinkedList(index);
             break;
-        case Direction::ToDevice:
-            TransferToDevice(channel_index);
+        case SyncMode::Manual:
+        case SyncMode::Request:
+            TransferBlock(index);
             break;
     }
-
-    printf("Finished DMA transfer\n");
 }
 
-void DMA::TransferToRAM(u32 index) {
+void DMA::TransferBlock(u32 index) {
     auto& ch = channel[index];
+    auto channel_type = static_cast<DMA_Channel>(index);
     s32 step = (ch.control.mem_address_step == Step::Inc) ? 4 : -4;
-    u32 address = ch.base_address;
 
     u32 transfer_count = 0;
     switch (ch.control.sync_mode) {
         case SyncMode::Manual:
-            transfer_count = ch.bcr.word_count;
+            transfer_count = (ch.bcr.word_count == 0) ? 0x10000 : ch.bcr.word_count;
             break;
         case SyncMode::Request:
             transfer_count = ch.bcr.block_count * ch.bcr.block_size;
+            if (index == 2 && ch.control.transfer_direction == Direction::ToDevice)
+                printf("Possible start of CopyImageToVRAM with size %u\n", transfer_count);
             break;
         case SyncMode::LinkedList:
-            Panic("DMA SyncMode LinkedList not implemented");
-            break;
+            Panic("This should never be reached");
     }
 
-    Assert(transfer_count > 0);
-    auto channel_type = static_cast<DMA_Channel>(index);
+    // TODO: decrement block_count
+    // TODO: decrement MADR in Request and LinkedList mode
+    u32 addr = ch.base_address;
+    u32 data = 0;
+
     while (transfer_count > 0) {
-        // align address and wrap it
-        u32 current_address = address & ADDR_MASK;
-        u32 data = 0;
+        // align and wrap the address
+        u32 curr_addr = addr & ADDR_MASK;
 
-        switch (channel_type) {
-            case DMA_Channel::MDECin:
-            case DMA_Channel::MDECout:
-            case DMA_Channel::GPU:
-            case DMA_Channel::CDROM:
-            case DMA_Channel::SPU:
-            case DMA_Channel::PIO:
-                Panic("DMA Channel %u not implemented", index);
-                break;
-            case DMA_Channel::OTC:
-                // create an empty linked list, does not actually transfer data from any device
-                if (transfer_count == 1)
-                    // tail marker
-                    data = 0xFF'FFFF;
-                else
-                    // pointer to previous element
-                    data = (current_address - 4) & 0xFF'FFFF;
-                break;
-        }
-
-        bus->Store<u32>(current_address, data);
-
-        address += step;
-        transfer_count--;
-    }
-
-    // TODO: reset start_trigger at DMA start
-    ch.control.start_trigger = false;
-    ch.control.start_busy = false;
-    // TODO: reset other values (interrupts?)
-}
-
-void DMA::TransferToDevice(u32 index) {
-    auto& ch = channel[index];
-    s32 step = (ch.control.mem_address_step == Step::Inc) ? 4 : -4;
-    // align address and wrap it
-    u32 address = ch.base_address & ADDR_MASK;
-
-    u32 transfer_count = 0;
-    switch (ch.control.sync_mode) {
-        case SyncMode::Manual:
-            transfer_count = ch.bcr.word_count;
-            break;
-        case SyncMode::Request:
-            transfer_count = ch.bcr.block_count * ch.bcr.block_size;
-            if (index == 2) printf("Possible start of CopyRectToVRAM with size %u\n", transfer_count);
-            break;
-        case SyncMode::LinkedList:
-            // only allow GPU channel (for now?)
-            Assert(index == 2);
-            transfer_count = 1;
-            break;
-    }
-
-    Assert(transfer_count > 0);
-    auto channel_type = static_cast<DMA_Channel>(index);
-    while (transfer_count > 0) {
-        switch (channel_type) {
-            case DMA_Channel::MDECin:
-            case DMA_Channel::MDECout:
-                Panic("DMA Channel %u not implemented", index);
-                break;
-            case DMA_Channel::GPU:
-                if (ch.control.sync_mode == SyncMode::LinkedList) {
-                    u32 header = bus->Load<u32>(address);
-                    u32 element_count = header >> 24;
-
-                    while (element_count > 0) {
-                        address = (address + 4) & ADDR_MASK;
-                        u32 gpu_command = bus->Load<u32>(address);
-                        gpu->SendGP0Cmd(gpu_command);
-                        element_count--;
-                    }
-                    // keep the loop going if the tail marker was not reached
-                    //if ((header & 0x800000) == 0) transfer_count++;
-                    if ((header & 0xFFFFFF) != 0xFFFFFF) transfer_count++;
-                    // jump to the next element of the linked list
-                    address = header & ADDR_MASK;
-                } else {
-                    u32 gpu_data = bus->Load<u32>(address);
-                    gpu->SendGP0Cmd(gpu_data);
+        switch (ch.control.transfer_direction) {
+            case Direction::ToRAM:
+                switch (channel_type) {
+                    case DMA_Channel::MDECin:
+                    case DMA_Channel::MDECout:
+                    case DMA_Channel::GPU:
+                    case DMA_Channel::CDROM:
+                    case DMA_Channel::SPU:
+                    case DMA_Channel::PIO:
+                        Panic("DMA block transfer for channel %u not implemented", index);
+                        break;
+                    case DMA_Channel::OTC:
+                        data = (transfer_count == 1) ? 0xFFFFFF : ((addr - 4) & 0x1FFFFF);
+                        break;
                 }
+                bus->Store<u32>(curr_addr, data);
                 break;
-            case DMA_Channel::CDROM:
-            case DMA_Channel::SPU:
-            case DMA_Channel::PIO:
-                Panic("DMA Channel %u not implemented", index);
-                break;
-            case DMA_Channel::OTC:
-                Panic("Tried to start DMA Transfer to device on channel 6 (OTC)");
-                break;
+            case Direction::ToDevice:
+                data = bus->Load<u32>(curr_addr);
+                switch (channel_type) {
+                    case DMA_Channel::GPU:
+                        gpu->SendGP0Cmd(data);
+                        break;
+                    case DMA_Channel::CDROM:
+                    case DMA_Channel::SPU:
+                    case DMA_Channel::PIO:
+                    case DMA_Channel::OTC:
+                    case DMA_Channel::MDECout:
+                    case DMA_Channel::MDECin:
+                        Panic("DMA block transfer for channel %u not implemented", index);
+                }
         }
 
-        if (ch.control.sync_mode != SyncMode::LinkedList) address = (address + step) & ADDR_MASK;
+        addr += step;
         transfer_count--;
     }
-
     // TODO: reset start_trigger at DMA start
-    ch.control.start_trigger = false;
-    ch.control.start_busy = false;
     // TODO: reset other values (interrupts?)
+    ch.control.start_busy = false;
+    ch.control.start_trigger = false;
+}
+
+void DMA::TransferLinkedList(u32 index) {
+    auto& ch = channel[index];
+    auto channel_type = static_cast<DMA_Channel>(index);
+
+    if (channel_type != DMA_Channel::GPU || ch.control.transfer_direction == Direction::ToRAM) 
+        Panic("DMA linked list mode only available for GPU channel in ToDevice mode");
+
+    // align and wrap the address
+    u32 addr = ch.base_address & ADDR_MASK;
+
+    for (;;) {
+        u32 header = bus->Load<u32>(addr);
+        u32 transfer_size = header >> 24;
+
+        while (transfer_size > 0) {
+            addr = (addr + 4) & ADDR_MASK;
+            u32 cmd = bus->Load<u32>(addr);
+            gpu->SendGP0Cmd(cmd);
+            transfer_size--;
+        }
+
+        if ((header & 0x800000) != 0) break;
+
+        addr = header & ADDR_MASK;
+    }
+    // TODO: reset start_trigger at DMA start
+    // TODO: reset other values (interrupts?)
+    ch.control.start_busy = false;
+    ch.control.start_trigger = false;
 }
 
 void DMA::UpdateIRQStatus() {
     // TODO: check if this is right
     interrupt.irq_master_flag =
-        interrupt.force_irq || (interrupt.irq_master_enable && ((interrupt.irq_enable & interrupt.irq_ack) != 0));
+        interrupt.force_irq || (interrupt.irq_master_enable && ((interrupt.irq_enable & interrupt.irq_flag) != 0));
 }

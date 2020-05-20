@@ -16,8 +16,8 @@ public:
 private:
     void UpdateIRQStatus();
     void StartTransfer(u32 channel);
-    void TransferToRAM(u32 index);
-    void TransferToDevice(u32 index);
+    void TransferBlock(u32 channel);
+    void TransferLinkedList(u32 channel);
 
     static constexpr u32 ADDR_MASK = 0x1F'FFFC;
     enum class DMA_Channel : u32 {
@@ -47,6 +47,7 @@ private:
     };
 
     struct Channel {
+        // only first 24 bits are used
         u32 base_address;
 
         union {
@@ -107,11 +108,11 @@ private:
     union {
         u32 value = 0;
 
-        BitField<u32, u32, 15, 1> force_irq;
+        BitField<u32, bool, 15, 1> force_irq;
         BitField<u32, u32, 16, 7> irq_enable;
-        BitField<u32, u32, 23, 1> irq_master_enable;
-        BitField<u32, u32, 24, 7> irq_ack;
-        BitField<u32, u32, 31, 1> irq_master_flag;
+        BitField<u32, bool, 23, 1> irq_master_enable;
+        BitField<u32, u32, 24, 7> irq_flag;
+        BitField<u32, bool, 31, 1> irq_master_flag;
     } interrupt;
 
     BUS* bus = nullptr;
