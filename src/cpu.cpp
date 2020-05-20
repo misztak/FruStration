@@ -535,11 +535,11 @@ u32 CPU::GetCP0(u32 index) {
 
 void CPU::SetDelayEntry(u32 reg, u32 value) {
     Assert(reg < 32);
-    if (reg == 0) return;
-    // if (delay_entries[0].reg == reg) {
-    //    delay_entries[0].reg = 0;
-    //    delay_entries[0].value = 0;
-    //}
+    //if (reg == 0) return;
+    if (delay_entries[0].reg == reg) {
+        delay_entries[0].reg = 0;
+        delay_entries[0].value = 0;
+    }
 
     delay_entries[1] = {reg, value};
 }
