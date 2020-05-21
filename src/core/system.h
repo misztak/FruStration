@@ -19,6 +19,7 @@ public:
     ~System();
     void Init();
     bool LoadBIOS(const std::string& bios_path);
+    void RunFrame();
     void Run();
 
 private:

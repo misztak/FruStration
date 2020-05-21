@@ -18,10 +18,19 @@ void System::Init() {
     cpu->Init(bus.get());
     bus->Init(dma.get(), gpu.get());
     dma->Init(bus.get(), gpu.get());
+    gpu->Init();
 }
 
 bool System::LoadBIOS(const std::string& bios_path) {
     return bus->LoadBIOS(bios_path);
+}
+
+void System::RunFrame() {
+    while (!gpu->frame_done_hack && !cpu->halt) {
+        cpu->Step();
+    }
+    gpu->frame_done_hack = false;
+    gpu->Draw();
 }
 
 void System::Run() {

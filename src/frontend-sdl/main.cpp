@@ -8,8 +8,8 @@
 #include "imgui_impl_sdl.h"
 #include "system.h"
 
-constexpr int DEFAULT_W = 1280;
-constexpr int DEFAULT_H = 720;
+constexpr int DEFAULT_W = 1024 * 2;
+constexpr int DEFAULT_H = 512 * 2;
 
 bool RUN_HEADLESS = false;
 
@@ -83,9 +83,9 @@ int main(int, char**) {
     float scale_factor = dpi / 96.0f;
     printf("Using scale factor %f\n", scale_factor);
 
-    int scaled_x = static_cast<int>(std::floor(scale_factor * DEFAULT_W));
-    int scaled_y = static_cast<int>(std::floor(scale_factor * DEFAULT_H));
-    SDL_SetWindowSize(window, scaled_x, scaled_y);
+    //int scaled_x = static_cast<int>(std::floor(scale_factor * DEFAULT_W));
+    //int scaled_y = static_cast<int>(std::floor(scale_factor * DEFAULT_H));
+    //SDL_SetWindowSize(window, scaled_x, scaled_y);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -113,7 +113,11 @@ int main(int, char**) {
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    bool show_demo_window = true;
+    bool show_demo_window = false;
+
+    System system;
+    system.Init();
+    if (!system.LoadBIOS("../../../bios/SCPH1001.BIN")) return 1;
 
     bool done = false;
     while (!done) {
@@ -161,6 +165,9 @@ int main(int, char**) {
             ImGui::RenderPlatformWindowsDefault();
             SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
         }
+
+        // HACK: sync frame through GPO command 0xE5 'draw_offset'
+        system.RunFrame();
 
         SDL_GL_SwapWindow(window);
     }

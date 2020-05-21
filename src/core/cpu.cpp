@@ -22,6 +22,7 @@ void CPU::Step() {
     in_delay_slot = false;
     branch_taken = false;
 
+    if (sp.pc == 0) halt = true;
     instr.value = Load32(sp.pc);
 
 #ifdef DEBUG
