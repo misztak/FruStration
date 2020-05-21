@@ -2,12 +2,16 @@
 #include <SDL.h>
 #include <stdio.h>
 
+#include "font_jetbrains_mono.h"
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
 #include "system.h"
 
-bool RUN_HEADLESS = true;
+constexpr int DEFAULT_W = 1280;
+constexpr int DEFAULT_H = 720;
+
+bool RUN_HEADLESS = false;
 
 int RunCore() {
     const std::string bios_path = "../../../bios/SCPH1001.BIN";
@@ -52,8 +56,12 @@ int main(int, char**) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags =
         (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window =
-        SDL_CreateWindow("FrogStation", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    SDL_Window* window = SDL_CreateWindow("FrogStation", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, DEFAULT_W,
+                                          DEFAULT_H, window_flags);
+    if (!window) {
+        fprintf(stderr, "Failed to create SDL_Window\n");
+        return 1;
+    }
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1);  // Enable vsync
@@ -64,22 +72,42 @@ int main(int, char**) {
         return 1;
     }
 
+    // set scale factor
+    // TODO: platform-dependent default DPI values
+    int display = SDL_GetWindowDisplayIndex(window);
+    float dpi = 96.0f;
+    if (SDL_GetDisplayDPI(display, &dpi, nullptr, nullptr) != 0) {
+        fprintf(stderr, "Failed to get window dpi\n");
+        return 1;
+    }
+    float scale_factor = dpi / 96.0f;
+    printf("Using scale factor %f\n", scale_factor);
+
+    int scaled_x = static_cast<int>(std::floor(scale_factor * DEFAULT_W));
+    int scaled_y = static_cast<int>(std::floor(scale_factor * DEFAULT_H));
+    SDL_SetWindowSize(window, scaled_x, scaled_y);
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     // io.ConfigViewportsNoAutoMerge = true;
     // io.ConfigViewportsNoTaskBarIcon = true;
-
     ImGui::StyleColorsDark();
     ImGuiStyle& style = ImGui::GetStyle();
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
         style.WindowRounding = 0.0f;
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
+
+    // add scaled font
+    io.Fonts->AddFontFromMemoryCompressedBase85TTF(jetbrains_regular_compressed_data_base85, 15.0f * scale_factor);
+    // scale everything
+    io.DisplayFramebufferScale.x = scale_factor;
+    io.DisplayFramebufferScale.y = scale_factor;
+    style.ScaleAllSizes(scale_factor);
 
     // Setup Platform/Renderer bindings
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
