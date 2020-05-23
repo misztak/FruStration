@@ -4,19 +4,16 @@
 
 #include "types.h"
 #include "bitfield.h"
-#include "renderer.h"
+#include "sw_renderer.h"
 
 class GPU {
 public:
     GPU();
     void Init();
-    void Draw();
 
     u32 ReadStat();
     void SendGP0Cmd(u32 cmd);
     void SendGP1Cmd(u32 cmd);
-
-    bool frame_done_hack = false;
 private:
     void DrawQuadMonoOpaque();
     void DrawQuadShadedOpaque();
@@ -131,6 +128,10 @@ private:
         BitField<u32, Gp0Command, 24, 8> gp0_op;
         BitField<u32, Gp1Command, 24, 8> gp1_op;
     } command;
+
+    static constexpr u32 VRAM_SIZE = 1024 * 512;
+    // TODO: is VRAM filled with garbage at boot?
+    std::array<u16, VRAM_SIZE> vram = {};
 
     Renderer renderer;
 };

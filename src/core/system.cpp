@@ -26,11 +26,7 @@ bool System::LoadBIOS(const std::string& bios_path) {
 }
 
 void System::RunFrame() {
-    while (!gpu->frame_done_hack && !cpu->halt) {
-        cpu->Step();
-    }
-    gpu->frame_done_hack = false;
-    gpu->Draw();
+    cpu->Step();
 }
 
 void System::Run() {

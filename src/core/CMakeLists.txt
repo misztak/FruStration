@@ -5,7 +5,6 @@ add_library(core
         bus.cpp
         dma.cpp
         gpu.cpp
-        renderer.cpp)
+        sw_renderer.cpp)
 
-target_include_directories(core PUBLIC ../../libs/gl3w)
-target_link_libraries(core PRIVATE fmt gl3w)
+target_link_libraries(core PRIVATE fmt)

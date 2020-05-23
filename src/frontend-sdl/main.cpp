@@ -2,14 +2,13 @@
 #include <SDL.h>
 #include <stdio.h>
 
-#include "font_jetbrains_mono.h"
+#include "display.h"
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
 #include "system.h"
 
-constexpr int DEFAULT_W = 1024 * 2;
-constexpr int DEFAULT_H = 512 * 2;
+constexpr u32 FRAME_CYCLES = 33868800 / 60;
 
 bool RUN_HEADLESS = false;
 
@@ -56,15 +55,15 @@ int main(int, char**) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags =
         (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow("FrogStation", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, DEFAULT_W,
-                                          DEFAULT_H, window_flags);
+    SDL_Window* window = SDL_CreateWindow("FrogStation", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, Display::WIDTH,
+                                          Display::HEIGHT, window_flags);
     if (!window) {
         fprintf(stderr, "Failed to create SDL_Window\n");
         return 1;
     }
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1);  // Enable vsync
+    SDL_GL_SetSwapInterval(1);
 
     bool err = gl3wInit() != 0;
     if (err) {
@@ -72,48 +71,11 @@ int main(int, char**) {
         return 1;
     }
 
-    // set scale factor
-    // TODO: platform-dependent default DPI values
-    int display = SDL_GetWindowDisplayIndex(window);
-    float dpi = 96.0f;
-    if (SDL_GetDisplayDPI(display, &dpi, nullptr, nullptr) != 0) {
-        fprintf(stderr, "Failed to get window dpi\n");
+    Display display;
+    if (!display.Init(window, gl_context, glsl_version)) {
+        fprintf(stderr, "Failed to init imgui display\n");
         return 1;
-    }
-    float scale_factor = dpi / 96.0f;
-    printf("Using scale factor %f\n", scale_factor);
-
-    //int scaled_x = static_cast<int>(std::floor(scale_factor * DEFAULT_W));
-    //int scaled_y = static_cast<int>(std::floor(scale_factor * DEFAULT_H));
-    //SDL_SetWindowSize(window, scaled_x, scaled_y);
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-    // io.ConfigViewportsNoAutoMerge = true;
-    // io.ConfigViewportsNoTaskBarIcon = true;
-    ImGui::StyleColorsDark();
-    ImGuiStyle& style = ImGui::GetStyle();
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-        style.WindowRounding = 0.0f;
-        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-    }
-
-    // add scaled font
-    io.Fonts->AddFontFromMemoryCompressedBase85TTF(jetbrains_regular_compressed_data_base85, 15.0f * scale_factor);
-    // scale everything
-    io.DisplayFramebufferScale.x = scale_factor;
-    io.DisplayFramebufferScale.y = scale_factor;
-    style.ScaleAllSizes(scale_factor);
-
-    // Setup Platform/Renderer bindings
-    ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
-    ImGui_ImplOpenGL3_Init(glsl_version);
-
-    bool show_demo_window = false;
+    };
 
     System system;
     system.Init();
@@ -129,47 +91,16 @@ int main(int, char**) {
                 event.window.windowID == SDL_GetWindowID(window))
                 done = true;
         }
+        int vsync = SDL_GL_GetSwapInterval();
+        display.Draw(&done, vsync != 0);
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame(window);
-        ImGui::NewFrame();
-
-        if (ImGui::BeginMainMenuBar()) {
-            if (ImGui::BeginMenu("File")) {
-                ImGui::MenuItem("Open", "CTRL-O", false, false);
-                ImGui::Separator();
-                if (ImGui::MenuItem("Quit")) done = true;
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Settings")) {
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Window")) {
-                ImGui::MenuItem("Demo", nullptr, &show_demo_window);
-                ImGui::EndMenu();
-            }
-            ImGui::EndMainMenuBar();
+        for (u32 cycles = 0; cycles < FRAME_CYCLES; cycles++) {
+            system.RunFrame();
         }
 
-        if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+        display.Render();
 
-        ImGui::Render();
-        glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-            SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
-            SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault();
-            SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
-        }
-
-        // HACK: sync frame through GPO command 0xE5 'draw_offset'
-        system.RunFrame();
-
-        SDL_GL_SwapWindow(window);
+        // display.Throttle(60);
     }
 
     ImGui_ImplOpenGL3_Shutdown();

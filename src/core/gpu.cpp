@@ -7,9 +7,7 @@ GPU::GPU() {
     status.can_send_vram_to_cpu = true;
     status.can_receive_dma_block = true;
 }
-void GPU::Init() {
-    renderer.Init();
-}
+void GPU::Init() {}
 
 void GPU::SendGP0Cmd(u32 cmd) {
     if (send_mode == SendMode::ImageLoad) {
@@ -115,8 +113,6 @@ void GPU::SendGP0Cmd(u32 cmd) {
             const u16 y = static_cast<u16>((cmd >> 11) & 0x7FF);
             drawing_x_offset = static_cast<s16>(x << 5) >> 5;
             drawing_y_offset = static_cast<s16>(y << 5) >> 5;
-
-            frame_done_hack = true;
             break;
         }
         case Gp0Command::mask_setting:
@@ -182,8 +178,6 @@ void GPU::DrawQuadTextureBlendOpaque() {
 
 void GPU::DrawTriangleShadedOpaque() {
     printf("DrawTriangleShadedOpaque\n");
-    renderer.PushTriangle({command_buffer[1], command_buffer[3], command_buffer[5]},
-                          {command_buffer[0], command_buffer[2], command_buffer[4]});
 }
 
 void GPU::CopyRectCpuToVram() {
@@ -202,10 +196,6 @@ void GPU::CopyRectCpuToVram() {
 void GPU::CopyRectVramToCpu() {
     // TODO: actual implementation
     printf("CopyRectVramToCpu - Not implemented\n");
-}
-
-void GPU::Draw() {
-    renderer.Draw();
 }
 
 void GPU::Reset() {
