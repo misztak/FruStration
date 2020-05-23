@@ -7,12 +7,15 @@
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
 #include "types.h"
+#include "system.h"
 
 Display::Display() {}
 
-bool Display::Init(SDL_Window* win, SDL_GLContext context, const char* glsl_version) {
+bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const char* glsl_version) {
+    emu = system;
     window = win;
     gl_context = context;
+    Assert(emu);
     Assert(window);
     Assert(gl_context);
 
@@ -57,6 +60,19 @@ bool Display::Init(SDL_Window* win, SDL_GLContext context, const char* glsl_vers
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    // build the texture
+    glGenTextures(1, &vram_tex_handler);
+    glBindTexture(GL_TEXTURE_2D, vram_tex_handler);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, system->GetVRAM());
+    GLenum status;
+    if ((status = glGetError()) != GL_NO_ERROR) {
+        fprintf(stderr, "OpenGL error %u during texture creation\n", status);
+        return false;
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     start = std::chrono::system_clock::now();
     end = std::chrono::system_clock::now();
     return true;
@@ -85,8 +101,19 @@ void Display::Draw(bool* done, bool vsync) {
         ImGui::EndMainMenuBar();
     }
 
+    // HACK: place emulator into a separate window to delay dealing with OpenGL
+    {
+        glBindTexture(GL_TEXTURE_2D, vram_tex_handler);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, emu->GetVRAM());
+
+        ImGui::SetNextWindowSize(ImVec2(1024+25, 512+60));
+        ImGui::Begin("VRAM", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
+        ImGui::Image((void*)(intptr_t)vram_tex_handler, ImVec2(1024, 512));
+        ImGui::End();
+    }
+
     if (show_stats_window) {
-        ImGui::Begin("Stats", &show_stats_window, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Begin("Stats", &show_stats_window, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
 
         ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         ImGui::Text("Vsync: %s", vsync ? "enabled" : "disabled");
@@ -100,6 +127,7 @@ void Display::Render() {
     ImGui::Render();
     ImGuiIO& io = ImGui::GetIO();
     glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+    glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

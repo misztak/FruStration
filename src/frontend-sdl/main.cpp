@@ -71,15 +71,15 @@ int main(int, char**) {
         return 1;
     }
 
-    Display display;
-    if (!display.Init(window, gl_context, glsl_version)) {
-        fprintf(stderr, "Failed to init imgui display\n");
-        return 1;
-    };
-
     System system;
     system.Init();
     if (!system.LoadBIOS("../../../bios/SCPH1001.BIN")) return 1;
+
+    Display display;
+    if (!display.Init(&system, window, gl_context, glsl_version)) {
+        fprintf(stderr, "Failed to init imgui display\n");
+        return 1;
+    };
 
     bool done = false;
     while (!done) {
@@ -97,6 +97,8 @@ int main(int, char**) {
         for (u32 cycles = 0; cycles < FRAME_CYCLES; cycles++) {
             system.RunFrame();
         }
+
+        // VBLANK IRQ
 
         display.Render();
 

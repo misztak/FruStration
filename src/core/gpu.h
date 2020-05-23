@@ -14,6 +14,9 @@ public:
     u32 ReadStat();
     void SendGP0Cmd(u32 cmd);
     void SendGP1Cmd(u32 cmd);
+    u16* GetVRAM();
+
+    static constexpr u32 VRAM_SIZE = 1024 * 512;
 private:
     void DrawQuadMonoOpaque();
     void DrawQuadShadedOpaque();
@@ -129,9 +132,8 @@ private:
         BitField<u32, Gp1Command, 24, 8> gp1_op;
     } command;
 
-    static constexpr u32 VRAM_SIZE = 1024 * 512;
     // TODO: is VRAM filled with garbage at boot?
-    std::array<u16, VRAM_SIZE> vram = {};
+    std::array<u16, VRAM_SIZE> vram = { };
 
     Renderer renderer;
 };

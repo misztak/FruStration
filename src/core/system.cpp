@@ -34,3 +34,7 @@ void System::Run() {
         cpu->Step();
     }
 }
+
+u16* System::GetVRAM() {
+    return gpu->GetVRAM();
+}

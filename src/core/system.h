@@ -22,6 +22,8 @@ public:
     void RunFrame();
     void Run();
 
+    // TODO: maybe make Display a friend class?
+    u16* GetVRAM();
 private:
     std::unique_ptr<CPU::CPU> cpu;
     std::unique_ptr<BUS> bus;

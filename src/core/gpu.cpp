@@ -1,5 +1,7 @@
 #include "gpu.h"
 
+#include <cstring>
+
 GPU::GPU() {
     status.display_disabled = true;
     // pretend that everything is ok
@@ -7,7 +9,9 @@ GPU::GPU() {
     status.can_send_vram_to_cpu = true;
     status.can_receive_dma_block = true;
 }
-void GPU::Init() {}
+void GPU::Init() {
+    std::memset(reinterpret_cast<u8*>(vram.data()), 0xFF, VRAM_SIZE * 2);
+}
 
 void GPU::SendGP0Cmd(u32 cmd) {
     if (send_mode == SendMode::ImageLoad) {
@@ -249,4 +253,8 @@ u32 GPU::ReadStat() {
     hack &= ~(1u << 19);
     return hack;
     //return status.value;
+}
+
+u16* GPU::GetVRAM() {
+    return vram.data();
 }
