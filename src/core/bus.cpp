@@ -12,7 +12,7 @@ void BUS::Init(DMA* d, GPU* g) {
 }
 
 bool BUS::LoadBIOS(const std::string& path) {
-    printf("Loading BIOS...\n");
+    printf("Loading BIOS from file %s\n", path.c_str());
 
     std::ifstream file(path);
     if (!file || !file.good()) {
@@ -29,7 +29,6 @@ bool BUS::LoadBIOS(const std::string& path) {
     }
 
     file.read(reinterpret_cast<char*>(bios.data()), BIOS_FILE_SIZE);
-    printf("BIOS loaded\n");
     return true;
 }
 
