@@ -28,11 +28,14 @@ void GPU::SendGP0Cmd(u32 cmd) {
     }
 
     if (command_counter == 0) {
-        printf("GPU received GP0 command 0x%08X\n", cmd);
+        //printf("GPU received GP0 command 0x%08X\n", cmd);
         command.value = cmd;
     }
     DebugAssert(command_counter < 12);
     command_buffer[command_counter] = cmd;
+
+    // clear the draw flags
+    renderer.draw_flags = Renderer::DRAW_FLAG_CLEAR;
 
     switch (command.gp0_op) {
         case Gp0Command::nop:
@@ -131,7 +134,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
 }
 
 void GPU::SendGP1Cmd(u32 cmd) {
-    printf("GPU received GP1 command 0x%08X\n", cmd);
+    //printf("GPU received GP1 command 0x%08X\n", cmd);
     command.value = cmd;
 
     switch (command.gp1_op) {
@@ -172,18 +175,46 @@ void GPU::SendGP1Cmd(u32 cmd) {
 
 void GPU::DrawQuadMonoOpaque() {
     printf("DrawQuadMonoOpaque\n");
+    renderer.draw_flags |= Renderer::DRAW_FLAG_MONO;
+    Color mono(command_buffer[0]);
+    renderer.DrawTriangle(Vertex(command_buffer[1], mono),
+                          Vertex(command_buffer[2], mono),
+                          Vertex(command_buffer[3], mono));
+
+    renderer.DrawTriangle(Vertex(command_buffer[2], mono),
+                          Vertex(command_buffer[3], mono),
+                          Vertex(command_buffer[4], mono));
 }
 
 void GPU::DrawQuadShadedOpaque() {
     printf("DrawQuadShadedOpaque\n");
+    renderer.draw_flags |= Renderer::DRAW_FLAG_SHADED;
+    renderer.DrawTriangle(Vertex(command_buffer[1], Color(command_buffer[0])),
+                          Vertex(command_buffer[3], Color(command_buffer[2])),
+                          Vertex(command_buffer[5], Color(command_buffer[4])));
+
+    renderer.DrawTriangle(Vertex(command_buffer[3], Color(command_buffer[2])),
+                          Vertex(command_buffer[5], Color(command_buffer[4])),
+                          Vertex(command_buffer[7], Color(command_buffer[6])));
 }
 
 void GPU::DrawQuadTextureBlendOpaque() {
     printf("DrawQuadTextureBlendOpaque\n");
+    // placeholder: only load a red mono quad for now
+    renderer.draw_flags |= Renderer::DRAW_FLAG_MONO;
+    Color mono(0xFF);
+    renderer.DrawTriangle(Vertex(command_buffer[1], mono),
+                          Vertex(command_buffer[3], mono),
+                          Vertex(command_buffer[5], mono));
+
+    renderer.DrawTriangle(Vertex(command_buffer[3], mono),
+                          Vertex(command_buffer[5], mono),
+                          Vertex(command_buffer[7], mono));
 }
 
 void GPU::DrawTriangleShadedOpaque() {
     printf("DrawTriangleShadedOpaque\n");
+    renderer.draw_flags |= Renderer::DRAW_FLAG_SHADED;
     renderer.DrawTriangle(Vertex(command_buffer[1], Color(command_buffer[0])),
                           Vertex(command_buffer[3], Color(command_buffer[2])),
                           Vertex(command_buffer[5], Color(command_buffer[4])));

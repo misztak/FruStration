@@ -29,9 +29,9 @@ void Renderer::DrawTriangle(const Vertex& v0, const Vertex& v1_original, const V
     maxX = std::min(maxX, gpu->drawing_area_right);
     maxY = std::min(maxY, gpu->drawing_area_bottom);
 
-    printf("Drawing triangle in bounding box (%u, %u) - (%u, %u), drawing area is (%u, %u) - (%u, %u)\n",
-           minX, minY, maxX, maxY, gpu->drawing_area_left, gpu->drawing_area_top,
-           gpu->drawing_area_right, gpu->drawing_area_bottom);
+    // printf("Drawing triangle in bounding box (%u, %u) - (%u, %u), drawing area is (%u, %u) - (%u, %u)\n",
+    //        minX, minY, maxX, maxY, gpu->drawing_area_left, gpu->drawing_area_top,
+    //        gpu->drawing_area_right, gpu->drawing_area_bottom);
 
     Vertex p(0, 0, Color(0));
     for (p.y = minY; p.y <= maxY; p.y++) {
@@ -41,22 +41,30 @@ void Renderer::DrawTriangle(const Vertex& v0, const Vertex& v1_original, const V
             s32 w2 = orientation(v0, v1, p);
 
             if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                Color color(0);
-                // shading
-                float area = static_cast<float>(orientation(v0, v1, v2));
-                color.r = (static_cast<float>(w0) * v0.c.r +
-                           static_cast<float>(w1) * v1.c.r +
-                           static_cast<float>(w2) * v2.c.r) / area / 8;
+                if (draw_flags & DRAW_FLAG_MONO) {
+                    // all vertices store the same color value
+                    gpu->vram[p.x + GPU::VRAM_WIDTH * p.y] = v0.c.To5551();
+                }
 
-                color.g = (static_cast<float>(w0) * v0.c.g +
-                           static_cast<float>(w1) * v1.c.g +
-                           static_cast<float>(w2) * v2.c.g) / area / 8;
+                if (draw_flags & DRAW_FLAG_SHADED) {
+                    Color color(0);
+                    // interpolate
+                    float area = static_cast<float>(orientation(v0, v1, v2));
+                    color.r = (static_cast<float>(w0) * v0.c.r +
+                               static_cast<float>(w1) * v1.c.r +
+                               static_cast<float>(w2) * v2.c.r) / area / 8;
 
-                color.b = (static_cast<float>(w0) * v0.c.b +
-                           static_cast<float>(w1) * v1.c.b +
-                           static_cast<float>(w2) * v2.c.b) / area / 8;
+                    color.g = (static_cast<float>(w0) * v0.c.g +
+                               static_cast<float>(w1) * v1.c.g +
+                               static_cast<float>(w2) * v2.c.g) / area / 8;
 
-                gpu->vram[p.x + GPU::VRAM_WIDTH * p.y] = color.To5551();
+                    color.b = (static_cast<float>(w0) * v0.c.b +
+                               static_cast<float>(w1) * v1.c.b +
+                               static_cast<float>(w2) * v2.c.b) / area / 8;
+
+                    gpu->vram[p.x + GPU::VRAM_WIDTH * p.y] = color.To5551();
+                }
+
             }
         }
     }
