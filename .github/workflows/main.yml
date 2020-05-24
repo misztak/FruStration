@@ -12,11 +12,19 @@ jobs:
     
     steps:
     - uses: actions/checkout@v2
-    - name: install_dependencies
+    - name: install dependencies
       run: sudo apt-get install libsdl2-dev
-    - name: configure
-      run: mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug ..
-    - name: build
-      run: cmake --build build
+    - name: compile debug build
+      run: |
+        mkdir build-debug
+        cd build-debug
+        cmake -DCMAKE_BUILD_TYPE=Debug ..
+        cmake --build build-debug
+    - name: compile release build
+      run: |
+        mkdir build-release
+        cd build-release
+        cmake -DCMAKE_BUILD_TYPE=Release ..
+        cmake --build build-release
     #- name: test
     #  run: cd build && ctest
