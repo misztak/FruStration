@@ -30,7 +30,7 @@ int main(int, char**) {
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         printf("Error: %s\n", SDL_GetError());
-        return -1;
+        return 1;
     }
 
 #if __APPLE__
