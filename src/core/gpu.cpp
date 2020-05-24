@@ -1,6 +1,6 @@
 #include "gpu.h"
 
-#include <cstring>
+// #include <cstring>
 
 GPU::GPU() {
     status.display_disabled = true;
@@ -9,17 +9,19 @@ GPU::GPU() {
     status.can_send_vram_to_cpu = true;
     status.can_receive_dma_block = true;
 }
+
 void GPU::Init() {
-    std::memset(reinterpret_cast<u8*>(vram.data()), 0xFF, VRAM_SIZE * 2);
+    renderer.Init(this);
+    // std::memset(reinterpret_cast<u8*>(vram.data()), 0xFF, VRAM_SIZE * 2);
 }
 
 void GPU::SendGP0Cmd(u32 cmd) {
-    if (send_mode == SendMode::ImageLoad) {
+    if (mode == Mode::Data) {
         if (words_remaining == 0) {
-            send_mode = SendMode::Command;
+            mode = Mode::Command;
             command_counter = 0;
         } else {
-            //printf("GPU received GP0 image data 0x%08X\n", cmd);
+            CopyRectCpuToVram(cmd);
             words_remaining--;
         }
         return;
@@ -182,19 +184,54 @@ void GPU::DrawQuadTextureBlendOpaque() {
 
 void GPU::DrawTriangleShadedOpaque() {
     printf("DrawTriangleShadedOpaque\n");
+    renderer.DrawTriangle(Vertex(command_buffer[1], Color(command_buffer[0])),
+                          Vertex(command_buffer[3], Color(command_buffer[2])),
+                          Vertex(command_buffer[5], Color(command_buffer[4])));
 }
 
-void GPU::CopyRectCpuToVram() {
-    const u32 resolution = command_buffer[2];
-    const u32 width = resolution & 0xFFFF;
-    const u32 height = resolution >> 16;
-    u32 img_size = width * height;
-    // round up
-    img_size = (img_size + 1) & ~0x1;
-    // the GPU uses 16bit pixels but receives them in 32bit packets
-    words_remaining = img_size / 2;
-    printf("Expecting %u words from CPU to GPU\n", words_remaining);
-    send_mode = SendMode::ImageLoad;
+void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
+    static u32 x_pos_max = 0;
+    static u32 x_pos = 0;
+    static u32 y_pos = 0;
+
+    if (mode == Mode::Command) {
+        const u32 pos = command_buffer[1];
+        x_pos = pos & 0x3FF;
+        y_pos = (pos >> 16) & 0x1FF;
+
+        const u32 resolution = command_buffer[2];
+        const u32 width = resolution & 0x3FF;
+        const u32 height = (resolution >> 16) & 0x1FF;
+        u32 img_size = width * height;
+        // round up
+        img_size = (img_size + 1) & ~0x1;
+        // the GPU uses 16-bit pixels but receives them in 32-bit packets
+        words_remaining = img_size / 2;
+
+        // determine the end of a line
+        x_pos_max = x_pos + width;
+        Assert(x_pos_max < VRAM_WIDTH);
+
+        printf("Expecting %u words from CPU to GPU\n", words_remaining);
+        mode = Mode::Data;
+    } else if (mode == Mode::Data) {
+        // first halfword
+        vram[x_pos + VRAM_WIDTH * y_pos] = data & 0xFFFF;
+        // increment and check for overflow
+        auto increment = [&] {
+            x_pos++;
+            if (x_pos >= x_pos_max) {
+                y_pos++;
+                Assert(y_pos < 512);
+                x_pos = command_buffer[1] & 0x3FF;
+            }
+        };
+        increment();
+
+        // second halfword
+        vram[x_pos + VRAM_WIDTH * y_pos] = data >> 16;
+        increment();
+    }
 }
 
 void GPU::CopyRectVramToCpu() {

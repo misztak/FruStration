@@ -7,6 +7,7 @@
 #include "sw_renderer.h"
 
 class GPU {
+friend class Renderer;
 public:
     GPU();
     void Init();
@@ -16,13 +17,15 @@ public:
     void SendGP1Cmd(u32 cmd);
     u16* GetVRAM();
 
+    static constexpr u32 VRAM_WIDTH = 1024;
+    static constexpr u32 VRAM_HEIGHT = 512;
     static constexpr u32 VRAM_SIZE = 1024 * 512;
 private:
     void DrawQuadMonoOpaque();
     void DrawQuadShadedOpaque();
     void DrawQuadTextureBlendOpaque();
     void DrawTriangleShadedOpaque();
-    void CopyRectCpuToVram();
+    void CopyRectCpuToVram(u32 data = 0);
     void CopyRectVramToCpu();
 
     void Reset();
@@ -88,8 +91,9 @@ private:
     u16 display_line_start = 0;
     u16 display_line_end = 0;
 
-    enum class SendMode : u32 {
-        Command, ImageLoad,
+    enum class Mode : u32 {
+        Command,
+        Data,
     };
 
     enum class Gp0Command : u32 {
@@ -122,7 +126,7 @@ private:
     u32 command_counter = 0;
     std::array<u32, 12> command_buffer = {};
 
-    SendMode send_mode = SendMode::Command;
+    Mode mode = Mode::Command;
     u32 words_remaining = 0;
 
     union {
@@ -133,7 +137,7 @@ private:
     } command;
 
     // TODO: is VRAM filled with garbage at boot?
-    std::array<u16, VRAM_SIZE> vram = { };
+    std::array<u16, VRAM_SIZE> vram = {};
 
     Renderer renderer;
 };
