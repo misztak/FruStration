@@ -87,6 +87,9 @@ void Display::Draw(bool* done, bool vsync) {
         if (ImGui::BeginMenu("File")) {
             ImGui::MenuItem("Open", "CTRL-O", false, false);
             ImGui::Separator();
+            static bool emu_paused = emu->IsHalted();
+            if (ImGui::MenuItem("Pause", "H", &emu_paused)) emu->SetHalt(emu_paused);
+            ImGui::Separator();
             if (ImGui::MenuItem("Quit")) *done = true;
             ImGui::EndMenu();
         }

@@ -38,3 +38,12 @@ void System::Run() {
 u16* System::GetVRAM() {
     return gpu->GetVRAM();
 }
+
+bool System::IsHalted() {
+    return cpu->halt;
+}
+
+void System::SetHalt(bool halt) {
+    cpu->halt = halt;
+    printf("System %s\n", halt ? "paused" : "resumed");
+}

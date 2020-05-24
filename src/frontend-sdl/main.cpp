@@ -94,8 +94,11 @@ int main(int, char**) {
         int vsync = SDL_GL_GetSwapInterval();
         display.Draw(&done, vsync != 0);
 
-        for (u32 cycles = 0; cycles < FRAME_CYCLES; cycles++) {
-            system.RunFrame();
+        if (!system.IsHalted()) {
+            // run for one frame
+            for (u32 cycles = 0; cycles < FRAME_CYCLES; cycles++) {
+                system.RunFrame();
+            }
         }
 
         // VBLANK IRQ
