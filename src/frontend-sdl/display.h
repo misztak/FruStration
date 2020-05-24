@@ -24,7 +24,6 @@ private:
     bool show_demo_window = false;
     bool show_stats_window = true;
 
-    GLuint framebuffer = 0;
     GLuint vram_tex_handler = 0;
 
     SDL_Window* window = nullptr;

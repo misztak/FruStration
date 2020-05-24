@@ -65,7 +65,7 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
     glBindTexture(GL_TEXTURE_2D, vram_tex_handler);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, system->GetVRAM());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, system->GetVRAM());
     GLenum status;
     if ((status = glGetError()) != GL_NO_ERROR) {
         fprintf(stderr, "OpenGL error %u during texture creation\n", status);
@@ -104,7 +104,7 @@ void Display::Draw(bool* done, bool vsync) {
     // HACK: place emulator into a separate window to delay dealing with OpenGL
     {
         glBindTexture(GL_TEXTURE_2D, vram_tex_handler);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, emu->GetVRAM());
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, emu->GetVRAM());
 
         ImGui::SetNextWindowSize(ImVec2(1024+25, 512+60));
         ImGui::Begin("VRAM", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
