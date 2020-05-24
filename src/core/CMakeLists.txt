@@ -5,6 +5,7 @@ add_library(core
         bus.cpp
         dma.cpp
         gpu.cpp
-        sw_renderer.cpp)
+        sw_renderer.cpp
+        bios.h)
 
 target_link_libraries(core PRIVATE fmt)

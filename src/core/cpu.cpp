@@ -3,9 +3,14 @@
 #include "bus.h"
 #include "cpu_common.h"
 
+#ifdef DEBUG
+#include "bios.h"
+#endif
+
 namespace CPU {
 
 bool DISASM_INSTRUCTION = false;
+bool TRACE_BIOS = true;
 
 CPU::CPU() : disassembler(this) {}
 
@@ -556,6 +561,14 @@ void CPU::UpdatePC(u32 address) {
     current_pc = sp.pc;
     sp.pc = address;
     next_pc = address + 4;
+
+#ifdef DEBUG
+    if (TRACE_BIOS) {
+        if (current_pc == 0xA00 && Get(9) < 0xBF) printf("[BIOS] A function '%s'\n", bios_functions_A[Get(9)]);
+        else if (current_pc == 0xB00 && Get(9) < 0x5E) printf("[BIOS] B function '%s'\n", bios_functions_B[Get(9)]);
+        else if (current_pc == 0xC00 && Get(9) < 0x1E) printf("[BIOS] C function '%s'\n", bios_functions_C[Get(9)]);
+    }
+#endif
 }
 
 }  // namespace CPU

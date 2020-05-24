@@ -10,7 +10,7 @@
 
 constexpr u32 FRAME_CYCLES = 33868800 / 60;
 
-bool RUN_HEADLESS = false;
+constexpr bool RUN_HEADLESS = false;
 
 int RunCore() {
     const std::string bios_path = "../../../bios/SCPH1001.BIN";
@@ -24,7 +24,7 @@ int RunCore() {
 }
 
 int main(int, char**) {
-    if (RUN_HEADLESS) {
+    if constexpr (RUN_HEADLESS) {
         return RunCore();
     }
 
