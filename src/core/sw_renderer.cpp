@@ -29,6 +29,13 @@ void Renderer::DrawTriangle(const Vertex& v0, const Vertex& v1_original, const V
     maxX = std::min(maxX, gpu->drawing_area_right);
     maxY = std::min(maxY, gpu->drawing_area_bottom);
 
+#if 0
+    minX = gpu->drawing_area_left;
+    minY = gpu->drawing_area_top;
+    maxX = gpu->drawing_area_right;
+    maxY = gpu->drawing_area_bottom;
+#endif
+
     // printf("Drawing triangle in bounding box (%u, %u) - (%u, %u), drawing area is (%u, %u) - (%u, %u)\n",
     //        minX, minY, maxX, maxY, gpu->drawing_area_left, gpu->drawing_area_top,
     //        gpu->drawing_area_right, gpu->drawing_area_bottom);
