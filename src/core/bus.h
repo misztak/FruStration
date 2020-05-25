@@ -12,6 +12,7 @@ class BUS {
 public:
     BUS();
     void Init(DMA* dma, GPU* gpu);
+    void Reset();
     bool LoadBIOS(const std::string& path);
 
     void DumpRAM(const std::string& path);

@@ -11,6 +11,7 @@ friend class Renderer;
 public:
     GPU();
     void Init();
+    void Reset();
 
     u32 ReadStat();
     void SendGP0Cmd(u32 cmd);
@@ -28,7 +29,7 @@ private:
     void CopyRectCpuToVram(u32 data = 0);
     void CopyRectVramToCpu();
 
-    void Reset();
+    void ResetCommand();
 
     enum class DmaDirection : u32 {
         Off = 0,

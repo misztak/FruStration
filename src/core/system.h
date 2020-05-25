@@ -24,6 +24,8 @@ public:
 
     bool IsHalted();
     void SetHalt(bool halt);
+    void Reset();
+
     // TODO: maybe make Display a friend class?
     u16* GetVRAM();
 private:

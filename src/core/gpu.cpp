@@ -1,7 +1,5 @@
 #include "gpu.h"
 
-// #include <cstring>
-
 GPU::GPU() {
     status.display_disabled = true;
     // pretend that everything is ok
@@ -12,7 +10,6 @@ GPU::GPU() {
 
 void GPU::Init() {
     renderer.Init(this);
-    // std::memset(reinterpret_cast<u8*>(vram.data()), 0xFF, VRAM_SIZE * 2);
 }
 
 void GPU::SendGP0Cmd(u32 cmd) {
@@ -139,7 +136,7 @@ void GPU::SendGP1Cmd(u32 cmd) {
 
     switch (command.gp1_op) {
         case Gp1Command::reset:
-            Reset();
+            ResetCommand();
             break;
         case Gp1Command::display_enable:
             status.display_disabled = cmd & 0x1;
@@ -270,7 +267,7 @@ void GPU::CopyRectVramToCpu() {
     printf("CopyRectVramToCpu - Not implemented\n");
 }
 
-void GPU::Reset() {
+void GPU::ResetCommand() {
     // TODO: FIFO and texture cache
     // TODO: just set status.value to zero?
     status.interrupt_request = false;
@@ -325,4 +322,30 @@ u32 GPU::ReadStat() {
 
 u16* GPU::GetVRAM() {
     return vram.data();
+}
+
+void GPU::Reset() {
+    status.value = 0;
+
+    drawing_area_left = 0;
+    drawing_area_top = 0;
+    drawing_area_right = 0;
+    drawing_area_bottom = 0;
+    // TODO: reset variables once they will actually be used
+
+    status.display_disabled = true;
+    // pretend that everything is ok
+    status.can_receive_cmd_word = true;
+    status.can_send_vram_to_cpu = true;
+    status.can_receive_dma_block = true;
+
+    command.value = 0;
+    command_counter = 0;
+    for (auto& c : command_buffer) c = 0;
+    mode = Mode::Command;
+    words_remaining = 0;
+
+    std::fill(std::begin(vram), std::end(vram), 0);
+
+    renderer.draw_flags = Renderer::DRAW_FLAG_CLEAR;
 }

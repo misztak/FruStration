@@ -14,6 +14,7 @@ friend class Disassembler;
 public:
     CPU();
     void Init(BUS* bus);
+    void Reset();
 
     void Step();
     u32 Load32(u32 address);

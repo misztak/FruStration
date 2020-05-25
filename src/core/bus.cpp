@@ -193,6 +193,11 @@ void BUS::Store(u32 address, Value value) {
     // unreachable
 }
 
+void BUS::Reset() {
+    // TODO: add ability to change bios file during reset
+    std::fill(ram.begin(), ram.end(), 0xCA);
+}
+
 void BUS::DumpRAM(const std::string& path) {
     std::ofstream out_file(path);
     out_file.write((char*) ram.data(), ram.size());

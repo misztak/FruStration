@@ -198,3 +198,13 @@ void DMA::UpdateIRQStatus() {
     interrupt.irq_master_flag =
         interrupt.force_irq || (interrupt.irq_master_enable && ((interrupt.irq_enable & interrupt.irq_flag) != 0));
 }
+
+void DMA::Reset() {
+    for (auto& c : channel) {
+        c.base_address = 0;
+        c.bcr.value = 0;
+        c.control.value = 0;
+    }
+    control.value = 0x07654321;
+    interrupt.value = 0;
+}

@@ -16,6 +16,23 @@ void CPU::Init(BUS* b) {
     UpdatePC(0xBFC00000);
 }
 
+void CPU::Reset() {
+    for (auto& r : gp.r) r = 0;
+    for (auto& r : cp.cpr) r = 0;
+    sp.hi = 0;
+    sp.lo = 0;
+
+    sp.pc = 0;
+    // resets current_pc and next_pc
+    UpdatePC(0xBFC00000);
+    cp.prid = 0x2;
+
+    was_in_delay_slot = false, in_delay_slot = false;
+    was_branch_taken = false, branch_taken = false;
+    for (auto& v : delay_entries) v = {0, 0};
+    instr.value = 0;
+}
+
 void CPU::Step() {
     was_in_delay_slot = in_delay_slot;
     was_branch_taken = branch_taken;

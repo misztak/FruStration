@@ -89,6 +89,7 @@ void Display::Draw(bool* done, bool vsync) {
             ImGui::Separator();
             static bool emu_paused = emu->IsHalted();
             if (ImGui::MenuItem("Pause", "H", &emu_paused)) emu->SetHalt(emu_paused);
+            if (ImGui::MenuItem("Reset")) emu->Reset();
             ImGui::Separator();
             if (ImGui::MenuItem("Quit")) *done = true;
             ImGui::EndMenu();

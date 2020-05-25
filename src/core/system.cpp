@@ -35,6 +35,14 @@ void System::Run() {
     }
 }
 
+void System::Reset() {
+    cpu->Reset();
+    bus->Reset();
+    dma->Reset();
+    gpu->Reset();
+    printf("System reset\n");
+}
+
 u16* System::GetVRAM() {
     return gpu->GetVRAM();
 }
