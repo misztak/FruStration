@@ -2,6 +2,14 @@
 
 #include <array>
 
+#include "types.h"
+
+class BIOS {
+public:
+    BIOS();
+    void TraceFunction(u32 address, u32 index);
+};
+
 // http://problemkaputt.de/psx-spx.htm#kernelbios
 static const std::array<const char*, 192> bios_functions_A {
     "FileOpen(filename,accessmode)",

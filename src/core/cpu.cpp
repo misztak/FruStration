@@ -3,14 +3,10 @@
 #include "bus.h"
 #include "cpu_common.h"
 
-#ifdef DEBUG
-#include "bios.h"
-#endif
-
 namespace CPU {
 
 bool DISASM_INSTRUCTION = false;
-bool TRACE_BIOS = false;
+bool TRACE_BIOS_CALLS = false;
 
 CPU::CPU() : disassembler(this) {}
 
@@ -34,6 +30,7 @@ void CPU::Step() {
     // printf("Executing instruction 0x%02X [0x%08X] at address 0x%08X\n",
     //       (instr.n.op == PrimaryOpcode::special) ? (u32)instr.s.sop.GetValue() : (u32)instr.n.op.GetValue(),
     //       instr.value, sp.pc - 0xBFC00000);
+    if (TRACE_BIOS_CALLS) bios.TraceFunction(sp.pc, Get(9));
     if (DISASM_INSTRUCTION) disassembler.DisassembleInstruction(sp.pc, instr.value);
     static u64 instr_counter = 0; instr_counter++;
 #endif
@@ -561,14 +558,6 @@ void CPU::UpdatePC(u32 address) {
     current_pc = sp.pc;
     sp.pc = address;
     next_pc = address + 4;
-
-#ifdef DEBUG
-    if (TRACE_BIOS) {
-        if (current_pc == 0xA00 && Get(9) < 0xBF) printf("[BIOS] A function '%s'\n", bios_functions_A[Get(9)]);
-        else if (current_pc == 0xB00 && Get(9) < 0x5E) printf("[BIOS] B function '%s'\n", bios_functions_B[Get(9)]);
-        else if (current_pc == 0xC00 && Get(9) < 0x1E) printf("[BIOS] C function '%s'\n", bios_functions_C[Get(9)]);
-    }
-#endif
 }
 
 }  // namespace CPU

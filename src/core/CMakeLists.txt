@@ -6,6 +6,6 @@ add_library(core
         dma.cpp
         gpu.cpp
         sw_renderer.cpp
-        bios.h)
+        bios.cpp)
 
 target_link_libraries(core PRIVATE fmt)

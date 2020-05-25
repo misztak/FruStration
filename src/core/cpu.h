@@ -3,6 +3,8 @@
 #include "cpu_common.h"
 #include "cpu_disasm.h"
 
+#include "bios.h"
+
 class BUS;
 
 namespace CPU {
@@ -47,6 +49,7 @@ private:
 
     BUS* bus = nullptr;
 
+    BIOS bios;
     Disassembler disassembler;
 };
 
