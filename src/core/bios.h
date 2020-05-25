@@ -87,10 +87,10 @@ static const std::array<const char*, 192> bios_functions_A {
     "SystemError",
     "LoadAndExecute(filename,stackbase,stackoffset)",
     "SystemError ----OR---- GetSysSp()",
-    "SystemError           ;PS2: set_ioabort_handler(src)",
-    "or A(71h) CdInit()",
-    "or A(70h) _bu_init()",
-    "or A(72h) CdRemove()",             // does NOT work due to SysDeqIntRP bug
+    "SystemError",
+    "CdInit()",
+    "_bu_init()",
+    "CdRemove()",                       // does NOT work due to SysDeqIntRP bug
     "return 0",
     "return 0",
     "return 0",
@@ -116,9 +116,9 @@ static const std::array<const char*, 192> bios_functions_A {
     "dev_card_format(fcb)",
     "dev_card_rename(fcb1,path\\name1,fcb2,path\\name2)",
     "?   ;card ;[r4+18h]=00000000h",    // card_clear_error(fcb) or so
-    "or A(55h) _bu_init()",
-    "or A(54h) CdInit()",
-    "or A(56h) CdRemove()",             // does NOT work due to SysDeqIntRP bug
+    "_bu_init()",
+    "CdInit()",
+    "CdRemove()",                       // does NOT work due to SysDeqIntRP bug
     "return 0",
     "return 0",
     "return 0",

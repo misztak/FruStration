@@ -10,7 +10,7 @@
 namespace CPU {
 
 bool DISASM_INSTRUCTION = false;
-bool TRACE_BIOS = true;
+bool TRACE_BIOS = false;
 
 CPU::CPU() : disassembler(this) {}
 
