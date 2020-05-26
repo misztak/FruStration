@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <string>
 
 #include "types.h"
 
@@ -8,6 +9,9 @@ class BIOS {
 public:
     BIOS();
     void TraceFunction(u32 address, u32 index);
+    void PutChar(s8 value);
+private:
+    std::string stdout_buffer;
 };
 
 // http://problemkaputt.de/psx-spx.htm#kernelbios
