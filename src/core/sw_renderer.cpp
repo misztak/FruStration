@@ -8,15 +8,22 @@ Renderer::Renderer() {}
 
 void Renderer::Init(GPU* g) { gpu = g; }
 
+static constexpr s32 Interpolate(u8 v0, u8 v1, u8 v2, s32 w0, s32 w1, s32 w2) {
+    return w0 * static_cast<s32>(v0) + w1 * static_cast<s32>(v1) + w2 * static_cast<s32>(v2);
+}
+
 void Renderer::DrawTriangle(const Vertex& v0, const Vertex& v1_original, const Vertex& v2_original) {
     auto orientation = [](const Vertex& v0, const Vertex& v1, const Vertex& v2) {
-        return ((s32)(v1.x - v0.x) * (s32)(v2.y - v0.y)) - ((s32)(v1.y - v0.y) * (s32)(v2.x - v0.x));
+        return (s32)((v1.x - v0.x) * (v2.y - v0.y)) - ((v1.y - v0.y) * (v2.x - v0.x));
     };
 
     // can't swap const references, maybe find a cleaner way to do this
     Vertex v1 = v1_original;
     Vertex v2 = v2_original;
     if (orientation(v0, v1, v2) < 0) std::swap(v1, v2);
+
+    s32 area = orientation(v0, v1, v2);
+    if (area == 0) return;
 
     // bounding box
     u16 minX = std::min({v0.x, v1.x, v2.x});
@@ -55,19 +62,10 @@ void Renderer::DrawTriangle(const Vertex& v0, const Vertex& v1_original, const V
 
                 if (draw_flags & DRAW_FLAG_SHADED) {
                     Color color(0);
-                    // interpolate
-                    float area = static_cast<float>(orientation(v0, v1, v2));
-                    color.r = (static_cast<float>(w0) * v0.c.r +
-                               static_cast<float>(w1) * v1.c.r +
-                               static_cast<float>(w2) * v2.c.r) / area / 8;
-
-                    color.g = (static_cast<float>(w0) * v0.c.g +
-                               static_cast<float>(w1) * v1.c.g +
-                               static_cast<float>(w2) * v2.c.g) / area / 8;
-
-                    color.b = (static_cast<float>(w0) * v0.c.b +
-                               static_cast<float>(w1) * v1.c.b +
-                               static_cast<float>(w2) * v2.c.b) / area / 8;
+                    // shading
+                    color.r = Interpolate(v0.c.r, v1.c.r, v2.c.r, w0, w1, w2) / area / 8;
+                    color.g = Interpolate(v0.c.g, v1.c.g, v2.c.g, w0, w1, w2) / area / 8;
+                    color.b = Interpolate(v0.c.b, v1.c.b, v2.c.b, w0, w1, w2) / area / 8;
 
                     gpu->vram[p.x + GPU::VRAM_WIDTH * p.y] = color.To5551();
                 }
