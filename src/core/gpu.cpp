@@ -126,7 +126,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
             status.draw_pixels = (cmd >> 1) & 0x1;
             break;
         default:
-            Panic("Unimplemented GP0 command!");
+            Panic("Unimplemented GP0 command 0x%08X", cmd);
     }
 }
 
@@ -166,7 +166,7 @@ void GPU::SendGP1Cmd(u32 cmd) {
             if ((cmd >> 7) & 0x1) Panic("Tried to set GPUSTAT.14!");
             break;
         default:
-            Panic("Unimplemented GP1 command!");
+            Panic("Unimplemented GP1 command 0x%08X", cmd);
     }
 }
 
