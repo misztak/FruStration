@@ -96,7 +96,7 @@ int main(int, char**) {
 
         if (!system.IsHalted()) {
             // run for one frame
-            for (u32 cycles = 0; cycles < FRAME_CYCLES; cycles++) {
+            for (u32 cycles = 0; cycles < FRAME_CYCLES; cycles += 2) {
                 system.RunFrame();
             }
         }

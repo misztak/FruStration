@@ -1,5 +1,8 @@
 #pragma once
 
+#include <unordered_map>
+#include <functional>
+
 #include "cpu_common.h"
 #include "cpu_disasm.h"
 
@@ -11,6 +14,7 @@ namespace CPU {
 
 class CPU {
 friend class Disassembler;
+friend class ::BUS;
 public:
     CPU();
     void Init(BUS* bus);
@@ -25,6 +29,15 @@ public:
     void Store8(u32 address, u8 value);
 
     bool halt = false;
+
+    struct Breakpoint {
+        Breakpoint() {};
+        Breakpoint(bool cpu_halt, std::function<void()> action) : cpu_halt(cpu_halt), action(action) {};
+
+        bool cpu_halt = true;
+        std::function<void()> action;
+    };
+    std::unordered_map<u32, Breakpoint> breakpoints;
 private:
     void Set(u32 index, u32 value);
     u32 Get(u32 index);

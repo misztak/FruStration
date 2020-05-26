@@ -16,7 +16,7 @@ void System::Init() {
     gpu = std::make_unique<GPU>();
 
     cpu->Init(bus.get());
-    bus->Init(dma.get(), gpu.get());
+    bus->Init(dma.get(), gpu.get(), cpu.get());
     dma->Init(bus.get(), gpu.get());
     gpu->Init();
 }

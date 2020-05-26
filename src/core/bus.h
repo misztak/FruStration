@@ -8,12 +8,17 @@
 class DMA;
 class GPU;
 
+namespace CPU {
+class CPU;
+}
+
 class BUS {
 public:
     BUS();
-    void Init(DMA* dma, GPU* gpu);
+    void Init(DMA* dma, GPU* gpu, CPU::CPU* cpu);
     void Reset();
     bool LoadBIOS(const std::string& path);
+    bool LoadPsExe(const std::string& path);
 
     void DumpRAM(const std::string& path);
 
@@ -38,6 +43,7 @@ private:
 
     DMA* dma = nullptr;
     GPU* gpu = nullptr;
+    CPU::CPU* cpu = nullptr;
 
     std::vector<u8> bios;
     std::vector<u8> ram;

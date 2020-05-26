@@ -7,6 +7,7 @@ namespace CPU {
 
 bool DISASM_INSTRUCTION = false;
 bool TRACE_BIOS_CALLS = false;
+bool BREAKPOINTS_ENABLED = true;
 
 CPU::CPU() : disassembler(this) {}
 
@@ -14,6 +15,19 @@ void CPU::Init(BUS* b) {
     bus = b;
     cp.prid = 0x2;
     UpdatePC(0xBFC00000);
+
+    // abuse breakpoints to inject special actions
+    breakpoints.insert({0xA0, Breakpoint(false, [&]() {
+        if (Get(9) == 0x3C) bios.PutChar(Get(4));
+    })});
+
+    breakpoints.insert({0xB0, Breakpoint(false, [&]() {
+        if (Get(9) == 0x3D) bios.PutChar(Get(4));
+    })});
+
+    // breakpoints.insert({0x80030000, Breakpoint(false, [&]() {
+    //     bus->LoadPsExe("../../../test/exe/helloworld.psexe");
+    // })});
 }
 
 void CPU::Reset() {
@@ -43,11 +57,17 @@ void CPU::Step() {
     if (sp.pc == 0) halt = true;
     instr.value = Load32(sp.pc);
 
+    if (unlikely(BREAKPOINTS_ENABLED && breakpoints.count(sp.pc))) {
+        auto bp = breakpoints.find(sp.pc);
+        halt = bp->second.cpu_halt;
+        if (bp->second.action) bp->second.action();
+    }
+
 #ifdef DEBUG
     // printf("Executing instruction 0x%02X [0x%08X] at address 0x%08X\n",
     //       (instr.n.op == PrimaryOpcode::special) ? (u32)instr.s.sop.GetValue() : (u32)instr.n.op.GetValue(),
     //       instr.value, sp.pc - 0xBFC00000);
-    if (TRACE_BIOS_CALLS) bios.TraceFunction(sp.pc, Get(9));
+    if (TRACE_BIOS_CALLS && sp.pc <= 0xC0) bios.TraceFunction(sp.pc, Get(9));
     if (DISASM_INSTRUCTION) disassembler.DisassembleInstruction(sp.pc, instr.value);
     static u64 instr_counter = 0; instr_counter++;
 #endif

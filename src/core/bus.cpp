@@ -1,14 +1,16 @@
 #include "bus.h"
 #include "dma.h"
 #include "gpu.h"
+#include "cpu.h"
 
 #include <fstream>
 
 BUS::BUS() : bios(BIOS_FILE_SIZE), ram(RAM_SIZE, 0xCA) {}
 
-void BUS::Init(DMA* d, GPU* g) {
+void BUS::Init(DMA* d, GPU* g, CPU::CPU* c) {
     dma = d;
     gpu = g;
+    cpu = c;
 }
 
 bool BUS::LoadBIOS(const std::string& path) {
@@ -29,6 +31,49 @@ bool BUS::LoadBIOS(const std::string& path) {
     }
 
     file.read(reinterpret_cast<char*>(bios.data()), BIOS_FILE_SIZE);
+    return true;
+}
+
+bool BUS::LoadPsExe(const std::string& path) {
+    printf("Loading PS-EXE from file %s\n", path.c_str());
+
+    std::ifstream file(path);
+    if (!file || !file.good()) {
+        printf("Failed to open PS-EXE file %s\n", path.c_str());
+        return false;
+    }
+    file.seekg(0, std::ifstream::end);
+    long length = file.tellg();
+    file.seekg(0, std::ifstream::beg);
+
+    if (length < 0x800 || length > RAM_SIZE) {
+        printf("PS-EXE: invalid file size (%lu byte)\n", length);
+        return false;
+    }
+
+    std::vector<u8> buffer(length);
+    file.read(reinterpret_cast<char*>(buffer.data()), length);
+
+    std::string magic(buffer.begin(), buffer.begin() + 8);
+    if (magic != "PS-X EXE") {
+        printf("PS-EXE: Invalid header '%s'\n", magic.c_str());
+        return false;
+    }
+
+    u32 exec_data = *reinterpret_cast<u32*>(buffer.data() + 0x10);
+    u32 text_start = *reinterpret_cast<u32*>(buffer.data() + 0x18);
+    // u32 text_size = *reinterpret_cast<u32*>(buffer.data() + 0x1C);
+    // u32 stack_start_address = *reinterpret_cast<u32*>(buffer.data() + 0x30);
+
+    for (u32 i = 0x800; i < length; i++) {
+        ram.at(exec_data & 0x1FFFFFFF) = buffer[i];
+        exec_data++;
+    }
+
+    cpu->sp.pc = text_start;
+    cpu->next_pc = text_start;
+    cpu->instr.value = Load<u32>(text_start);
+
     return true;
 }
 
