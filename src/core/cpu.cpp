@@ -7,7 +7,7 @@ namespace CPU {
 
 bool DISASM_INSTRUCTION = false;
 bool TRACE_BIOS_CALLS = false;
-bool BREAKPOINTS_ENABLED = true;
+bool BREAKPOINTS_ENABLED = false;
 
 CPU::CPU() : disassembler(this) {}
 
@@ -15,19 +15,6 @@ void CPU::Init(BUS* b) {
     bus = b;
     cp.prid = 0x2;
     UpdatePC(0xBFC00000);
-
-    // abuse breakpoints to inject special actions
-    breakpoints.insert({0xA0, Breakpoint(false, [&]() {
-        if (Get(9) == 0x3C) bios.PutChar(Get(4));
-    })});
-
-    breakpoints.insert({0xB0, Breakpoint(false, [&]() {
-        if (Get(9) == 0x3D) bios.PutChar(Get(4));
-    })});
-
-    // breakpoints.insert({0x80030000, Breakpoint(false, [&]() {
-    //     bus->LoadPsExe("../../../test/exe/helloworld.psexe");
-    // })});
 }
 
 void CPU::Reset() {
@@ -54,8 +41,16 @@ void CPU::Step() {
     in_delay_slot = false;
     branch_taken = false;
 
-    if (sp.pc == 0) halt = true;
     instr.value = Load32(sp.pc);
+
+    // special actions for specific memory locations
+    // garbage
+    if (sp.pc == 0) halt = true;
+    // bios put_char calls
+    if (sp.pc ==  0xA0 && Get(9) == 0x3C) bios.PutChar(Get(4));
+    if (sp.pc ==  0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
+    // psexe inject point
+    if (sp.pc == 0x80030000) bus->LoadPsExe("../../../test/exe/helloworld.psexe");
 
     if (unlikely(BREAKPOINTS_ENABLED && breakpoints.count(sp.pc))) {
         auto bp = breakpoints.find(sp.pc);
