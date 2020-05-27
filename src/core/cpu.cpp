@@ -2,6 +2,7 @@
 
 #include "bus.h"
 #include "cpu_common.h"
+#include "imgui.h"
 
 namespace CPU {
 
@@ -590,6 +591,43 @@ void CPU::UpdatePC(u32 address) {
     current_pc = sp.pc;
     sp.pc = address;
     next_pc = address + 4;
+}
+
+void CPU::DrawCpuState(bool* open) {
+    ImGui::Begin("CPU State", open);
+    ImGui::Separator();
+
+    // TODO: extra line for proper register names
+    ImGui::Text("GP Registers");
+    ImGui::Columns(4);
+    for (u32 col=0; col<4; col++) {
+        for (u32 row=0; row<8; row++) {
+            ImGui::Text(" R%-3u %08X", row + col * 8, gp.r[row + col * 8]);
+        }
+        ImGui::NextColumn();
+    }
+    ImGui::Columns(1);
+
+    ImGui::Separator();
+    ImGui::Text("SP Registers");
+    ImGui::Columns(4);
+    ImGui::Text(" PC   %08X", sp.pc); ImGui::NextColumn();
+    ImGui::Text(" HI   %08X", sp.hi); ImGui::NextColumn();
+    ImGui::Text(" LO   %08X", sp.lo);
+    ImGui::Columns(1);
+
+    ImGui::Separator();
+    ImGui::Text("COP0 Registers");
+    ImGui::Columns(4);
+    for (u32 col=0; col<4; col++) {
+        for (u32 row=0; row<4; row++) {
+            ImGui::Text(" R%-3u %08X", row + col * 4, cp.cpr[row + col * 4]);
+        }
+        ImGui::NextColumn();
+    }
+    ImGui::Columns(1);
+
+    ImGui::End();
 }
 
 }  // namespace CPU

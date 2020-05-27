@@ -1,9 +1,12 @@
 #include "bus.h"
+
+#include <fstream>
+
 #include "dma.h"
 #include "gpu.h"
 #include "cpu.h"
-
-#include <fstream>
+#include "imgui.h"
+#include "imgui_memory_editor.h"
 
 BUS::BUS() : bios(BIOS_FILE_SIZE), ram(RAM_SIZE, 0xCA) {}
 
@@ -241,6 +244,29 @@ void BUS::Store(u32 address, Value value) {
 void BUS::Reset() {
     // TODO: add ability to change bios file during reset
     std::fill(ram.begin(), ram.end(), 0xCA);
+}
+
+void BUS::DrawMemEditor(bool* open) {
+    // probably not very useful
+    static MemoryEditor mem_editor;
+    ImGui::Begin("Memory Editor", open);
+
+    if (ImGui::BeginTabBar("__mem_editor_tabs")) {
+        if (ImGui::BeginTabItem("RAM")) {
+            mem_editor.DrawContents(ram.data(), ram.size(), 0);
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("BIOS")) {
+            mem_editor.DrawContents(bios.data(), bios.size(), 0);
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("VRAM")) {
+            mem_editor.DrawContents(gpu->GetVRAM(), GPU::VRAM_SIZE * 2, 0);
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
+    ImGui::End();
 }
 
 void BUS::DumpRAM(const std::string& path) {

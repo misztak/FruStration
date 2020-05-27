@@ -1,5 +1,7 @@
 #include "gpu.h"
 
+#include "imgui.h"
+
 GPU::GPU() {
     status.display_disabled = true;
     // pretend that everything is ok
@@ -348,4 +350,35 @@ void GPU::Reset() {
     std::fill(std::begin(vram), std::end(vram), 0);
 
     renderer.draw_flags = Renderer::DRAW_FLAG_CLEAR;
+}
+
+void GPU::DrawGpuState(bool* open) {
+    ImGui::Begin("GPU State", open);
+
+    ImGui::Columns(2);
+    ImGui::Text("Command buffer");
+    ImGui::Separator();
+    const ImVec4 white(1.0, 1.0, 1.0, 1.0);
+    const ImVec4 grey(0.5, 0.5, 0.5, 1.0);
+    for (u32 i=0; i<12; i++) {
+        ImGui::TextColored((i > command_counter) ? grey : white, " %-2d  %08X", i, command_buffer[i]);
+        if (i == command_counter) {
+            ImGui::SameLine();
+            ImGui::Text("  <--- cmd end");
+        }
+    }
+    ImGui::NextColumn();
+    if (ImGui::TreeNode("__gpustat_node", "GPUSTAT   %08X", status.value)) {
+        ImGui::TreePop();
+    }
+    ImGui::Text("Transfer mode  %s", (mode == Mode::Command) ? "COMMAND" : "DATA");
+
+    ImGui::Text("Draw area [x,y]");
+    ImGui::Text("[%3d,%3d]------+", drawing_area_left, drawing_area_top);
+    ImGui::Text("    |          | ");
+    ImGui::Text("    +------[%3d,%3d]", drawing_area_right, drawing_area_bottom);
+    ImGui::Columns(1);
+    ImGui::Separator();
+
+    ImGui::End();
 }

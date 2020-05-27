@@ -26,7 +26,15 @@ public:
     void SetHalt(bool halt);
     void Reset();
 
-    // TODO: maybe make Display a friend class?
+    void DrawDebugWindows();
+
+    // TODO: manage stuff like this through a config system
+    bool draw_mem_viewer = false;
+    bool draw_cpu_state = true;
+    bool draw_gpu_state = true;
+    bool draw_breakpoint_editor = false;
+    bool draw_disassembler = false;
+
     u16* GetVRAM();
 private:
     std::unique_ptr<CPU::CPU> cpu;

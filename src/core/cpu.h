@@ -28,6 +28,8 @@ public:
     u8 Load8(u32 address);
     void Store8(u32 address, u8 value);
 
+    void DrawCpuState(bool* open);
+
     bool halt = false;
 
     struct Breakpoint {

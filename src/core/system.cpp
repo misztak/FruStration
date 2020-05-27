@@ -43,6 +43,12 @@ void System::Reset() {
     printf("System reset\n");
 }
 
+void System::DrawDebugWindows() {
+    if (draw_mem_viewer) bus->DrawMemEditor(&draw_mem_viewer);
+    if (draw_cpu_state) cpu->DrawCpuState(&draw_cpu_state);
+    if (draw_gpu_state) gpu->DrawGpuState(&draw_gpu_state);
+}
+
 u16* System::GetVRAM() {
     return gpu->GetVRAM();
 }

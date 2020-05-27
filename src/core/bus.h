@@ -20,6 +20,7 @@ public:
     bool LoadBIOS(const std::string& path);
     bool LoadPsExe(const std::string& path);
 
+    void DrawMemEditor(bool* open);
     void DumpRAM(const std::string& path);
 
     template <typename ValueType> ValueType Load(u32 address);

@@ -18,6 +18,8 @@ public:
     void SendGP1Cmd(u32 cmd);
     u16* GetVRAM();
 
+    void DrawGpuState(bool* open);
+
     static constexpr u32 VRAM_WIDTH = 1024;
     static constexpr u32 VRAM_HEIGHT = 512;
     static constexpr u32 VRAM_SIZE = 1024 * 512;

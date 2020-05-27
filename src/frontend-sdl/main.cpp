@@ -55,8 +55,8 @@ int main(int, char**) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags =
         (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow("FrogStation", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, Display::WIDTH,
-                                          Display::HEIGHT, window_flags);
+    SDL_Window* window = SDL_CreateWindow("FrogStation", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                          Display::WIDTH, Display::HEIGHT + 200, window_flags);
     if (!window) {
         fprintf(stderr, "Failed to create SDL_Window\n");
         return 1;

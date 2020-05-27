@@ -99,6 +99,9 @@ void Display::Draw(bool* done, bool vsync) {
         }
         if (ImGui::BeginMenu("Window")) {
             ImGui::MenuItem("Stats", nullptr, &show_stats_window);
+            ImGui::MenuItem("CPU Stats", nullptr, &emu->draw_cpu_state);
+            ImGui::MenuItem("GPU Stats", nullptr, &emu->draw_gpu_state);
+            ImGui::MenuItem("Mem Editor", nullptr, &emu->draw_mem_viewer);
             ImGui::MenuItem("Demo", nullptr, &show_demo_window);
             ImGui::EndMenu();
         }
@@ -123,6 +126,8 @@ void Display::Draw(bool* done, bool vsync) {
         ImGui::Text("Vsync: %s", vsync ? "enabled" : "disabled");
         ImGui::End();
     }
+
+    emu->DrawDebugWindows();
 
     if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 }
