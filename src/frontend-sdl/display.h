@@ -17,8 +17,8 @@ public:
     void Render();
     void Throttle(u32 fps);
 
-    static constexpr u32 WIDTH = 1600;
-    static constexpr u32 HEIGHT = 900;
+    static constexpr u32 WIDTH = 1200;
+    static constexpr u32 HEIGHT = 800;
 
 private:
     bool show_demo_window = false;

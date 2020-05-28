@@ -7,8 +7,8 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
-#include "types.h"
 #include "system.h"
+#include "types.h"
 
 Display::Display() {}
 
@@ -51,7 +51,8 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
     }
 
     // add scaled font
-    io.Fonts->AddFontFromMemoryCompressedTTF(jetbrains_regular_compressed_data, jetbrains_regular_compressed_size, 15.0f * scale_factor);
+    io.Fonts->AddFontFromMemoryCompressedTTF(jetbrains_regular_compressed_data, jetbrains_regular_compressed_size,
+                                             15.0f * scale_factor);
     // scale imgui
     io.DisplayFramebufferScale.x = scale_factor;
     io.DisplayFramebufferScale.y = scale_factor;
@@ -117,8 +118,8 @@ void Display::Draw(bool* done, bool vsync) {
         glBindTexture(GL_TEXTURE_2D, vram_tex_handler);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, emu->GetVRAM());
 
-        ImGui::SetNextWindowSize(ImVec2(1024+25, 512+60));
-        ImGui::Begin("VRAM", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
+        ImGui::SetNextWindowSize(ImVec2(1024 + 25, 512 + 60));
+        ImGui::Begin("VRAM", nullptr, ImGuiWindowFlags_NoScrollbar);
         ImGui::Image((void*)(intptr_t)vram_tex_handler, ImVec2(1024, 512));
         ImGui::End();
     }
