@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build-ubuntu:
+  build-linux:
     runs-on: ubuntu-latest
     
     steps:
@@ -28,3 +28,16 @@ jobs:
         cmake --build .
     #- name: test
     #  run: cd build && ctest
+
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    - name: compile release build
+      run: |
+        mkdir build-release
+        cd build-release
+        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64
+        cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
+        cmake --build .
