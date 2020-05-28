@@ -198,4 +198,10 @@ struct LoadDelayEntry {
     u32 value = 0;
 };
 
+struct CacheLine {
+    bool valid = false;
+    u32 tag = 0;
+    u32 data = 0;
+};
+
 }  // namespace CPU

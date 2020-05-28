@@ -1,7 +1,8 @@
 #pragma once
 
-#include <unordered_map>
+#include <array>
 #include <functional>
+#include <unordered_map>
 
 #include "cpu_common.h"
 #include "cpu_disasm.h"
@@ -31,6 +32,7 @@ public:
     void DrawCpuState(bool* open);
 
     bool halt = false;
+    bool cache_enabled = false;
 
     struct Breakpoint {
         Breakpoint() {};
@@ -39,6 +41,7 @@ public:
         bool cpu_halt = true;
         std::function<void()> action;
     };
+    // TODO: compare this to a simple vector implementation
     std::unordered_map<u32, Breakpoint> breakpoints;
 private:
     void Set(u32 index, u32 value);
@@ -49,6 +52,7 @@ private:
     void SetDelayEntry(u32 reg, u32 value);
     void UpdateDelayEntries();
     void UpdatePC(u32 address);
+    u32 FetchInstruction();
 
     void Exception(ExceptionCode cause);
 
@@ -61,7 +65,9 @@ private:
     bool in_delay_slot = false, was_in_delay_slot = false;
 
     LoadDelayEntry delay_entries[2] = {};
+
     Instruction instr;
+    std::array<CacheLine, 1024> cache = {};
 
     BUS* bus = nullptr;
 

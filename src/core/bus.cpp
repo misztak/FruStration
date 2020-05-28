@@ -151,7 +151,8 @@ ValueType BUS::Load(u32 address) {
         case 0xFF: {  // Cache Control
             u32 rel_address = masked_address - 0xFFFE0000;
             Assert(rel_address < 512);
-            Panic("Tried to load from Cache Control [0x%08X]", address);
+            if (masked_address == CacheRegister::ADDRESS) return cache_register.value;
+            Panic("Tried to load from KSEG2 address range [0x%08X]", address);
             break;
         }
         default:
@@ -167,6 +168,14 @@ void BUS::Store(u32 address, Value value) {
                   std::is_same<decltype(value), u8>::value);
     u32 masked_address = MaskRegion(address);
     u32 mask = (masked_address & 0xFF000000) >> 24;
+
+    if (cpu->cp.sr & 0x10000) {
+        u32 index = (address >> 2) & 0x3FF;
+        u32 tag = address >> 12;
+        cpu->cache[index].tag = tag;
+        cpu->cache[index].data = value;
+        return;
+    }
 
     switch (mask) {
         case 0x00:  // RAM
@@ -231,7 +240,11 @@ void BUS::Store(u32 address, Value value) {
         case 0xFF: {  // Cache Control
             u32 rel_address = masked_address - 0xFFFE0000;
             Assert(rel_address < 512);
-            printf("Store call to Cache Control [0x%X @ 0x%08X] - Ignored\n", value, address);
+            if (masked_address == CacheRegister::ADDRESS) {
+                cache_register.value = value;
+                cpu->cache_enabled = cache_register.code_cache_enable;
+            }
+            printf("Store call to Cache Control [0x%X @ 0x%08X]\n", value, address);
             break;
         }
         default:
@@ -242,6 +255,7 @@ void BUS::Store(u32 address, Value value) {
 }
 
 void BUS::Reset() {
+    cache_register.value = 0;
     // TODO: add ability to change bios file during reset
     std::fill(ram.begin(), ram.end(), 0xCA);
 }

@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "bitfield.h"
 #include "types.h"
 
 class DMA;
@@ -41,6 +42,16 @@ private:
         // KSEG2 - 1024 MB
         0xFFFFFFFF, 0xFFFFFFFF,
     };
+
+    union CacheRegister {
+        static constexpr u32 ADDRESS = 0xFFFE0130;
+
+        u32 value = 0;
+        BitField<u32, bool, 3, 1> scratchpad_enable_1;
+        BitField<u32, bool, 7, 1> scratchpad_enable_2;
+        BitField<u32, bool, 9, 1> crash_if_code_cache_enabled;
+        BitField<u32, bool, 11, 1> code_cache_enable;
+    } cache_register;
 
     DMA* dma = nullptr;
     GPU* gpu = nullptr;

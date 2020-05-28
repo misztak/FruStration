@@ -35,6 +35,27 @@ void CPU::Reset() {
     instr.value = 0;
 }
 
+u32 CPU::FetchInstruction() {
+    if (!cache_enabled || sp.pc >= 0xA0000000) {
+        // only KUSEG and KSEG0 have code cache
+        return Load32(sp.pc);
+    }
+
+    u32 index = (sp.pc >> 2) & 0x3FF;
+    u32 tag = sp.pc >> 12;
+
+    if (tag == cache[index].tag) {
+        // cache hit
+        return cache[index].data;
+    }
+
+    // cache miss
+    cache[index].tag = tag;
+    cache[index].data = Load32(sp.pc);
+
+    return cache[index].data;
+}
+
 void CPU::Step() {
     was_in_delay_slot = in_delay_slot;
     was_branch_taken = branch_taken;
@@ -42,7 +63,7 @@ void CPU::Step() {
     in_delay_slot = false;
     branch_taken = false;
 
-    instr.value = Load32(sp.pc);
+    instr.value = FetchInstruction();
 
     // special actions for specific memory locations
     // garbage
@@ -50,10 +71,12 @@ void CPU::Step() {
     // bios put_char calls
     if (sp.pc ==  0xA0 && Get(9) == 0x3C) bios.PutChar(Get(4));
     if (sp.pc ==  0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
+    // flush cache
+    if (sp.pc ==  0xA0 && Get(9) == 0x44) Panic("Flush cache");
     // psexe inject point
-    if (sp.pc == 0x80030000) bus->LoadPsExe("../../../test/exe/helloworld.psexe");
+    // if (sp.pc == 0x80030000) bus->LoadPsExe("../../../test/exe/helloworld.psexe");
 
-    if (unlikely(BREAKPOINTS_ENABLED && breakpoints.count(sp.pc))) {
+    if (!breakpoints.empty()) {
         auto bp = breakpoints.find(sp.pc);
         halt = bp->second.cpu_halt;
         if (bp->second.action) bp->second.action();
@@ -515,10 +538,11 @@ void CPU::Exception(ExceptionCode cause) {
     printf("CPU Exception 0x%02X\n", (u32)cause);
 }
 
-u32 CPU::Load32(u32 address) { return bus->Load<u32>(address); }
+u32 CPU::Load32(u32 address) {
+    return bus->Load<u32>(address);
+}
 
 void CPU::Store32(u32 address, u32 value) {
-    if (cp.sr & 0x10000) return;
     bus->Store(address, value);
 }
 
@@ -528,7 +552,6 @@ u16 CPU::Load16(u32 address) {
 }
 
 void CPU::Store16(u32 address, u16 value) {
-    if (cp.sr & 0x10000) return;
     bus->Store(address, value);
 }
 
@@ -538,7 +561,6 @@ u8 CPU::Load8(u32 address) {
 }
 
 void CPU::Store8(u32 address, u8 value) {
-    if (cp.sr & 0x10000) return;
     bus->Store(address, value);
 }
 
