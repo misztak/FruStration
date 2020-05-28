@@ -38,6 +38,6 @@ jobs:
       run: |
         mkdir build-release
         cd build-release
-        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64
+        cmd.exe \c 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat' x86_amd64
         cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
         cmake --build .
