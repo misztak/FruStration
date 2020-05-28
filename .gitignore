@@ -1,9 +1,15 @@
 # build folders
 cmake-build-debug
 cmake-build-release
+build-debug
+build-release
+
+# output folders
+bin
 
 # IDEs
 .idea
+.vs
 .vscode
 .ccls-cache
 compile_commands.json

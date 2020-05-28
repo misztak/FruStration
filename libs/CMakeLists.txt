@@ -4,8 +4,6 @@ target_include_directories(fmt PUBLIC fmt)
 add_library(gl3w STATIC gl3w/gl3w.c)
 target_include_directories(gl3w PUBLIC gl3w)
 
-find_package(SDL2 CONFIG REQUIRED)
-
 add_library(imgui STATIC
         imgui/imgui.cpp
         imgui/imgui_demo.cpp

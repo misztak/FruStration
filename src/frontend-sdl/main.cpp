@@ -56,7 +56,7 @@ int main(int, char**) {
     SDL_WindowFlags window_flags =
         (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     SDL_Window* window = SDL_CreateWindow("FrogStation", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          Display::WIDTH, Display::HEIGHT + 200, window_flags);
+                                          Display::WIDTH, Display::HEIGHT, window_flags);
     if (!window) {
         fprintf(stderr, "Failed to create SDL_Window\n");
         return 1;
@@ -73,7 +73,7 @@ int main(int, char**) {
 
     System system;
     system.Init();
-    if (!system.LoadBIOS("../../../bios/SCPH1001.BIN")) return 1;
+    if (!system.LoadBIOS("../bios/SCPH1001.BIN")) return 1;
 
     Display display;
     if (!display.Init(&system, window, gl_context, glsl_version)) {

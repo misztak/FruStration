@@ -19,7 +19,7 @@ void BUS::Init(DMA* d, GPU* g, CPU::CPU* c) {
 bool BUS::LoadBIOS(const std::string& path) {
     printf("Loading BIOS from file %s\n", path.c_str());
 
-    std::ifstream file(path);
+    std::ifstream file(path, std::ifstream::binary);
     if (!file || !file.good()) {
         printf("Failed to open BIOS file %s\n", path.c_str());
         return false;

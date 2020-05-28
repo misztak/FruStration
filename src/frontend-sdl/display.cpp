@@ -1,5 +1,6 @@
 #include "display.h"
 
+#include <cmath>
 #include <thread>
 
 #include "font_jetbrains_mono.h"
@@ -50,11 +51,14 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
     }
 
     // add scaled font
-    io.Fonts->AddFontFromMemoryCompressedBase85TTF(jetbrains_regular_compressed_data_base85, 15.0f * scale_factor);
-    // scale everything
+    io.Fonts->AddFontFromMemoryCompressedTTF(jetbrains_regular_compressed_data, jetbrains_regular_compressed_size, 15.0f * scale_factor);
+    // scale imgui
     io.DisplayFramebufferScale.x = scale_factor;
     io.DisplayFramebufferScale.y = scale_factor;
     style.ScaleAllSizes(scale_factor);
+    // scale SDL_Window
+    const s32 scale_int = (std::ceil(scale_factor) > 2.f) ? 2 : std::ceil(scale_factor);
+    SDL_SetWindowSize(window, WIDTH * scale_int, HEIGHT * scale_int);
 
     // Setup Platform/Renderer bindings
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
