@@ -76,7 +76,7 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, system->GetVRAM());
     GLenum status;
     if ((status = glGetError()) != GL_NO_ERROR) {
-        LOG_CRIT << "OpenGL error" << status << "during texture creation";
+        LOG_CRIT << "OpenGL error " << status << " during texture creation";
         return false;
     }
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -95,7 +95,7 @@ void Display::Draw(bool* done, bool vsync) {
         if (ImGui::BeginMenu("File")) {
             ImGui::MenuItem("Open", "CTRL-O", false, false);
             ImGui::Separator();
-            static bool emu_paused = emu->IsHalted();
+            bool emu_paused = emu->IsHalted();
             if (ImGui::MenuItem("Pause", "H", &emu_paused)) emu->SetHalt(emu_paused);
             if (ImGui::MenuItem("Reset")) emu->Reset();
             ImGui::Separator();
