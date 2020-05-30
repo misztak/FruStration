@@ -44,7 +44,7 @@ bool BUS::LoadBIOS(const std::string& path) {
 bool BUS::LoadPsExe(const std::string& path) {
     LOG_INFO << "Loading PS-EXE from file " << path;
 
-    std::ifstream file(path);
+    std::ifstream file(path, std::ifstream::binary);
     if (!file || !file.good()) {
         LOG_WARN << "Failed to open PS-EXE file " << path;
         return false;
