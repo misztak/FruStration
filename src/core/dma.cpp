@@ -2,6 +2,10 @@
 
 #include "bus.h"
 #include "gpu.h"
+#include "nano_log.h"
+#include "fmt/format.h"
+
+LOG_CHANNEL(DMA);
 
 DMA::DMA() {}
 
@@ -76,7 +80,7 @@ void DMA::Store(u32 address, u32 value) {
 void DMA::StartTransfer(u32 index) {
     auto dir = static_cast<Direction>(channel[index].control.transfer_direction);
     // TODO: write a better log message
-    printf("Starting DMA transfer to %s on channel %u in mode %u starting at address 0x%08X\n",
+    LOG_DEBUG << fmt::format("Starting DMA transfer to {} on channel {} in mode {} starting at address 0x{:08X}",
            (dir == Direction::ToRAM) ? "RAM" : "device", index,
            (u32)channel[index].control.sync_mode.GetValue(), channel[index].base_address);
     // TODO: chopping and priority handling
@@ -105,7 +109,7 @@ void DMA::TransferBlock(u32 index) {
         case SyncMode::Request:
             transfer_count = ch.bcr.block_count * ch.bcr.block_size;
             if (index == 2 && ch.control.transfer_direction == Direction::ToDevice)
-                printf("Possible start of CopyImageToVRAM with size %u\n", transfer_count);
+                LOG_DEBUG << "Possible start of CopyImageToVRAM with size " << transfer_count;
             break;
         case SyncMode::LinkedList:
             Panic("This should never be reached");

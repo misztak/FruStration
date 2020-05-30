@@ -7,6 +7,10 @@
 #include "cpu.h"
 #include "imgui.h"
 #include "imgui_memory_editor.h"
+#include "nano_log.h"
+#include "fmt/format.h"
+
+LOG_CHANNEL(BUS);
 
 BUS::BUS() : bios(BIOS_FILE_SIZE), ram(RAM_SIZE, 0xCA) {}
 
@@ -17,11 +21,11 @@ void BUS::Init(DMA* d, GPU* g, CPU::CPU* c) {
 }
 
 bool BUS::LoadBIOS(const std::string& path) {
-    printf("Loading BIOS from file %s\n", path.c_str());
+    LOG_INFO << "Loading BIOS from file " << path;
 
     std::ifstream file(path, std::ifstream::binary);
     if (!file || !file.good()) {
-        printf("Failed to open BIOS file %s\n", path.c_str());
+        LOG_WARN << "Failed to open BIOS file " << path;
         return false;
     }
     file.seekg(0, std::ifstream::end);
@@ -29,7 +33,7 @@ bool BUS::LoadBIOS(const std::string& path) {
     file.seekg(0, std::ifstream::beg);
 
     if (length != BIOS_FILE_SIZE) {
-        printf("BIOS file %s has invalid length %ld\n", path.c_str(), length);
+        LOG_WARN << "BIOS file" << path << "has invalid length " << length;
         return false;
     }
 
@@ -38,11 +42,11 @@ bool BUS::LoadBIOS(const std::string& path) {
 }
 
 bool BUS::LoadPsExe(const std::string& path) {
-    printf("Loading PS-EXE from file %s\n", path.c_str());
+    LOG_INFO << "Loading PS-EXE from file " << path;
 
     std::ifstream file(path);
     if (!file || !file.good()) {
-        printf("Failed to open PS-EXE file %s\n", path.c_str());
+        LOG_WARN << "Failed to open PS-EXE file " << path;
         return false;
     }
     file.seekg(0, std::ifstream::end);
@@ -50,7 +54,7 @@ bool BUS::LoadPsExe(const std::string& path) {
     file.seekg(0, std::ifstream::beg);
 
     if (length < 0x800 || length > RAM_SIZE) {
-        printf("PS-EXE: invalid file size (%lu byte)\n", length);
+        LOG_WARN << "PS-EXE: invalid file size (" << length << " byte)";
         return false;
     }
 
@@ -59,7 +63,7 @@ bool BUS::LoadPsExe(const std::string& path) {
 
     std::string magic(buffer.begin(), buffer.begin() + 8);
     if (magic != "PS-X EXE") {
-        printf("PS-EXE: Invalid header '%s'\n", magic.c_str());
+        LOG_WARN << "PS-EXE: Invalid header " << magic;
         return false;
     }
 
@@ -101,7 +105,7 @@ ValueType BUS::Load(u32 address) {
                 case 0x5:
                 case 0x6:
                 case 0x7:  // Expansion Region 1
-                    printf("Tried to load from Expansion Region 1 [0x%08X]\n", address);
+                    LOG_WARN << fmt::format("Tried to load from Expansion Region 1 [0x{:08X}]", address);
                     return 0xFF;
                 case 0x8:
                     switch ((masked_address & 0xF000) >> 12) {
@@ -201,13 +205,13 @@ void BUS::Store(u32 address, Value value) {
                             else if (masked_address >= 0x1F801080 && masked_address <= 0x1F8010F4) dma->Store(rel_address - 0x80, value); // DMA
                             else if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) break; // SPU
                             else if (masked_address >= 0x1F801800 && masked_address <= 0x1F801803) { Panic("CDROM"); }
-                            else printf("Store<%lu> call to IO Ports [0x%X @ 0x%08X] - Ignored\n", sizeof(Value)*8, value, address);
+                            else LOG_WARN << fmt::format("Store<{}> call to IO Ports [0x{:X} @ 0x{:08X}] - Ignored", sizeof(Value)*8, value, address);
                             break;
                         }
                         case 0x2: {  // Expansion Region 2
                             u32 rel_address = masked_address - 0x1F802000;
                             Assert(rel_address < 1024 * 8);
-                            printf("Tried to store in Expansion Region 2 [0x%X @ 0x%08X] - Ignored\n", value, address);
+                            LOG_WARN << fmt::format("Tried to store in Expansion Region 2 [0x{:X} @ 0x{:08X}] - Ignored", value, address);
                             break;
                         }
                         default:
@@ -221,7 +225,7 @@ void BUS::Store(u32 address, Value value) {
                     break;
                 }
                 case 0xC: {  // BIOS
-                    printf("Tried to store value in BIOS address range [0x%08X] - Ignored\n", address);
+                    LOG_WARN << fmt::format("Tried to store value in BIOS address range [0x{:08X}] - Ignored", address);
                     break;
                 }
                 default:
@@ -231,7 +235,7 @@ void BUS::Store(u32 address, Value value) {
         case 0xFF: {  // Cache Control
             u32 rel_address = masked_address - 0xFFFE0000;
             Assert(rel_address < 512);
-            printf("Store call to Cache Control [0x%X @ 0x%08X] - Ignored\n", value, address);
+            LOG_WARN << fmt::format("Store call to Cache Control [0x{:X} @ 0x{:08X}] - Ignored", value, address);
             break;
         }
         default:
@@ -272,7 +276,7 @@ void BUS::DrawMemEditor(bool* open) {
 void BUS::DumpRAM(const std::string& path) {
     std::ofstream out_file(path);
     out_file.write((char*) ram.data(), ram.size());
-    printf("Dumped RAM into file %s\n", path.c_str());
+    LOG_INFO << "Dumped RAM into file " << path;
 }
 
 template u32 BUS::Load<u32>(u32 address);

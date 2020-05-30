@@ -1,12 +1,15 @@
 #include <GL/gl3w.h>
 #include <SDL.h>
-#include <stdio.h>
+#include <iostream>
 
 #include "display.h"
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
 #include "system.h"
+#include "nano_log.h"
+
+LOG_CHANNEL(MAIN);
 
 constexpr u32 FRAME_CYCLES = 33868800 / 60;
 
@@ -28,8 +31,13 @@ int main(int, char**) {
         return RunCore();
     }
 
+    // init nanolog
+    nanolog::initialize(nanolog::GuaranteedLogger());
+    nanolog::set_log_level(nanolog::LogLevel::DBG);
+    //std::ios::sync_with_stdio(false);
+
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        printf("Error: %s\n", SDL_GetError());
+        LOG_CRIT << "Error: " << SDL_GetError();
         return 1;
     }
 
@@ -58,7 +66,7 @@ int main(int, char**) {
     SDL_Window* window = SDL_CreateWindow("FrogStation", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                           Display::WIDTH, Display::HEIGHT, window_flags);
     if (!window) {
-        fprintf(stderr, "Failed to create SDL_Window\n");
+        LOG_CRIT << "Failed to create SDL_Window";
         return 1;
     }
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
@@ -67,7 +75,7 @@ int main(int, char**) {
 
     bool err = gl3wInit() != 0;
     if (err) {
-        fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+        LOG_CRIT << "Failed to initialize OpenGL loader";
         return 1;
     }
 
@@ -77,7 +85,7 @@ int main(int, char**) {
 
     Display display;
     if (!display.Init(&system, window, gl_context, glsl_version)) {
-        fprintf(stderr, "Failed to init imgui display\n");
+        LOG_CRIT << "Failed to initialize imgui display";
         return 1;
     };
 

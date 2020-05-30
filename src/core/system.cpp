@@ -4,6 +4,9 @@
 #include "cpu.h"
 #include "dma.h"
 #include "gpu.h"
+#include "nano_log.h"
+
+LOG_CHANNEL(System);
 
 System::System() = default;
 
@@ -19,6 +22,7 @@ void System::Init() {
     bus->Init(dma.get(), gpu.get(), cpu.get());
     dma->Init(bus.get(), gpu.get());
     gpu->Init();
+    LOG_INFO << "Initialized PSX core";
 }
 
 bool System::LoadBIOS(const std::string& bios_path) {
@@ -40,7 +44,7 @@ void System::Reset() {
     bus->Reset();
     dma->Reset();
     gpu->Reset();
-    printf("System reset\n");
+    LOG_INFO << "System reset";
 }
 
 void System::DrawDebugWindows() {
@@ -59,5 +63,5 @@ bool System::IsHalted() {
 
 void System::SetHalt(bool halt) {
     cpu->halt = halt;
-    printf("System %s\n", halt ? "paused" : "resumed");
+    LOG_INFO << "System " << (halt ? "paused" : "resumed");
 }

@@ -8,5 +8,5 @@ add_library(core
         sw_renderer.cpp
         bios.cpp)
 
-target_include_directories(core PUBLIC ../../libs/imgui)
-target_link_libraries(core PRIVATE fmt imgui)
+target_include_directories(core PUBLIC ../../libs/nanolog)
+target_link_libraries(core PRIVATE fmt nanolog imgui)

@@ -3,6 +3,10 @@
 #include "bus.h"
 #include "cpu_common.h"
 #include "imgui.h"
+#include "nano_log.h"
+#include "fmt/format.h"
+
+LOG_CHANNEL(CPU);
 
 namespace CPU {
 
@@ -223,7 +227,7 @@ void CPU::Step() {
                     Set(instr.s.rd, (Get(instr.s.rs) < Get(instr.s.rt)) ? 1 : 0);
                     break;
                 default:
-                    printf("Invalid special opcode 0x%02X [0x%08X]\n", (u32)instr.s.sop.GetValue(), instr.value);
+                    LOG_CRIT << fmt::format("Invalid special opcode 0x%02X [0x%08X]\n", (u32)instr.s.sop.GetValue(), instr.value);
                     Exception(ExceptionCode::ReservedInstr);
             }
             break;
@@ -479,7 +483,7 @@ void CPU::Step() {
             Exception(ExceptionCode::CopError);
             break;
         default:
-            printf("Invalid opcode 0x%02X [0x%08X]\n", (u32)instr.n.op.GetValue(), instr.value);
+            LOG_CRIT << fmt::format("Invalid opcode 0x%02X [0x%08X]\n", (u32)instr.n.op.GetValue(), instr.value);
             Exception(ExceptionCode::ReservedInstr);
     }
 
@@ -512,7 +516,7 @@ void CPU::Exception(ExceptionCode cause) {
 
     sp.pc = handler;
     next_pc = handler + 4;
-    printf("CPU Exception 0x%02X\n", (u32)cause);
+    LOG_DEBUG << fmt::format("CPU Exception {:#04x}", (u32)cause);
 }
 
 u32 CPU::Load32(u32 address) { return bus->Load<u32>(address); }

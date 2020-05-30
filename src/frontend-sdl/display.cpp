@@ -9,6 +9,9 @@
 #include "imgui_impl_sdl.h"
 #include "system.h"
 #include "types.h"
+#include "nano_log.h"
+
+LOG_CHANNEL(Display);
 
 Display::Display() {}
 
@@ -25,11 +28,11 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
     int display = SDL_GetWindowDisplayIndex(window);
     float dpi = 96.0f;
     if (SDL_GetDisplayDPI(display, &dpi, nullptr, nullptr) != 0) {
-        fprintf(stderr, "Failed to get window dpi\n");
+        LOG_CRIT << "Failed to get window dpi";
         return false;
     }
     float scale_factor = dpi / 96.0f;
-    printf("Using scale factor %f\n", scale_factor);
+    LOG_INFO << "Using scale factor " << scale_factor;
 
     // int scaled_x = static_cast<int>(std::floor(scale_factor * DEFAULT_W));
     // int scaled_y = static_cast<int>(std::floor(scale_factor * DEFAULT_H));
@@ -73,7 +76,7 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, system->GetVRAM());
     GLenum status;
     if ((status = glGetError()) != GL_NO_ERROR) {
-        fprintf(stderr, "OpenGL error %u during texture creation\n", status);
+        LOG_CRIT << "OpenGL error" << status << "during texture creation";
         return false;
     }
     glBindTexture(GL_TEXTURE_2D, 0);

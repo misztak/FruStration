@@ -1,6 +1,9 @@
 #include "gpu.h"
 
 #include "imgui.h"
+#include "nano_log.h"
+
+LOG_CHANNEL(GPU);
 
 GPU::GPU() {
     status.display_disabled = true;
@@ -173,7 +176,7 @@ void GPU::SendGP1Cmd(u32 cmd) {
 }
 
 void GPU::DrawQuadMonoOpaque() {
-    printf("DrawQuadMonoOpaque\n");
+    LOG_DEBUG << "DrawQuadMonoOpaque";
     renderer.draw_flags |= Renderer::DRAW_FLAG_MONO;
     Color mono(command_buffer[0]);
     renderer.DrawTriangle(Vertex(command_buffer[1], mono),
@@ -186,7 +189,7 @@ void GPU::DrawQuadMonoOpaque() {
 }
 
 void GPU::DrawQuadShadedOpaque() {
-    printf("DrawQuadShadedOpaque\n");
+    LOG_DEBUG << "DrawQuadShadedOpaque";
     renderer.draw_flags |= Renderer::DRAW_FLAG_SHADED;
     renderer.DrawTriangle(Vertex(command_buffer[1], Color(command_buffer[0])),
                           Vertex(command_buffer[3], Color(command_buffer[2])),
@@ -198,7 +201,7 @@ void GPU::DrawQuadShadedOpaque() {
 }
 
 void GPU::DrawQuadTextureBlendOpaque() {
-    printf("DrawQuadTextureBlendOpaque\n");
+    LOG_DEBUG << "DrawQuadTextureBlendOpaque";
     // placeholder: only load a red mono quad for now
     renderer.draw_flags |= Renderer::DRAW_FLAG_MONO;
     Color mono(0xFF);
@@ -212,7 +215,7 @@ void GPU::DrawQuadTextureBlendOpaque() {
 }
 
 void GPU::DrawTriangleShadedOpaque() {
-    printf("DrawTriangleShadedOpaque\n");
+    LOG_DEBUG << "DrawTriangleShadedOpaque";
     renderer.draw_flags |= Renderer::DRAW_FLAG_SHADED;
     renderer.DrawTriangle(Vertex(command_buffer[1], Color(command_buffer[0])),
                           Vertex(command_buffer[3], Color(command_buffer[2])),
@@ -242,7 +245,7 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
         x_pos_max = x_pos + width;
         Assert(x_pos_max < VRAM_WIDTH);
 
-        printf("Expecting %u words from CPU to GPU\n", words_remaining);
+        LOG_DEBUG << "Expecting" << words_remaining << "words from CPU to GPU";
         mode = Mode::Data;
     } else if (mode == Mode::Data) {
         // first halfword
@@ -266,7 +269,7 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
 
 void GPU::CopyRectVramToCpu() {
     // TODO: actual implementation
-    printf("CopyRectVramToCpu - Not implemented\n");
+    LOG_WARN << "CopyRectVramToCpu - Not implemented";
 }
 
 void GPU::ResetCommand() {

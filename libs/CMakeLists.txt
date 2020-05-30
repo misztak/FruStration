@@ -1,5 +1,7 @@
-add_library(fmt STATIC fmt/src/format.cc)
-target_include_directories(fmt PUBLIC fmt)
+add_library(fmt STATIC fmt/src/format.cc fmt/src/os.cc)
+target_include_directories(fmt PUBLIC fmt/include)
+
+add_library(nanolog STATIC nanolog/nano_log.cpp)
 
 add_library(gl3w STATIC gl3w/gl3w.c)
 target_include_directories(gl3w PUBLIC gl3w)
