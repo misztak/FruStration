@@ -3,7 +3,7 @@
 #include "bus.h"
 #include "cpu_common.h"
 #include "imgui.h"
-#include "nano_log.h"
+#include "macros.h"
 #include "fmt/format.h"
 
 LOG_CHANNEL(CPU);
@@ -55,7 +55,7 @@ void CPU::Step() {
     if (sp.pc ==  0xA0 && Get(9) == 0x3C) bios.PutChar(Get(4));
     if (sp.pc ==  0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
     // psexe inject point
-    if (sp.pc == 0x80030000) bus->LoadPsExe("../../../test/exe/helloworld.psexe");
+    // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/helloworld.psexe");
 
     if (unlikely(BREAKPOINTS_ENABLED && breakpoints.count(sp.pc))) {
         auto bp = breakpoints.find(sp.pc);

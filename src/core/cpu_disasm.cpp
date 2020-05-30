@@ -4,7 +4,10 @@
 
 #include "cpu.h"
 #include "cpu_common.h"
+#include "macros.h"
 #include "fmt/format.h"
+
+LOG_CHANNEL(DISASM);
 
 namespace CPU {
 

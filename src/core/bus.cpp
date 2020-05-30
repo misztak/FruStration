@@ -7,7 +7,7 @@
 #include "cpu.h"
 #include "imgui.h"
 #include "imgui_memory_editor.h"
-#include "nano_log.h"
+#include "macros.h"
 #include "fmt/format.h"
 
 LOG_CHANNEL(BUS);

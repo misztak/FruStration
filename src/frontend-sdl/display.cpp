@@ -9,7 +9,7 @@
 #include "imgui_impl_sdl.h"
 #include "system.h"
 #include "types.h"
-#include "nano_log.h"
+#include "macros.h"
 
 LOG_CHANNEL(Display);
 

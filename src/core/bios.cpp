@@ -1,6 +1,6 @@
 #include "bios.h"
 
-#include "nano_log.h"
+#include "macros.h"
 
 LOG_CHANNEL(BIOS);
 

@@ -1,7 +1,7 @@
 #include "gpu.h"
 
 #include "imgui.h"
-#include "nano_log.h"
+#include "macros.h"
 
 LOG_CHANNEL(GPU);
 

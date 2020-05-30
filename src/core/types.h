@@ -1,8 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 
 // force inline helper
 #ifndef ALWAYS_INLINE
@@ -33,54 +31,3 @@ using u8 = uint8_t;
 using u16 = uint16_t;
 using u32 = uint32_t;
 using u64 = uint64_t;
-
-#define Panic(Message, ...)                                                                                         \
-    {                                                                                                               \
-        char msg[128];                                                                                              \
-        std::snprintf(msg, sizeof(msg), Message, ##__VA_ARGS__);                                                    \
-        char buf[256];                                                                                              \
-        std::snprintf(buf, sizeof(buf), "Panic: %s in function %s (%s:%u)", msg, __FUNCTION__, __FILE__, __LINE__); \
-        std::fputs(buf, stderr);                                                                                    \
-        std::fflush(stderr);                                                                                        \
-        std::abort();                                                                                               \
-    }                                                                                                               \
-    while (0)
-
-#define Assert(Expr)                                                                                             \
-    if (!(Expr)) {                                                                                               \
-        char buf[128];                                                                                           \
-        std::snprintf(buf, sizeof(buf), "%s in function %s (%s:%u)", "Assert failed: '" #Expr "'", __FUNCTION__, \
-                      __FILE__, __LINE__);                                                                       \
-        std::fputs(buf, stderr);                                                                                 \
-        std::fflush(stderr);                                                                                     \
-        std::abort();                                                                                            \
-    }                                                                                                            \
-    while (0)
-
-#ifdef DEBUG
-#define DebugAssert(Expr)                                                                                        \
-    if (!(Expr)) {                                                                                               \
-        char buf[128];                                                                                           \
-        std::snprintf(buf, sizeof(buf), "%s in function %s (%s:%u)", "Assert failed: '" #Expr "'", __FUNCTION__, \
-                      __FILE__, __LINE__);                                                                       \
-        std::fputs(buf, stderr);                                                                                 \
-        std::fflush(stderr);                                                                                     \
-        std::abort();                                                                                            \
-    }                                                                                                            \
-    while (0)
-#else
-#define DebugAssert(Expr) while (0)
-#endif
-
-#define AssertMsg(Expr, Msg)                                                                                    \
-    if (!(Expr)) {                                                                                              \
-        char buf[128];                                                                                          \
-        std::snprintf(buf, sizeof(buf), "%s in function %s (%s:%u)", "Assert failed: '" #Msg "'", __FUNCTION__, \
-                      __FILE__, __LINE__);                                                                      \
-        std::fputs(buf, stderr);                                                                                \
-        std::fflush(stderr);                                                                                    \
-        std::abort();                                                                                           \
-    }                                                                                                           \
-    while (0)
-
-// end

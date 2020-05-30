@@ -7,7 +7,7 @@
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
 #include "system.h"
-#include "nano_log.h"
+#include "macros.h"
 
 LOG_CHANNEL(MAIN);
 
@@ -27,14 +27,13 @@ int RunCore() {
 }
 
 int main(int, char**) {
-    if constexpr (RUN_HEADLESS) {
-        return RunCore();
-    }
-
     // init nanolog
     nanolog::initialize(nanolog::GuaranteedLogger());
     nanolog::set_log_level(nanolog::LogLevel::DBG);
-    //std::ios::sync_with_stdio(false);
+
+    if constexpr (RUN_HEADLESS) {
+        return RunCore();
+    }
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         LOG_CRIT << "Error: " << SDL_GetError();

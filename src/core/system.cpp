@@ -4,7 +4,7 @@
 #include "cpu.h"
 #include "dma.h"
 #include "gpu.h"
-#include "nano_log.h"
+#include "macros.h"
 
 LOG_CHANNEL(System);
 
