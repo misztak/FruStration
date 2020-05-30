@@ -619,19 +619,10 @@ namespace nanolog
     class ConsoleWriter : public Writer
     {
     public:
-        ConsoleWriter()
-        {
-            m_os = std::make_unique<std::ofstream>();
-            m_os->basic_ios<char>::rdbuf(std::cout.rdbuf());
-        }
-
         void write(NanoLogLine & logline)
         {
-            logline.stringify(*m_os);
+            logline.stringify(std::cout);
         }
-
-    private:
-        std::unique_ptr < std::ofstream > m_os;
     };
 
     class NanoLogger
