@@ -245,7 +245,7 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
         x_pos_max = x_pos + width;
         Assert(x_pos_max < VRAM_WIDTH);
 
-        LOG_DEBUG << "Expecting" << words_remaining << "words from CPU to GPU";
+        LOG_DEBUG << "Expecting " << words_remaining << " words from CPU to GPU";
         mode = Mode::Data;
     } else if (mode == Mode::Data) {
         // first halfword
