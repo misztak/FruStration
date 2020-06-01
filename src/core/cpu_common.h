@@ -85,6 +85,7 @@ enum class CoprocessorOpcode : u32 {
 };
 
 enum class ExceptionCode : u32 {
+    Interrupt = 0x00,
     LoadAddress = 0x04,
     StoreAddress = 0x05,
     Syscall = 0x08,
@@ -155,8 +156,21 @@ union CP0_Registers {
         u32 bdam;       // data access breakpoint mask (R/W)
         u32 cop0r10;
         u32 bpcm;       // execute breakpoint mask (R/W)
-        u32 sr;         // system status register (R/W)
-        u32 cause;      // describes the most recently recognised exception (R)
+        // system status register (R/W)
+        union {
+            u32 value;
+            BitField<u32, bool, 0, 1> interrupt_enable;
+            BitField<u32, u32, 8, 8> IM;
+            BitField<u32, bool, 16, 1> isolate_cache;
+        } sr;
+        // describes the most recently recognised exception (R)
+        union {
+            u32 value;
+            BitField<u32, u32, 2, 5> excode;
+            BitField<u32, u32, 8, 8> IP;
+            BitField<u32, u32, 28, 1> CE;
+            BitField<u32, u32, 31, 1> BD;
+        } cause;
         u32 epc;        // return address from trap (R)
         u32 prid;       // processor ID (R)
     };

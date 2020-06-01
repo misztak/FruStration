@@ -48,6 +48,11 @@ void CPU::Step() {
 
     instr.value = Load32(sp.pc);
 
+    // handle interrupts
+    if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
+        Exception(ExceptionCode::Interrupt);
+    }
+
     // special actions for specific memory locations
     // garbage
     if (sp.pc == 0) halt = true;
@@ -324,14 +329,15 @@ void CPU::Step() {
                     SetDelayEntry(instr.cop.rt, GetCP0(instr.cop.rd));
                     break;
                 case CoprocessorOpcode::mt:
+                    //LOG_DEBUG << fmt::format("MTC: Set Register {} to 0x{:08X}", instr.cop.rd, Get(instr.cop.rt));
                     SetCP0(instr.cop.rd, Get(instr.cop.rt));
                     break;
                 case CoprocessorOpcode::rfe: {
                     if ((instr.value & 0x3F) != 0b010000) Panic("Invalid CP0 instruction 0x%08X!", instr.value);
                     // restore the interrupt/user pairs that we changed before jumping into the exception handler
-                    const u32 mode = cp.sr & 0x3C;
-                    cp.sr &= ~0xFu; // bits 4-5 are left unchanged
-                    cp.sr |= (mode >> 2);
+                    const u32 mode = cp.sr.value & 0x3C;
+                    cp.sr.value &= ~0xFu; // bits 4-5 are left unchanged
+                    cp.sr.value |= (mode >> 2);
                     break;
                 }
                 default:
@@ -361,7 +367,7 @@ void CPU::Step() {
             break;
         }
         case PrimaryOpcode::lwl:{
-            if (cp.sr & 0x10000) Panic("Load with isolated cache");
+            if (cp.sr.isolate_cache) Panic("Load with isolated cache");
             u32 address = Get(instr.n.rs) + instr.imm_se();
 
             u32 aligned_value = Load32(address & ~0x3);
@@ -378,7 +384,7 @@ void CPU::Step() {
             break;
         }
         case PrimaryOpcode::lw: {
-            if (cp.sr & 0x10000) Panic("Load with isolated cache");
+            if (cp.sr.isolate_cache) Panic("Load with isolated cache");
             u32 address = Get(instr.n.rs) + instr.imm_se();
             if (address & 0x3)
                 Exception(ExceptionCode::LoadAddress);
@@ -400,7 +406,7 @@ void CPU::Step() {
             break;
         }
         case PrimaryOpcode::lwr: {
-            if (cp.sr & 0x10000) Panic("Load with isolated cache");
+            if (cp.sr.isolate_cache) Panic("Load with isolated cache");
             u32 address = Get(instr.n.rs) + instr.imm_se();
 
             u32 aligned_value = Load32(address & ~0x3);
@@ -491,28 +497,30 @@ void CPU::Step() {
 }
 
 void CPU::Exception(ExceptionCode cause) {
-    const u32 handler = ((cp.sr & (1u << 22)) != 0) ? 0xBFC00180 : 0x80000080;
+    const u32 handler = ((cp.sr.value & (1u << 22)) != 0) ? 0xBFC00180 : 0x80000080;
 
     // get interrupt/user pairs
-    const u32 mode = cp.sr & 0x3F;
+    const u32 mode = cp.sr.value & 0x3F;
     // clear old values
-    cp.sr &= ~0x3F;
+    cp.sr.value &= ~0x3F;
     // update pair values
-    cp.sr |= (mode << 2) & 0x3F;
+    cp.sr.value |= (mode << 2) & 0x3F;
 
-    // TODO: interrupt pending bits?
-    u32 old_cause = cp.cause & 0xFF00;
-    cp.cause = static_cast<u32>(cause) << 2;
-    cp.cause |= old_cause;
+    // TODO: interrupt pending bits
+    // TODO: CE
+    cp.cause.excode = static_cast<u32>(cause) & 0x1F;
     cp.epc = current_pc;
     if (was_in_delay_slot) {
         cp.epc -= 4;
-        cp.cause |= 1 << 31;
+        cp.cause.BD = 1;
         cp.jumpdest = sp.pc;
         if (was_branch_taken) {
-            cp.cause |= 1 << 30;
+            cp.cause.value |= 1 << 30;
         }
     }
+
+    // TODO: bad vaddr
+    //if (cause == ExceptionCode::LoadAddress || cause == ExceptionCode::StoreAddress) cp.bad_vaddr = bad_vaddr;
 
     sp.pc = handler;
     next_pc = handler + 4;
@@ -522,27 +530,27 @@ void CPU::Exception(ExceptionCode cause) {
 u32 CPU::Load32(u32 address) { return bus->Load<u32>(address); }
 
 void CPU::Store32(u32 address, u32 value) {
-    if (cp.sr & 0x10000) return;
+    if (cp.sr.isolate_cache) return;
     bus->Store(address, value);
 }
 
 u16 CPU::Load16(u32 address) {
-    if (cp.sr & 0x10000) Panic("Load with isolated cache");
+    if (cp.sr.isolate_cache) Panic("Load with isolated cache");
     return bus->Load<u16>(address);
 }
 
 void CPU::Store16(u32 address, u16 value) {
-    if (cp.sr & 0x10000) return;
+    if (cp.sr.isolate_cache) return;
     bus->Store(address, value);
 }
 
 u8 CPU::Load8(u32 address) {
-    if (cp.sr & 0x10000) Panic("Load with isolated cache");
+    if (cp.sr.isolate_cache) Panic("Load with isolated cache");
     return bus->Load<u8>(address);
 }
 
 void CPU::Store8(u32 address, u8 value) {
-    if (cp.sr & 0x10000) return;
+    if (cp.sr.isolate_cache) return;
     bus->Store(address, value);
 }
 
@@ -563,12 +571,16 @@ u32 CPU::Get(u32 index) {
 
 void CPU::SetCP0(u32 index, u32 value) {
     Assert(index < 16);
-    // Assert(value == 0 || (index == 12 && value == 0x10000));
+    // TODO: only allow setting writable registers
+    if (index == 13) {
+        // only bits 8-9 of CAUSE are writable
+        cp.cause.value = (cp.cause.value & ~0x300U) | (value & 0x300U);
+        return;
+    }
     cp.cpr[index] = value;
 }
 
 u32 CPU::GetCP0(u32 index) {
-    // TODO: behaviour for CP0 registers 16-63
     Assert(index < 16);
     return cp.cpr[index];
 }

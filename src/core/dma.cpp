@@ -2,6 +2,7 @@
 
 #include "bus.h"
 #include "gpu.h"
+#include "interrupt.h"
 #include "macros.h"
 #include "fmt/format.h"
 
@@ -9,9 +10,10 @@ LOG_CHANNEL(DMA);
 
 DMA::DMA() {}
 
-void DMA::Init(BUS* b, GPU* g) {
+void DMA::Init(BUS* b, GPU* g, InterruptController* controller) {
     bus = b;
     gpu = g;
+    interrupt_controller = controller;
 }
 
 u32 DMA::Load(u32 address) {

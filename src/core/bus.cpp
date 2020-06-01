@@ -5,6 +5,7 @@
 #include "dma.h"
 #include "gpu.h"
 #include "cpu.h"
+#include "interrupt.h"
 #include "imgui.h"
 #include "imgui_memory_editor.h"
 #include "macros.h"
@@ -14,10 +15,11 @@ LOG_CHANNEL(BUS);
 
 BUS::BUS() : bios(BIOS_FILE_SIZE), ram(RAM_SIZE, 0xCA) {}
 
-void BUS::Init(DMA* d, GPU* g, CPU::CPU* c) {
+void BUS::Init(DMA* d, GPU* g, CPU::CPU* c, InterruptController* i) {
     dma = d;
     gpu = g;
     cpu = c;
+    interrupt = i;
 }
 
 bool BUS::LoadBIOS(const std::string& path) {
@@ -118,7 +120,8 @@ ValueType BUS::Load(u32 address) {
                         case 0x1: {  // IO Ports
                             u32 rel_address = masked_address - 0x1F801000;
                             Assert(rel_address < 1024 * 8);
-                            if (masked_address == 0x1F801074) return 0; // Interrupt mask register
+                            if (masked_address == 0x1F801070) return interrupt->LoadStat();
+                            if (masked_address == 0x1F801074) return interrupt->LoadMask();
                             if (masked_address == 0x1F801110) return 0; // Timer 1 (horizontal retrace)
                             if (masked_address == 0x1F801810) return 0; // GPUREAD
                             if (masked_address == 0x1F801814) return (ValueType) gpu->ReadStat(); // GPUSTAT
@@ -200,7 +203,9 @@ void BUS::Store(u32 address, Value value) {
                         case 0x1: {  // IO Ports
                             u32 rel_address = masked_address - 0x1F801000;
                             Assert(rel_address < 1024 * 8);
-                            if (masked_address == 0x1F801810) gpu->SendGP0Cmd(value);
+                            if (masked_address == 0x1F801070) interrupt->StoreStat(value);
+                            else if (masked_address == 0x1F801074) interrupt->StoreMask(value);
+                            else if (masked_address == 0x1F801810) gpu->SendGP0Cmd(value);
                             else if (masked_address == 0x1F801814) gpu->SendGP1Cmd(value);
                             else if (masked_address >= 0x1F801080 && masked_address <= 0x1F8010F4) dma->Store(rel_address - 0x80, value); // DMA
                             else if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) break; // SPU

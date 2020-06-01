@@ -12,6 +12,7 @@ class CPU;
 class BUS;
 class DMA;
 class GPU;
+class InterruptController;
 
 class System {
 public:
@@ -21,6 +22,7 @@ public:
     bool LoadBIOS(const std::string& bios_path);
     void RunFrame();
     void Run();
+    void VBlank();
 
     bool IsHalted();
     void SetHalt(bool halt);
@@ -41,4 +43,5 @@ private:
     std::unique_ptr<BUS> bus;
     std::unique_ptr<DMA> dma;
     std::unique_ptr<GPU> gpu;
+    std::unique_ptr<InterruptController> interrupt;
 };

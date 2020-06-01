@@ -7,6 +7,7 @@
 
 class DMA;
 class GPU;
+class InterruptController;
 
 namespace CPU {
 class CPU;
@@ -15,7 +16,7 @@ class CPU;
 class BUS {
 public:
     BUS();
-    void Init(DMA* dma, GPU* gpu, CPU::CPU* cpu);
+    void Init(DMA* dma, GPU* gpu, CPU::CPU* cpu, InterruptController* interrupt);
     void Reset();
     bool LoadBIOS(const std::string& path);
     bool LoadPsExe(const std::string& path);
@@ -45,6 +46,7 @@ private:
     DMA* dma = nullptr;
     GPU* gpu = nullptr;
     CPU::CPU* cpu = nullptr;
+    InterruptController* interrupt = nullptr;
 
     std::vector<u8> bios;
     std::vector<u8> ram;

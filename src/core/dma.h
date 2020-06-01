@@ -5,11 +5,12 @@
 
 class BUS;
 class GPU;
+class InterruptController;
 
 class DMA {
 public:
     DMA();
-    void Init(BUS* bus, GPU* gpu);
+    void Init(BUS* bus, GPU* gpu, InterruptController* controller);
     void Reset();
     u32 Load(u32 address);
     void Store(u32 address, u32 value);
@@ -118,4 +119,5 @@ private:
 
     BUS* bus = nullptr;
     GPU* gpu = nullptr;
+    InterruptController* interrupt_controller = nullptr;
 };

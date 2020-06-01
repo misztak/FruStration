@@ -4,6 +4,7 @@
 #include "cpu.h"
 #include "dma.h"
 #include "gpu.h"
+#include "interrupt.h"
 #include "macros.h"
 
 LOG_CHANNEL(System);
@@ -17,11 +18,13 @@ void System::Init() {
     bus = std::make_unique<BUS>();
     dma = std::make_unique<DMA>();
     gpu = std::make_unique<GPU>();
+    interrupt = std::make_unique<InterruptController>();
 
     cpu->Init(bus.get());
-    bus->Init(dma.get(), gpu.get(), cpu.get());
-    dma->Init(bus.get(), gpu.get());
+    bus->Init(dma.get(), gpu.get(), cpu.get(), interrupt.get());
+    dma->Init(bus.get(), gpu.get(), interrupt.get());
     gpu->Init();
+    interrupt->Init(cpu.get());
     LOG_INFO << "Initialized PSX core";
 }
 
@@ -44,6 +47,7 @@ void System::Reset() {
     bus->Reset();
     dma->Reset();
     gpu->Reset();
+    interrupt->Reset();
     LOG_INFO << "System reset";
 }
 
@@ -64,4 +68,8 @@ bool System::IsHalted() {
 void System::SetHalt(bool halt) {
     cpu->halt = halt;
     LOG_INFO << "System " << (halt ? "paused" : "resumed");
+}
+
+void System::VBlank() {
+    interrupt->Request(IRQ::VBLANK);
 }

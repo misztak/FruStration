@@ -10,6 +10,7 @@
 
 class BUS;
 
+// TODO: remove CPU namespace
 namespace CPU {
 
 class CPU {
@@ -40,6 +41,10 @@ public:
         std::function<void()> action;
     };
     std::unordered_map<u32, Breakpoint> breakpoints;
+
+    GP_Registers gp;
+    SP_Registers sp;
+    CP0_Registers cp;
 private:
     void Set(u32 index, u32 value);
     u32 Get(u32 index);
@@ -51,10 +56,6 @@ private:
     void UpdatePC(u32 address);
 
     void Exception(ExceptionCode cause);
-
-    GP_Registers gp;
-    SP_Registers sp;
-    CP0_Registers cp;
 
     u32 next_pc = 0, current_pc = 0;
     bool branch_taken = false, was_branch_taken = false;

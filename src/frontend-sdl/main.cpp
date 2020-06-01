@@ -108,7 +108,8 @@ int main(int, char**) {
             }
         }
 
-        // VBLANK IRQ
+        // at the moment this is always NTSC (60Hz)
+        system.VBlank();
 
         display.Render();
 

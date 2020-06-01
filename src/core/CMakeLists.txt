@@ -6,7 +6,8 @@ add_library(core
         dma.cpp
         gpu.cpp
         sw_renderer.cpp
-        bios.cpp)
+        bios.cpp
+        interrupt.cpp)
 
 target_include_directories(core PUBLIC ../../libs/nanolog)
 target_link_libraries(core PRIVATE fmt nanolog imgui)
