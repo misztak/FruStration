@@ -1,5 +1,6 @@
 #include "display.h"
 
+#include <algorithm>
 #include <cmath>
 #include <thread>
 
