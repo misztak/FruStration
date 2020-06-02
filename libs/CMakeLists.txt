@@ -3,6 +3,8 @@ target_include_directories(fmt PUBLIC fmt/include)
 
 add_library(nanolog STATIC nanolog/nano_log.cpp)
 
+add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GL3W)
+
 add_library(gl3w STATIC gl3w/gl3w.c)
 target_include_directories(gl3w PUBLIC gl3w)
 
