@@ -31,7 +31,7 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
         LOG_CRIT << "Failed to get window dpi";
         return false;
     }
-    float scale_factor = dpi / 96.0f;
+    float scale_factor = std::min(2.f, dpi / 96.0f);
     LOG_INFO << "Using scale factor " << scale_factor;
 
     // int scaled_x = static_cast<int>(std::floor(scale_factor * DEFAULT_W));
@@ -61,7 +61,7 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
     io.DisplayFramebufferScale.y = scale_factor;
     style.ScaleAllSizes(scale_factor);
     // scale SDL_Window
-    const s32 scale_int = (std::ceil(scale_factor) > 2.f) ? 2 : std::ceil(scale_factor);
+    const s32 scale_int = std::ceil(scale_factor);
     SDL_SetWindowSize(window, WIDTH * scale_int, HEIGHT * scale_int);
 
     // Setup Platform/Renderer bindings
