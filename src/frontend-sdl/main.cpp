@@ -39,6 +39,8 @@ int main(int, char**) {
         LOG_CRIT << "Error: " << SDL_GetError();
         return 1;
     }
+    // some linux WMs/Compositors will render artifacts and have other issues if this is not enabled
+    // SDL_SetHintWithPriority(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0", SDL_HINT_OVERRIDE);
 
 #if __APPLE__
     // GL 3.2 Core + GLSL 150
