@@ -25,6 +25,8 @@ if (WIN32)
     set(SDL2_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/libs/windows/sdl2/lib/SDL2.lib")
     set(SDL2MAIN_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/libs/windows/sdl2/lib/SDL2main.lib")
     set(SDL2_DLL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/windows/sdl2/bin/SDL2.dll")
+    # avoid name collision with windef.h
+    add_definitions(-DNOMINMAX)
 else()
     find_package(SDL2 REQUIRED)
 endif()
