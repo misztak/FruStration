@@ -78,6 +78,15 @@ void GPU::SendGP0Cmd(u32 cmd) {
                 command_counter++;
             }
             break;
+        case Gp0Command::dot_mono_opaque:
+            if (command_counter == 1) {
+                Vertex dot(command_buffer[1], command_buffer[0]);
+                vram[dot.x + VRAM_WIDTH * dot.y] = dot.c.To5551();
+                command_counter = 0;
+            } else {
+                command_counter++;
+            }
+            break;
         case Gp0Command::copy_rectangle_cpu_to_vram:
             if (command_counter == 2) {
                 CopyRectCpuToVram();
