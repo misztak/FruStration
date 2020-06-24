@@ -31,6 +31,7 @@ private:
 
     static constexpr u32 BIOS_FILE_SIZE = 512 * 1024;
     static constexpr u32 RAM_SIZE = 2048 * 1024;
+    static constexpr u32 SCRATCH_SIZE = 1024;
 
     const u32 MEM_REGION_MASKS[8] = {
         // KUSEG - 2048 MB
@@ -50,4 +51,5 @@ private:
 
     std::vector<u8> bios;
     std::vector<u8> ram;
+    std::vector<u8> scratchpad;
 };

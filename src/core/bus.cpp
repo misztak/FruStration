@@ -13,7 +13,7 @@
 
 LOG_CHANNEL(BUS);
 
-BUS::BUS() : bios(BIOS_FILE_SIZE), ram(RAM_SIZE, 0xCA) {}
+BUS::BUS() : bios(BIOS_FILE_SIZE), ram(RAM_SIZE, 0xCA), scratchpad(SCRATCH_SIZE) {}
 
 void BUS::Init(DMA* d, GPU* g, CPU::CPU* c, InterruptController* i) {
     dma = d;
@@ -113,9 +113,9 @@ ValueType BUS::Load(u32 address) {
                     switch ((masked_address & 0xF000) >> 12) {
                         case 0x0: {  // Scratchpad
                             u32 rel_address = masked_address - 0x1F800000;
-                            Assert(rel_address < 1024);
-                            Panic("Tried to load from Scratchpad [0x%08X]", address);
-                            break;
+                            Assert(rel_address < SCRATCH_SIZE);
+                            //LOG_DEBUG << fmt::format("Load from Scratchpad [0x{:08X}]", address);
+                            return *reinterpret_cast<ValueType*>(scratchpad.data() + rel_address);
                         }
                         case 0x1: {  // IO Ports
                             u32 rel_address = masked_address - 0x1F801000;
@@ -196,8 +196,10 @@ void BUS::Store(u32 address, Value value) {
                     switch ((masked_address & 0xF000) >> 12) {
                         case 0x0: {  // Scratchpad
                             u32 rel_address = masked_address - 0x1F800000;
-                            Assert(rel_address < 1024);
-                            Panic("Tried to store in Scratchpad [0x%08X]", address);
+                            Assert(rel_address < SCRATCH_SIZE);
+                            //LOG_DEBUG << fmt::format("Store in Scratchpad [0x{:08X}]", address);
+                            std::copy(reinterpret_cast<u8*>(&value), reinterpret_cast<u8*>(&value) + sizeof(value),
+                                      scratchpad.data() + rel_address);
                             break;
                         }
                         case 0x1: {  // IO Ports
