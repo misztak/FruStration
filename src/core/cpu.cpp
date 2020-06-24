@@ -111,7 +111,10 @@ void CPU::Step() {
                     break;
                 case SecondaryOpcode::jr: {
                     u32 jump_address = Get(instr.s.rs);
-                    if ((jump_address & 0x3) != 0) Panic("Unaligned return address!");
+                    if ((jump_address & 0x3) != 0) {
+                        Exception(ExceptionCode::StoreAddress);
+                        break;
+                    }
                     next_pc = jump_address;
                     in_delay_slot = true;
                     branch_taken = true;
@@ -119,7 +122,10 @@ void CPU::Step() {
                 }
                 case SecondaryOpcode::jalr: {
                     u32 jump_address = Get(instr.s.rs);
-                    if ((jump_address & 0x3) != 0) Panic("Unaligned return address!");
+                    if ((jump_address & 0x3) != 0) {
+                        Exception(ExceptionCode::StoreAddress);
+                        break;
+                    }
                     Set(instr.s.rd, next_pc);
                     next_pc = jump_address;
                     in_delay_slot = true;
@@ -198,7 +204,7 @@ void CPU::Step() {
                     const u32 b = Get(instr.s.rt);
                     const u32 result = a + b;
                     if (!((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000)) Exception(ExceptionCode::Overflow);
-                    Set(instr.s.rd, result);
+                    else Set(instr.s.rd, result);
                     break;
                 }
                 case SecondaryOpcode::addu:
@@ -209,7 +215,7 @@ void CPU::Step() {
                     const u32 b = Get(instr.s.rt);
                     const u32 result = a - b;
                     if (((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000)) Exception(ExceptionCode::Overflow);
-                    Set(instr.s.rd, result);
+                    else Set(instr.s.rd, result);
                     break;
                 }
                 case SecondaryOpcode::subu:
@@ -301,7 +307,7 @@ void CPU::Step() {
             const u32 add = instr.imm_se();
             const u32 result = old + add;
             if (!((old ^ add) & 0x80000000) && ((result ^ old) & 0x80000000)) Exception(ExceptionCode::Overflow);
-            Set(instr.n.rt, result);
+            else Set(instr.n.rt, result);
             break;
         }
         case PrimaryOpcode::addiu:

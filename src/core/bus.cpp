@@ -127,6 +127,7 @@ ValueType BUS::Load(u32 address) {
                             if (masked_address == 0x1F801814) return (ValueType) gpu->ReadStat(); // GPUSTAT
                             if (masked_address >= 0x1F801080 && masked_address <= 0x1F8010F4) return (ValueType) dma->Load(rel_address - 0x80); // DMA
                             if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) return 0; // SPU
+                            if (masked_address >= 0x1F801040 && masked_address <= 0x1F80104E) return 0; // Joypad
                             Panic("Tried to load from IO Ports [0x%08X]", address);
                             break;
                         }
