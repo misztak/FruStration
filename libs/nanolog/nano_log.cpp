@@ -79,6 +79,8 @@ namespace nanolog
 	    return "INFO";
         case LogLevel::DBG:
             return "DEBUG";
+        case LogLevel::TTY:
+            return "TTY";
 	case LogLevel::WARN:
 	    return "WARN";
 	case LogLevel::CRIT:
@@ -91,6 +93,8 @@ namespace nanolog
     {
         switch (loglevel)
         {
+        case LogLevel::TTY:
+            return "\033[1;37m";
         case LogLevel::WARN:
             return "\033[1;33m";
         case LogLevel::CRIT:
@@ -104,8 +108,8 @@ namespace nanolog
     {
         switch (loglevel)
         {
+        case LogLevel::TTY:
         case LogLevel::WARN:
-            return "\033[0m";
         case LogLevel::CRIT:
             return "\033[0m";
         default:
@@ -150,7 +154,10 @@ namespace nanolog
 
         format_time_since_launch(os);
 
-        os << '[' << to_string(loglevel) << "][" << channel.m_s << "] ";
+        if (loglevel == LogLevel::TTY)
+            os << '[' << to_string(loglevel) << "] ";
+        else
+            os << '[' << to_string(loglevel) << "][" << channel.m_s << "] ";
 
 	stringify(os, b, end);
 

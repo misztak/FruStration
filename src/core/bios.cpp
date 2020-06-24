@@ -14,7 +14,7 @@ void BIOS::TraceFunction(u32 address, u32 index) {
 
 void BIOS::PutChar(s8 value) {
     if (value == '\n') {
-        LOG_INFO << "[TTY] " << stdout_buffer;
+        LOG_TTY << stdout_buffer;
         stdout_buffer.clear();
     } else {
         stdout_buffer.push_back(value);

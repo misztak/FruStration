@@ -45,7 +45,7 @@ This is a modified version of NanoLog. The following changes have been made:
 
 namespace nanolog
 {
-    enum class LogLevel : uint8_t { DBG, INFO, WARN, CRIT };
+    enum class LogLevel : uint8_t { DBG, TTY, INFO, WARN, CRIT };
     
     class NanoLogLine
     {
@@ -171,8 +171,9 @@ namespace nanolog
 
 #define LOG_CHANNEL(Name) static const char* __Channel__ = #Name
 #define NANO_LOG(LEVEL) nanolog::NanoLog() == nanolog::NanoLogLine(LEVEL, __Channel__)
-#define LOG_INFO nanolog::is_logged(nanolog::LogLevel::INFO) && NANO_LOG(nanolog::LogLevel::INFO)
 #define LOG_DEBUG nanolog::is_logged(nanolog::LogLevel::DBG) && NANO_LOG(nanolog::LogLevel::DBG)
+#define LOG_TTY nanolog::is_logged(nanolog::LogLevel::TTY) && NANO_LOG(nanolog::LogLevel::TTY)
+#define LOG_INFO nanolog::is_logged(nanolog::LogLevel::INFO) && NANO_LOG(nanolog::LogLevel::INFO)
 #define LOG_WARN nanolog::is_logged(nanolog::LogLevel::WARN) && NANO_LOG(nanolog::LogLevel::WARN)
 #define LOG_CRIT nanolog::is_logged(nanolog::LogLevel::CRIT) && NANO_LOG(nanolog::LogLevel::CRIT)
 
