@@ -1,5 +1,6 @@
 #include "gpu.h"
 
+#include "fmt/format.h"
 #include "imgui.h"
 #include "macros.h"
 
@@ -30,14 +31,14 @@ void GPU::SendGP0Cmd(u32 cmd) {
     }
 
     if (command_counter == 0) {
-        //printf("GPU received GP0 command 0x%08X\n", cmd);
+        //LOG_DEBUG << fmt::format("GPU received GP0 command 0x{:08X}", cmd);
         command.value = cmd;
     }
     DebugAssert(command_counter < 12);
     command_buffer[command_counter] = cmd;
 
     // clear the draw flags
-    renderer.draw_flags = Renderer::DRAW_FLAG_CLEAR;
+    renderer.draw_mode = Renderer::DrawMode::CLEAR;
 
     switch (command.gp0_op) {
         case Gp0Command::nop:
@@ -112,12 +113,14 @@ void GPU::SendGP0Cmd(u32 cmd) {
             tex_window_y_offset = (cmd >> 15) & 0x1F;
             break;
         case Gp0Command::draw_area_top_left:
-            drawing_area_top = static_cast<u16>((cmd >> 10) & 0x3FF);
+            drawing_area_top = static_cast<u16>((cmd >> 10) & 0x1FF);
             drawing_area_left = static_cast<u16>(cmd & 0x3FF);
+            LOG_DEBUG << "Set draw area top=" << drawing_area_top << ", left=" << drawing_area_left;
             break;
         case Gp0Command::draw_area_bottom_right:
-            drawing_area_bottom = static_cast<u16>((cmd >> 10) & 0x3FF);
+            drawing_area_bottom = static_cast<u16>((cmd >> 10) & 0x1FF);
             drawing_area_right = static_cast<u16>(cmd & 0x3FF);
+            LOG_DEBUG << "Set draw area bottom=" << drawing_area_bottom << ", right=" << drawing_area_right;
             break;
         case Gp0Command::draw_offset: {
             const u16 x = static_cast<u16>(cmd & 0x7FF);
@@ -136,7 +139,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
 }
 
 void GPU::SendGP1Cmd(u32 cmd) {
-    //printf("GPU received GP1 command 0x%08X\n", cmd);
+    //LOG_DEBUG << fmt::format("GPU received GP1 command 0x{:08X}", cmd);
     command.value = cmd;
 
     switch (command.gp1_op) {
@@ -177,7 +180,7 @@ void GPU::SendGP1Cmd(u32 cmd) {
 
 void GPU::DrawQuadMonoOpaque() {
     LOG_DEBUG << "DrawQuadMonoOpaque";
-    renderer.draw_flags |= Renderer::DRAW_FLAG_MONO;
+    renderer.draw_mode = Renderer::DrawMode::MONO;
     Color mono(command_buffer[0]);
     renderer.DrawTriangle(Vertex(command_buffer[1], mono),
                           Vertex(command_buffer[2], mono),
@@ -190,7 +193,7 @@ void GPU::DrawQuadMonoOpaque() {
 
 void GPU::DrawQuadShadedOpaque() {
     LOG_DEBUG << "DrawQuadShadedOpaque";
-    renderer.draw_flags |= Renderer::DRAW_FLAG_SHADED;
+    renderer.draw_mode = Renderer::DrawMode::SHADED;
     renderer.DrawTriangle(Vertex(command_buffer[1], Color(command_buffer[0])),
                           Vertex(command_buffer[3], Color(command_buffer[2])),
                           Vertex(command_buffer[5], Color(command_buffer[4])));
@@ -202,21 +205,29 @@ void GPU::DrawQuadShadedOpaque() {
 
 void GPU::DrawQuadTextureBlendOpaque() {
     LOG_DEBUG << "DrawQuadTextureBlendOpaque";
-    // placeholder: only load a red mono quad for now
-    renderer.draw_flags |= Renderer::DRAW_FLAG_MONO;
-    Color mono(0xFF);
-    renderer.DrawTriangle(Vertex(command_buffer[1], mono),
-                          Vertex(command_buffer[3], mono),
-                          Vertex(command_buffer[5], mono));
+    renderer.draw_mode = Renderer::DrawMode::TEXTURE;
+    renderer.palette = command_buffer[2] >> 16;
 
-    renderer.DrawTriangle(Vertex(command_buffer[3], mono),
-                          Vertex(command_buffer[5], mono),
-                          Vertex(command_buffer[7], mono));
+    u16 texpage_attribute = command_buffer[4] >> 16;
+    status.tex_page_x_base = texpage_attribute & 0xF;
+    status.tex_page_y_base = (texpage_attribute >> 4) & 0x1;
+    status.semi_transparency = (texpage_attribute >> 5) & 0x3;
+    status.tex_page_colors = (texpage_attribute >> 7) & 0x3;
+    status.tex_disable = (texpage_attribute >> 11) & 0x1;
+
+    Color c(command_buffer[0]);
+    renderer.DrawTriangle(Vertex(command_buffer[1], c, command_buffer[2]),
+                          Vertex(command_buffer[3], c, command_buffer[4]),
+                          Vertex(command_buffer[5], c, command_buffer[6]));
+
+    renderer.DrawTriangle(Vertex(command_buffer[3], c, command_buffer[4]),
+                          Vertex(command_buffer[5], c, command_buffer[6]),
+                          Vertex(command_buffer[7], c, command_buffer[8]));
 }
 
 void GPU::DrawTriangleShadedOpaque() {
     LOG_DEBUG << "DrawTriangleShadedOpaque";
-    renderer.draw_flags |= Renderer::DRAW_FLAG_SHADED;
+    renderer.draw_mode = Renderer::DrawMode::SHADED;
     renderer.DrawTriangle(Vertex(command_buffer[1], Color(command_buffer[0])),
                           Vertex(command_buffer[3], Color(command_buffer[2])),
                           Vertex(command_buffer[5], Color(command_buffer[4])));
@@ -336,6 +347,8 @@ void GPU::Reset() {
     drawing_area_top = 0;
     drawing_area_right = 0;
     drawing_area_bottom = 0;
+    drawing_x_offset = 0;
+    drawing_y_offset = 0;
     // TODO: reset variables once they will actually be used
 
     status.display_disabled = true;
@@ -352,7 +365,8 @@ void GPU::Reset() {
 
     std::fill(std::begin(vram), std::end(vram), 0);
 
-    renderer.draw_flags = Renderer::DRAW_FLAG_CLEAR;
+    renderer.draw_mode = Renderer::DrawMode::CLEAR;
+    renderer.palette = 0;
 }
 
 void GPU::DrawGpuState(bool* open) {
@@ -380,6 +394,7 @@ void GPU::DrawGpuState(bool* open) {
     ImGui::Text("[%3d,%3d]------+", drawing_area_left, drawing_area_top);
     ImGui::Text("    |          | ");
     ImGui::Text("    +------[%3d,%3d]", drawing_area_right, drawing_area_bottom);
+    ImGui::Text("Draw offset: x=%d, y=%d", drawing_x_offset, drawing_y_offset);
     ImGui::Columns(1);
     ImGui::Separator();
 
