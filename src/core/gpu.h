@@ -20,6 +20,8 @@ public:
 
     void DrawGpuState(bool* open);
 
+    u32 gpu_read = 0;
+
     static constexpr u32 VRAM_WIDTH = 1024;
     static constexpr u32 VRAM_HEIGHT = 512;
     static constexpr u32 VRAM_SIZE = 1024 * 512;
@@ -118,12 +120,14 @@ private:
 
     enum class Gp1Command : u32 {
         reset = 0x00,
+        cmd_buf_reset = 0x01,
         display_enable = 0x03,
         dma_dir = 0x04,
         display_vram_start = 0x05,
         display_hor_range = 0x06,
         display_ver_range = 0x07,
         display_mode = 0x08,
+        gpu_info = 0x10,
     };
 
     u32 command_counter = 0;

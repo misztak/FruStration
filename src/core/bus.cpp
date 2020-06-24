@@ -123,7 +123,7 @@ ValueType BUS::Load(u32 address) {
                             if (masked_address == 0x1F801070) return interrupt->LoadStat();
                             if (masked_address == 0x1F801074) return interrupt->LoadMask();
                             if (masked_address == 0x1F801110) return 0; // Timer 1 (horizontal retrace)
-                            if (masked_address == 0x1F801810) return 0; // GPUREAD
+                            if (masked_address == 0x1F801810) return gpu->gpu_read; // GPUREAD
                             if (masked_address == 0x1F801814) return (ValueType) gpu->ReadStat(); // GPUSTAT
                             if (masked_address >= 0x1F801080 && masked_address <= 0x1F8010F4) return (ValueType) dma->Load(rel_address - 0x80); // DMA
                             if (masked_address >= 0x1F801C00 && masked_address <= 0x1F801E80) return 0; // SPU

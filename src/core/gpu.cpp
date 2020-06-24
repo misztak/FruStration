@@ -146,6 +146,9 @@ void GPU::SendGP1Cmd(u32 cmd) {
         case Gp1Command::reset:
             ResetCommand();
             break;
+        case Gp1Command::cmd_buf_reset:
+            // TODO: implement me
+            break;
         case Gp1Command::display_enable:
             status.display_disabled = cmd & 0x1;
             break;
@@ -172,6 +175,15 @@ void GPU::SendGP1Cmd(u32 cmd) {
             status.vertical_interlace = (cmd >> 5) & 0x1;
             status.horizontal_res_2 = (cmd >> 6) & 0x1;
             if ((cmd >> 7) & 0x1) Panic("Tried to set GPUSTAT.14!");
+            break;
+        case Gp1Command::gpu_info:
+            // we pretend to have the older 160pin GPU
+            // TODO: differences between old and new GPU?
+            // TODO: remaining options
+            switch (cmd & 0xFFFFFF) {
+                case 7: break;
+                default: Panic("Unimplemented GPU info option %u", cmd & 0xFFFFFF);
+            }
             break;
         default:
             Panic("Unimplemented GP1 command 0x%08X", cmd);
@@ -265,8 +277,7 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
         auto increment = [&] {
             x_pos++;
             if (x_pos >= x_pos_max) {
-                y_pos++;
-                Assert(y_pos < 512);
+                y_pos = (y_pos + 1) % 512;
                 x_pos = command_buffer[1] & 0x3FF;
             }
         };
@@ -341,6 +352,7 @@ u16* GPU::GetVRAM() {
 }
 
 void GPU::Reset() {
+    gpu_read = 0;
     status.value = 0;
 
     drawing_area_left = 0;

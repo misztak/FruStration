@@ -61,6 +61,8 @@ void CPU::Step() {
     if (sp.pc ==  0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
     // psexe inject point
     // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/helloworld.psexe");
+    if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpu.exe");
+    // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpx.exe");
 
     if (unlikely(BREAKPOINTS_ENABLED && breakpoints.count(sp.pc))) {
         auto bp = breakpoints.find(sp.pc);
