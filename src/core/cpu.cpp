@@ -111,24 +111,24 @@ void CPU::Step() {
                     break;
                 case SecondaryOpcode::jr: {
                     u32 jump_address = Get(instr.s.rs);
+                    in_delay_slot = true;
                     if ((jump_address & 0x3) != 0) {
                         Exception(ExceptionCode::StoreAddress);
                         break;
                     }
                     next_pc = jump_address;
-                    in_delay_slot = true;
                     branch_taken = true;
                     break;
                 }
                 case SecondaryOpcode::jalr: {
                     u32 jump_address = Get(instr.s.rs);
+                    Set(instr.s.rd, next_pc);
+                    in_delay_slot = true;
                     if ((jump_address & 0x3) != 0) {
                         Exception(ExceptionCode::StoreAddress);
                         break;
                     }
-                    Set(instr.s.rd, next_pc);
                     next_pc = jump_address;
-                    in_delay_slot = true;
                     branch_taken = true;
                     break;
                 }
