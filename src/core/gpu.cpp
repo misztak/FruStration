@@ -26,8 +26,9 @@ void GPU::SendGP0Cmd(u32 cmd) {
         } else {
             CopyRectCpuToVram(cmd);
             words_remaining--;
+            // no reason to continue
+            return;
         }
-        return;
     }
 
     if (command_counter == 0) {
@@ -40,7 +41,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
     // clear the draw flags
     renderer.draw_mode = Renderer::DrawMode::CLEAR;
 
-    auto CommandAfterCount = [&](u32 count, std::function<void ()> function) {
+    auto CommandAfterCount = [&](u32 count, auto function) {
         if (command_counter == count) {
             function();
             command_counter = 0;

@@ -48,18 +48,10 @@ void Renderer::DrawTriangle(const Vertex& v0_original, const Vertex& v1_original
     u16 maxX = std::max({v0.x, v1.x, v2.x});
     u16 maxY = std::max({v0.y, v1.y, v2.y});
     // clip against drawing area
-    minX = std::max(minX, gpu->drawing_area_left);
-    minY = std::max(minY, gpu->drawing_area_top);
-    maxX = std::min(maxX, gpu->drawing_area_right);
-    maxY = std::min(maxY, gpu->drawing_area_bottom);
-
-    // something seems to be very wrong with the GPU commands, so this doesn't work yet
-#if 0
     minX = std::clamp(minX, gpu->drawing_area_left, gpu->drawing_area_right);
     minY = std::clamp(minY, gpu->drawing_area_top, gpu->drawing_area_bottom);
     maxX = std::clamp(maxX, gpu->drawing_area_left, gpu->drawing_area_right);
     maxY = std::clamp(maxY, gpu->drawing_area_top, gpu->drawing_area_bottom);
-#endif
 
 #if 0
     minX = gpu->drawing_area_left;
