@@ -29,9 +29,23 @@ public:
 private:
     ALWAYS_INLINE u32 MaskRegion(u32 address) { return address & MEM_REGION_MASKS[address >> 29]; }
 
-    static constexpr u32 BIOS_FILE_SIZE = 512 * 1024;
+    static constexpr u32 BIOS_SIZE = 512 * 1024;
     static constexpr u32 RAM_SIZE = 2048 * 1024;
     static constexpr u32 SCRATCH_SIZE = 1024;
+    static constexpr u32 CACHE_CTRL_SIZE = 512;
+    static constexpr u32 IO_PORTS_SIZE = 8 * 1024;
+    static constexpr u32 EXP_REG_1_SIZE = 8192 * 1024;
+    static constexpr u32 EXP_REG_2_SIZE = 8 * 1024;
+    static constexpr u32 EXP_REG_3_SIZE = 2048 * 1024;
+
+    static constexpr u32 BIOS_START = 0x1FC00000;
+    static constexpr u32 RAM_START = 0x00000000;
+    static constexpr u32 SCRATCH_START = 0x1F800000;
+    static constexpr u32 CACHE_CTRL_START = 0xFFFE0000;
+    static constexpr u32 IO_PORTS_START = 0x1F801000;
+    static constexpr u32 EXP_REG_1_START = 0x1F000000;
+    static constexpr u32 EXP_REG_2_START = 0x1F802000;
+    static constexpr u32 EXP_REG_3_START = 0x1FA00000;
 
     const u32 MEM_REGION_MASKS[8] = {
         // KUSEG - 2048 MB

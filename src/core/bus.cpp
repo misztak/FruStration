@@ -13,7 +13,7 @@
 
 LOG_CHANNEL(BUS);
 
-BUS::BUS() : bios(BIOS_FILE_SIZE), ram(RAM_SIZE, 0xCA), scratchpad(SCRATCH_SIZE) {}
+BUS::BUS() : bios(BIOS_SIZE), ram(RAM_SIZE, 0xCA), scratchpad(SCRATCH_SIZE) {}
 
 void BUS::Init(DMA* d, GPU* g, CPU::CPU* c, InterruptController* i) {
     dma = d;
@@ -34,12 +34,12 @@ bool BUS::LoadBIOS(const std::string& path) {
     long length = file.tellg();
     file.seekg(0, std::ifstream::beg);
 
-    if (length != BIOS_FILE_SIZE) {
+    if (length != BIOS_SIZE) {
         LOG_WARN << "BIOS file" << path << "has invalid length " << length;
         return false;
     }
 
-    file.read(reinterpret_cast<char*>(bios.data()), BIOS_FILE_SIZE);
+    file.read(reinterpret_cast<char*>(bios.data()), BIOS_SIZE);
     return true;
 }
 
@@ -97,12 +97,12 @@ ValueType BUS::Load(u32 address) {
     const u32 masked_addr = MaskRegion(address);
 
     // RAM
-    if (InArea(0x00000000, RAM_SIZE, masked_addr)) return *reinterpret_cast<ValueType*>(ram.data() + masked_addr);
+    if (InArea(RAM_START, RAM_SIZE, masked_addr)) return *reinterpret_cast<ValueType*>(ram.data() + masked_addr);
     // Scratchpad
-    if (InArea(0x1F800000, SCRATCH_SIZE, masked_addr))
-        return *reinterpret_cast<ValueType*>(scratchpad.data() + (masked_addr - 0x1F800000));
+    if (InArea(SCRATCH_START, SCRATCH_SIZE, masked_addr))
+        return *reinterpret_cast<ValueType*>(scratchpad.data() + (masked_addr - SCRATCH_START));
     // IO Ports
-    if (InArea(0x1F801000, 8 * 1024, masked_addr)) {
+    if (InArea(IO_PORTS_START, IO_PORTS_SIZE, masked_addr)) {
         switch (masked_addr) {
             case(0x1F801070): return interrupt->LoadStat();
             case(0x1F801074): return interrupt->LoadMask();
@@ -116,21 +116,21 @@ ValueType BUS::Load(u32 address) {
         Panic("Tried to load from IO Ports [0x%08X]", address);
     }
     // BIOS
-    if (InArea(0x1FC00000, BIOS_FILE_SIZE, masked_addr))
-        return *reinterpret_cast<ValueType*>(bios.data() + (masked_addr - 0x1FC00000));
+    if (InArea(BIOS_START, BIOS_SIZE, masked_addr))
+        return *reinterpret_cast<ValueType*>(bios.data() + (masked_addr - BIOS_START));
     // Cache Control
-    if (InArea(0xFFFE0000, 512, masked_addr)) Panic("Tried to load from Cache Control [0x%08X]", address);
+    if (InArea(CACHE_CTRL_START, CACHE_CTRL_SIZE, masked_addr)) Panic("Tried to load from Cache Control [0x%08X]", address);
     // Expansion Region 1
-    if (InArea(0x1F000000, 8192 * 1024, masked_addr)) {
+    if (InArea(EXP_REG_1_START, EXP_REG_1_SIZE, masked_addr)) {
         LOG_WARN << fmt::format("Tried to load from Expansion Region 1 [0x{:08X}]", address);
         return 0xFF;
     }
     // Expansion Region 2
-    if (InArea(0x1F802000, 8 * 1024, masked_addr)) {
+    if (InArea(EXP_REG_2_START, EXP_REG_2_SIZE, masked_addr)) {
         Panic("Tried to load from Expansion Region 2 [0x%08X]", address);
     }
     // Expansion Region 3
-    if (InArea(0x1FA00000, 2048 * 1024, masked_addr)) {
+    if (InArea(EXP_REG_3_START, EXP_REG_3_SIZE, masked_addr)) {
         Panic("Tried to load from Expansion Region 3 [0x%08X]", address);
     }
 
@@ -145,19 +145,19 @@ void BUS::Store(u32 address, Value value) {
     const u32 masked_addr = MaskRegion(address);
 
     // RAM
-    if (InArea(0x00000000, RAM_SIZE, masked_addr)) {
+    if (InArea(RAM_START, RAM_SIZE, masked_addr)) {
         std::copy(reinterpret_cast<u8*>(&value), reinterpret_cast<u8*>(&value) + sizeof(value),
                   ram.data() + masked_addr);
         return;
     }
     // Scratchpad
-    if (InArea(0x1F800000, SCRATCH_SIZE, masked_addr)) {
+    if (InArea(SCRATCH_START, SCRATCH_SIZE, masked_addr)) {
         std::copy(reinterpret_cast<u8*>(&value), reinterpret_cast<u8*>(&value) + sizeof(value),
-                  scratchpad.data() + (masked_addr - 0x1F800000));
+                  scratchpad.data() + (masked_addr - SCRATCH_START));
         return;
     }
     // IO Ports
-    if (InArea(0x1F801000, 8 * 1024, masked_addr)) {
+    if (InArea(IO_PORTS_START, IO_PORTS_SIZE, masked_addr)) {
         switch (masked_addr) {
             case(0x1F801070): interrupt->StoreStat(value); return;
             case(0x1F801074): interrupt->StoreMask(value); return;
@@ -175,26 +175,26 @@ void BUS::Store(u32 address, Value value) {
         return;
     }
     // BIOS
-    if (InArea(0x1FC00000, BIOS_FILE_SIZE, masked_addr)) {
+    if (InArea(BIOS_START, BIOS_SIZE, masked_addr)) {
         LOG_WARN << fmt::format("Tried to store value in BIOS address range [0x{:08X}] - Ignored", address);
         return;
     }
     // Cache Control
-    if (InArea(0xFFFE0000, 512, masked_addr)) {
+    if (InArea(CACHE_CTRL_START, CACHE_CTRL_SIZE, masked_addr)) {
         LOG_WARN << fmt::format("Store call to Cache Control [0x{:X} @ 0x{:08X}] - Ignored", value, address);
         return;
     }
     // Expansion Region 1
-    if (InArea(0x1F000000, 8192 * 1024, masked_addr)) {
+    if (InArea(EXP_REG_1_START, EXP_REG_1_SIZE, masked_addr)) {
         Panic("Tried to store in Expansion Region 1 [0x%08X]", address);
     }
     // Expansion Region 2
-    if (InArea(0x1F802000, 8 * 1024, masked_addr)) {
+    if (InArea(EXP_REG_2_START, EXP_REG_2_SIZE, masked_addr)) {
         LOG_WARN << fmt::format("Tried to store in Expansion Region 2 [0x{:X} @ 0x{:08X}] - Ignored", value, address);
         return;
     }
     // Expansion Region 3
-    if (InArea(0x1FA00000, 2048 * 1024, masked_addr)) {
+    if (InArea(EXP_REG_3_START, EXP_REG_3_SIZE, masked_addr)) {
         Panic("Tried to store in Expansion Region 3 [0x%08X]", address);
     }
 
