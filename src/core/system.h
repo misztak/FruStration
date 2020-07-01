@@ -13,6 +13,7 @@ class BUS;
 class DMA;
 class GPU;
 class InterruptController;
+class Debugger;
 
 class System {
 public:
@@ -34,7 +35,7 @@ public:
     bool draw_mem_viewer = false;
     bool draw_cpu_state = true;
     bool draw_gpu_state = true;
-    bool draw_breakpoint_editor = false;
+    bool draw_debugger = true;
     bool draw_disassembler = false;
 
     u16* GetVRAM();
@@ -44,4 +45,5 @@ private:
     std::unique_ptr<DMA> dma;
     std::unique_ptr<GPU> gpu;
     std::unique_ptr<InterruptController> interrupt;
+    std::unique_ptr<Debugger> debugger;
 };

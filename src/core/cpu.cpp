@@ -12,12 +12,12 @@ namespace CPU {
 
 bool DISASM_INSTRUCTION = false;
 bool TRACE_BIOS_CALLS = false;
-bool BREAKPOINTS_ENABLED = false;
 
 CPU::CPU() : disassembler(this) {}
 
-void CPU::Init(BUS* b) {
+void CPU::Init(BUS* b, Debugger* d) {
     bus = b;
+    debugger = d;
     cp.prid = 0x2;
     UpdatePC(0xBFC00000);
 }
@@ -40,6 +40,12 @@ void CPU::Reset() {
 }
 
 void CPU::Step() {
+    if (debugger->IsBreakpoint(sp.pc) && debugger->BreakpointEnabled(sp.pc)) {
+        LOG_DEBUG << "Hit breakpoint";
+        halt = true;
+        return;
+    }
+
     was_in_delay_slot = in_delay_slot;
     was_branch_taken = branch_taken;
 
@@ -61,19 +67,10 @@ void CPU::Step() {
     if (sp.pc ==  0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
     // psexe inject point
     // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/helloworld.psexe");
-    if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpu.exe");
+    // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpu.exe");
     // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpx.exe");
 
-    if (unlikely(BREAKPOINTS_ENABLED && breakpoints.count(sp.pc))) {
-        auto bp = breakpoints.find(sp.pc);
-        halt = bp->second.cpu_halt;
-        if (bp->second.action) bp->second.action();
-    }
-
 #ifdef DEBUG
-    // printf("Executing instruction 0x%02X [0x%08X] at address 0x%08X\n",
-    //       (instr.n.op == PrimaryOpcode::special) ? (u32)instr.s.sop.GetValue() : (u32)instr.n.op.GetValue(),
-    //       instr.value, sp.pc - 0xBFC00000);
     if (TRACE_BIOS_CALLS && sp.pc <= 0xC0) bios.TraceFunction(sp.pc, Get(9));
     if (DISASM_INSTRUCTION) disassembler.DisassembleInstruction(sp.pc, instr.value);
     static u64 instr_counter = 0; instr_counter++;

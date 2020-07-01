@@ -5,6 +5,7 @@
 #include "dma.h"
 #include "gpu.h"
 #include "interrupt.h"
+#include "debugger.h"
 #include "macros.h"
 
 LOG_CHANNEL(System);
@@ -19,9 +20,10 @@ void System::Init() {
     dma = std::make_unique<DMA>();
     gpu = std::make_unique<GPU>();
     interrupt = std::make_unique<InterruptController>();
+    debugger = std::make_unique<Debugger>();
 
-    cpu->Init(bus.get());
-    bus->Init(dma.get(), gpu.get(), cpu.get(), interrupt.get());
+    cpu->Init(bus.get(), debugger.get());
+    bus->Init(dma.get(), gpu.get(), cpu.get(), interrupt.get(), debugger.get());
     dma->Init(bus.get(), gpu.get(), interrupt.get());
     gpu->Init();
     interrupt->Init(cpu.get());
@@ -55,6 +57,7 @@ void System::DrawDebugWindows() {
     if (draw_mem_viewer) bus->DrawMemEditor(&draw_mem_viewer);
     if (draw_cpu_state) cpu->DrawCpuState(&draw_cpu_state);
     if (draw_gpu_state) gpu->DrawGpuState(&draw_gpu_state);
+    if (draw_debugger) debugger->DrawDebugger(&draw_debugger);
 }
 
 u16* System::GetVRAM() {

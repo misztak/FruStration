@@ -6,6 +6,7 @@
 #include "gpu.h"
 #include "cpu.h"
 #include "interrupt.h"
+#include "debugger.h"
 #include "imgui.h"
 #include "imgui_memory_editor.h"
 #include "macros.h"
@@ -15,11 +16,12 @@ LOG_CHANNEL(BUS);
 
 BUS::BUS() : bios(BIOS_SIZE), ram(RAM_SIZE, 0xCA), scratchpad(SCRATCH_SIZE) {}
 
-void BUS::Init(DMA* d, GPU* g, CPU::CPU* c, InterruptController* i) {
+void BUS::Init(DMA* d, GPU* g, CPU::CPU* c, InterruptController* i, Debugger* debug) {
     dma = d;
     gpu = g;
     cpu = c;
     interrupt = i;
+    debugger = debug;
 }
 
 bool BUS::LoadBIOS(const std::string& path) {
@@ -94,6 +96,12 @@ template <typename ValueType>
 ValueType BUS::Load(u32 address) {
     static_assert(std::is_same<ValueType, u32>::value || std::is_same<ValueType, u16>::value ||
                   std::is_same<ValueType, u8>::value);
+
+    if (debugger->IsWatchpoint(address) && debugger->WatchpointEnabledOnLoad(address)) {
+        LOG_DEBUG << "Hit load watchpoint";
+        cpu->halt = true;
+    }
+
     const u32 masked_addr = MaskRegion(address);
 
     // RAM
@@ -142,6 +150,12 @@ template <typename Value>
 void BUS::Store(u32 address, Value value) {
     static_assert(std::is_same<decltype(value), u32>::value || std::is_same<decltype(value), u16>::value ||
                   std::is_same<decltype(value), u8>::value);
+
+    if (debugger->IsWatchpoint(address) && debugger->WatchpointEnabledOnStore(address)) {
+        LOG_DEBUG << "Hit store watchpoint";
+        cpu->halt = true;
+    }
+
     const u32 masked_addr = MaskRegion(address);
 
     // RAM

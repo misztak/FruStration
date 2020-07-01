@@ -1,14 +1,13 @@
 #pragma once
 
-#include <unordered_map>
-#include <functional>
-
 #include "cpu_common.h"
 #include "cpu_disasm.h"
+#include "debugger.h"
 
 #include "bios.h"
 
 class BUS;
+class Debugger;
 
 // TODO: remove CPU namespace
 namespace CPU {
@@ -18,7 +17,7 @@ friend class Disassembler;
 friend class ::BUS;
 public:
     CPU();
-    void Init(BUS* bus);
+    void Init(BUS* bus, Debugger* debugger);
     void Reset();
 
     void Step();
@@ -32,15 +31,6 @@ public:
     void DrawCpuState(bool* open);
 
     bool halt = false;
-
-    struct Breakpoint {
-        Breakpoint() {};
-        Breakpoint(bool cpu_halt, std::function<void()> action) : cpu_halt(cpu_halt), action(action) {};
-
-        bool cpu_halt = true;
-        std::function<void()> action;
-    };
-    std::unordered_map<u32, Breakpoint> breakpoints;
 
     GP_Registers gp;
     SP_Registers sp;
@@ -65,6 +55,7 @@ private:
     Instruction instr;
 
     BUS* bus = nullptr;
+    Debugger* debugger = nullptr;
 
     BIOS bios;
     Disassembler disassembler;
