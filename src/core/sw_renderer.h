@@ -26,6 +26,9 @@ struct Vertex {
     ALWAYS_INLINE void SetTextPoint(u32 value) {
         tex_x = u8(value), tex_y = u8(value >> 8);
     }
+    ALWAYS_INLINE void Reset() {
+        x = 0, y = 0, c.r = 0, c.g = 0, c.b = 0, tex_x = 0, tex_y = 0;
+    }
 };
 
 class Renderer {
@@ -43,8 +46,6 @@ public:
     DrawMode draw_mode = DrawMode::CLEAR;
 
     u16 palette = 0;
-
-    std::array<Vertex, 4> vertices;
 private:
     GPU* gpu = nullptr;
 };

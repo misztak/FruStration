@@ -132,7 +132,7 @@ private:
     };
 
     u32 command_counter = 0;
-    std::array<u32, 12> command_buffer = {};
+    std::array<u32, 12> command_buffer;
 
     Mode mode = Mode::Command;
     u32 words_remaining = 0;
@@ -145,7 +145,8 @@ private:
     } command;
 
     // TODO: is VRAM filled with garbage at boot?
-    std::array<u16, VRAM_SIZE> vram = {};
+    std::array<u16, VRAM_SIZE> vram;
 
+    std::array<Vertex, 4> vertices;
     Renderer renderer;
 };
