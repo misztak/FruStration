@@ -70,7 +70,9 @@ void GPU::SendGP0Cmd(u32 cmd) {
             break;
         case Gp0Command::dot_mono_opaque:
             CommandAfterCount(1, [&] {
-                Vertex dot(command_buffer[1], command_buffer[0]);
+                Vertex dot;
+                dot.SetPoint(command_buffer[1]);
+                dot.c.SetColor(command_buffer[0]);
                 vram[dot.x + VRAM_WIDTH * dot.y] = dot.c.To5551();
             });
             break;
@@ -176,38 +178,32 @@ void GPU::SendGP1Cmd(u32 cmd) {
     }
 }
 
-#define VERT_MONO(coord_index, color) Vertex(command_buffer[coord_index], color)
-#define VERT_SHADED(coord_index, color_index) Vertex(command_buffer[coord_index], command_buffer[color_index])
-#define VERT_TEXTURE(coord_index, color_index, tex_index) \
-    Vertex(command_buffer[coord_index], Color(command_buffer[color_index]), command_buffer[tex_index])
-
 void GPU::DrawQuadMonoOpaque() {
-    LOG_DEBUG << "DrawQuadMonoOpaque";
+    //LOG_DEBUG << "DrawQuadMonoOpaque";
     renderer.draw_mode = Renderer::DrawMode::MONO;
-    Color mono(command_buffer[0]);
-    renderer.DrawTriangle(VERT_MONO(1, mono),
-                          VERT_MONO(2, mono),
-                          VERT_MONO(3, mono));
-
-    renderer.DrawTriangle(VERT_MONO(2, mono),
-                          VERT_MONO(3, mono),
-                          VERT_MONO(4, mono));
+    for (u8 i = 0; i < 4; i++) {
+        renderer.vertices[i].SetPoint(command_buffer[i + 1]);
+        renderer.vertices[i].c.SetColor(command_buffer[0]);
+        renderer.vertices[i].SetTextPoint(0);
+    }
+    renderer.DrawTriangle(&renderer.vertices[0], &renderer.vertices[1], &renderer.vertices[2]);
+    renderer.DrawTriangle(&renderer.vertices[1], &renderer.vertices[2], &renderer.vertices[3]);
 }
 
 void GPU::DrawQuadShadedOpaque() {
-    LOG_DEBUG << "DrawQuadShadedOpaque";
+    //LOG_DEBUG << "DrawQuadShadedOpaque";
     renderer.draw_mode = Renderer::DrawMode::SHADED;
-    renderer.DrawTriangle(VERT_SHADED(1, 0),
-                          VERT_SHADED(3, 2),
-                          VERT_SHADED(5, 4));
-
-    renderer.DrawTriangle(VERT_SHADED(3, 2),
-                          VERT_SHADED(5, 4),
-                          VERT_SHADED(7, 6));
+    for (u8 i = 0; i < 4; i++) {
+        renderer.vertices[i].SetPoint(command_buffer[(i * 2) + 1]);
+        renderer.vertices[i].c.SetColor(command_buffer[(i * 2)]);
+        renderer.vertices[i].SetTextPoint(0);
+    }
+    renderer.DrawTriangle(&renderer.vertices[0], &renderer.vertices[1], &renderer.vertices[2]);
+    renderer.DrawTriangle(&renderer.vertices[1], &renderer.vertices[2], &renderer.vertices[3]);
 }
 
 void GPU::DrawQuadTextureBlendOpaque() {
-    LOG_DEBUG << "DrawQuadTextureBlendOpaque";
+    //LOG_DEBUG << "DrawQuadTextureBlendOpaque";
     renderer.draw_mode = Renderer::DrawMode::TEXTURE;
     renderer.palette = command_buffer[2] >> 16;
 
@@ -218,21 +214,25 @@ void GPU::DrawQuadTextureBlendOpaque() {
     status.tex_page_colors = (texpage_attribute >> 7) & 0x3;
     status.tex_disable = (texpage_attribute >> 11) & 0x1;
 
-    renderer.DrawTriangle(VERT_TEXTURE(1, 0, 2),
-                          VERT_TEXTURE(3, 0, 4),
-                          VERT_TEXTURE(5, 0, 6));
-
-    renderer.DrawTriangle(VERT_TEXTURE(3, 0, 4),
-                          VERT_TEXTURE(5, 0, 6),
-                          VERT_TEXTURE(7, 0, 8));
+    for (u8 i = 0; i < 4; i++) {
+        renderer.vertices[i].SetPoint(command_buffer[(i * 2) + 1]);
+        renderer.vertices[i].c.SetColor(command_buffer[0]);
+        renderer.vertices[i].SetTextPoint(command_buffer[(i * 2) + 2]);
+    }
+    renderer.DrawTriangle(&renderer.vertices[0], &renderer.vertices[1], &renderer.vertices[2]);
+    renderer.DrawTriangle(&renderer.vertices[1], &renderer.vertices[2], &renderer.vertices[3]);
 }
 
 void GPU::DrawTriangleShadedOpaque() {
-    LOG_DEBUG << "DrawTriangleShadedOpaque";
+    //LOG_DEBUG << "DrawTriangleShadedOpaque";
     renderer.draw_mode = Renderer::DrawMode::SHADED;
-    renderer.DrawTriangle(VERT_SHADED(1, 0),
-                          VERT_SHADED(3, 2),
-                          VERT_SHADED(5, 4));
+
+    for (u8 i = 0; i < 3; i++) {
+        renderer.vertices[i].SetPoint(command_buffer[(i * 2) + 1]);
+        renderer.vertices[i].c.SetColor(command_buffer[(i * 2)]);
+        renderer.vertices[i].SetTextPoint(0);
+    }
+    renderer.DrawTriangle(&renderer.vertices[0], &renderer.vertices[1], &renderer.vertices[2]);
 }
 
 void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
