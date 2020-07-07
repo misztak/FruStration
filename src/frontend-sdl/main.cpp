@@ -99,6 +99,9 @@ int main(int, char**) {
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
                 event.window.windowID == SDL_GetWindowID(window))
                 done = true;
+            if (event.type == SDL_KEYUP) {
+                if (event.key.keysym.scancode == SDL_SCANCODE_H) system.SetHalt(!system.IsHalted());
+            }
         }
         int vsync = SDL_GL_GetSwapInterval();
         display.Draw(&done, vsync != 0);
@@ -107,10 +110,11 @@ int main(int, char**) {
             // run for one frame
             for (u32 cycles = 0; cycles < FRAME_CYCLES; cycles += 2) {
                 system.RunFrame();
+                if (unlikely(system.IsHalted())) break;
             }
         }
 
-        // at the moment this is always NTSC (60Hz)
+        // at the moment this is set to 60Hz
         system.VBlank();
 
         display.Render();

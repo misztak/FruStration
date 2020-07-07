@@ -31,8 +31,8 @@ void GPU::SendGP0Cmd(u32 cmd) {
         }
     }
 
+    //LOG_DEBUG << fmt::format("GPU received GP0 command 0x{:08X}", cmd);
     if (command_counter == 0) {
-        //LOG_DEBUG << fmt::format("GPU received GP0 command 0x{:08X}", cmd);
         command.value = cmd;
     }
     DebugAssert(command_counter < 12);

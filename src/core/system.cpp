@@ -27,6 +27,7 @@ void System::Init() {
     dma->Init(bus.get(), gpu.get(), interrupt.get());
     gpu->Init();
     interrupt->Init(cpu.get());
+    debugger->Init(cpu.get());
     LOG_INFO << "Initialized PSX core";
 }
 
@@ -50,6 +51,7 @@ void System::Reset() {
     dma->Reset();
     gpu->Reset();
     interrupt->Reset();
+    debugger->Reset();
     LOG_INFO << "System reset";
 }
 

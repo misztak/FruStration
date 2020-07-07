@@ -40,12 +40,6 @@ void CPU::Reset() {
 }
 
 void CPU::Step() {
-    if (debugger->IsBreakpoint(sp.pc) && debugger->BreakpointEnabled(sp.pc)) {
-        LOG_DEBUG << "Hit breakpoint";
-        halt = true;
-        return;
-    }
-
     was_in_delay_slot = in_delay_slot;
     was_branch_taken = branch_taken;
 
@@ -53,6 +47,18 @@ void CPU::Step() {
     branch_taken = false;
 
     instr.value = Load32(sp.pc);
+
+    debugger->StoreLastInstruction(sp.pc, instr.value);
+    if (debugger->IsBreakpoint(sp.pc) && debugger->BreakpointEnabled(sp.pc)) {
+        LOG_DEBUG << "Hit breakpoint";
+        halt = true;
+    }
+
+#ifdef DEBUG
+    if (TRACE_BIOS_CALLS && sp.pc <= 0xC0) bios.TraceFunction(sp.pc, Get(9));
+    if (DISASM_INSTRUCTION) LOG_DEBUG << disassembler.InstructionAt(sp.pc, instr.value);
+    static u64 instr_counter = 0; instr_counter++;
+#endif
 
     // handle interrupts
     if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
@@ -69,12 +75,6 @@ void CPU::Step() {
     // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/helloworld.psexe");
     // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpu.exe");
     // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpx.exe");
-
-#ifdef DEBUG
-    if (TRACE_BIOS_CALLS && sp.pc <= 0xC0) bios.TraceFunction(sp.pc, Get(9));
-    if (DISASM_INSTRUCTION) disassembler.DisassembleInstruction(sp.pc, instr.value);
-    static u64 instr_counter = 0; instr_counter++;
-#endif
 
     UpdatePC(next_pc);
     // at this point the pc contains the address of the delay slot instruction

@@ -14,6 +14,7 @@ namespace CPU {
 
 class CPU {
 friend class Disassembler;
+friend class ::Debugger;
 friend class ::BUS;
 public:
     CPU();

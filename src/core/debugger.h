@@ -1,8 +1,13 @@
 #pragma once
 
 #include <unordered_map>
+#include <array>
 
 #include "types.h"
+
+namespace CPU {
+class CPU;
+}
 
 class Debugger {
 public:
@@ -25,7 +30,14 @@ public:
         return wp.type == Watchpoint::ENABLED || wp.type == Watchpoint::ONLY_LOAD;
     }
 
+    ALWAYS_INLINE void StoreLastInstruction(u32 address, u32 value) {
+        last_instructions[ring_ptr] = std::make_pair(address, value);
+        ring_ptr = (ring_ptr + 1) & 127;
+    }
+
+    void Init(CPU::CPU* cpu);
     void DrawDebugger(bool* open);
+    void Reset();
 
     bool attached = false;
 private:
@@ -37,6 +49,21 @@ private:
     struct Watchpoint {
         enum Type { ENABLED, ONLY_LOAD, ONLY_STORE, DISABLED };
         Type type = ENABLED;
+        const char* TypeToString() {
+            switch (type) {
+                case ENABLED: return "ENABLED";
+                case ONLY_LOAD: return "ON_LOAD";
+                case ONLY_STORE: return "ON_STORE";
+                case DISABLED: return "DISABLED";
+            }
+            return "XXX";
+        }
+
+        Watchpoint(Type type) : type(type) {}
     };
     std::unordered_map<u32, Watchpoint> watchpoints;
+
+    u32 ring_ptr = 0;
+    std::array<std::pair<u32, u32>, 128> last_instructions;
+    CPU::CPU* cpu = nullptr;
 };

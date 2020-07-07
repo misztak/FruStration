@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "types.h"
 
 namespace CPU {
@@ -9,8 +11,9 @@ class CPU;
 class Disassembler {
 public:
     explicit Disassembler(CPU* cpu);
-    void DisassembleInstruction(u32 address, u32 value);
+    std::string InstructionAt(u32 address, u32 value, bool with_curr_value = true);
 private:
+    void Disassemble(u32 address, u32 value);
     void PrintInstruction(const char* name, u32 r1, u32 r2 = 32, u32 r3 = 32);
     void PrintInstructionWithConstant(const char* name, u32 constant, u32 r1 = 32, u32 r2 = 32, u32 r3 = 32);
     void PrintLoadStoreInstruction(const char* name, u32 rt, u32 base, s32 offset);
@@ -34,6 +37,8 @@ private:
         "sr", "cause", "epc", "prid"
     };
 
+    bool with_current_value = true;
+    std::string result;
     CPU* cpu = nullptr;
 };
 }
