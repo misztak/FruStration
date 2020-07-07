@@ -48,6 +48,7 @@ void CPU::Step() {
 
     instr.value = Load32(sp.pc);
 
+    halt = debugger->single_step;
     debugger->StoreLastInstruction(sp.pc, instr.value);
     if (debugger->IsBreakpoint(sp.pc) && debugger->BreakpointEnabled(sp.pc)) {
         LOG_DEBUG << "Hit breakpoint";

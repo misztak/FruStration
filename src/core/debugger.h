@@ -40,6 +40,7 @@ public:
     void Reset();
 
     bool attached = false;
+    bool single_step = false;
 private:
     struct Breakpoint {
         bool enabled = true;
