@@ -86,9 +86,10 @@ void Debugger::DrawDebugger(bool* open) {
 
     if (attached) {
         static bool locked_to_bottom = true;
+        const ImVec4 orange(.8f, .6f, .3f, 1.f);
         const bool is_line_visible = ImGui::BeginChild("__disasm_view", ImVec2(0, 0), true,
                                                        ImGuiWindowFlags_MenuBar);
-        u32 start = ring_ptr & 127;
+        u32 start = ring_ptr & BUFFER_MASK;
 
         if (ImGui::BeginMenuBar()) {
             ImGui::Checkbox("Scroll lock", &locked_to_bottom);
@@ -96,11 +97,11 @@ void Debugger::DrawDebugger(bool* open) {
         }
 
         if (is_line_visible) {
-            for (u32 i = start; i < start + 128; i++) {
-                auto& instr = last_instructions[i & 127];
+            for (u32 i = start; i < start + BUFFER_SIZE; i++) {
+                auto& instr = last_instructions[i & BUFFER_MASK];
                 if (instr.first == 0) continue;
-                if ((i & 127) == ((ring_ptr - 1) & 127)) {
-                    ImGui::TextColored(ImVec4(.8f, .6f, .3f, 1.f),"%s   <---",
+                if ((i & BUFFER_MASK) == ((ring_ptr - 1) & BUFFER_MASK)) {
+                    ImGui::TextColored(orange,"%s   <---",
                         cpu->disassembler.InstructionAt(instr.first, instr.second, false).c_str());
                 } else {
                     ImGui::TextUnformatted(

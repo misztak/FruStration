@@ -64,7 +64,9 @@ private:
     };
     std::unordered_map<u32, Watchpoint> watchpoints;
 
+    static constexpr u32 BUFFER_SIZE = 128;
+    static constexpr u32 BUFFER_MASK = BUFFER_SIZE - 1;
     u32 ring_ptr = 0;
-    std::array<std::pair<u32, u32>, 128> last_instructions;
+    std::array<std::pair<u32, u32>, BUFFER_SIZE> last_instructions;
     CPU::CPU* cpu = nullptr;
 };
