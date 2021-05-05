@@ -14,6 +14,9 @@ bin
 .ccls-cache
 compile_commands.json
 
+# psexe files
+test/exe
+
 # misc
 docs
 bios
