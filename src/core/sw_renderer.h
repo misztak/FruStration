@@ -31,19 +31,19 @@ struct Vertex {
     }
 };
 
+enum class DrawMode : u32 {
+    MONO,
+    SHADED,
+    TEXTURE,
+};
+
 class Renderer {
 public:
     Renderer();
     void Init(GPU* gpu);
-    void DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2);
 
-    enum class DrawMode : u32 {
-        CLEAR,
-        MONO,
-        SHADED,
-        TEXTURE,
-    };
-    DrawMode draw_mode = DrawMode::CLEAR;
+    template <DrawMode mode>
+    void DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2);
 
     u16 palette = 0;
 private:

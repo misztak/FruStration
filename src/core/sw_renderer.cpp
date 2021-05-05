@@ -18,6 +18,7 @@ static constexpr u8 Interpolate(u8 v0, u8 v1, u8 v2, s32 w0, s32 w1, s32 w2, s32
     return std::clamp(vd, 0, 255);
 }
 
+template <DrawMode mode>
 void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
     auto weight = [](s16 vx0, s16 vy0, s16 vx1, s16 vy1, s16 vx2, s16 vy2) {
         return (s32)((vx1 - vx0) * (vy2 - vy0)) - ((vy1 - vy0) * (vx2 - vx0));
@@ -60,11 +61,11 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
         for (u32 px = minX; px <= maxX; px++) {
             if ((row_w0 | row_w1 | row_w2) >= 0) {
                 const s32 b0 = row_w0, b1 = row_w1, b2 = row_w2;
-                if (draw_mode == DrawMode::MONO) {
+                if constexpr (mode == DrawMode::MONO) {
                     // all vertices store the same color value
                     gpu->vram[px + GPU::VRAM_WIDTH * py] = v0->c.To5551();
                 }
-                if (draw_mode == DrawMode::SHADED) {
+                if constexpr (mode == DrawMode::SHADED) {
                     Color color;
                     // shading
                     //color.r = Interpolate(v0.c.r, v1.c.r, v2.c.r, b0, b1, b2, w, half_w);
@@ -76,7 +77,7 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
                     //LOG_DEBUG << fmt::format("Color r={}, g={}, b={} at loc ({},{})", color.r, color.g, color.b, px, py);
                     gpu->vram[px + GPU::VRAM_WIDTH * py] = color.To5551();
                 }
-                if (draw_mode == DrawMode::TEXTURE) {
+                if constexpr (mode == DrawMode::TEXTURE) {
                     u8 tex_x = Interpolate(v0->tex_x, v1->tex_x, v2->tex_x, b0, b1, b2, w, half_w);
                     u8 tex_y = Interpolate(v0->tex_y, v1->tex_y, v2->tex_y, b0, b1, b2, w, half_w);
 
@@ -96,7 +97,7 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
                         u16 texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
                         //LOG_DEBUG << "Texel " << texel << " from location (" << texel_x << ',' << texel_y << ')';
                         if (texel) {
-                            gpu->vram[px + GPU::VRAM_WIDTH * py] = texel;
+                            gpu->vram[px + GPU::VRAM_WIDTH * py] = 0xFF;
                         }
                     } else {
                         Panic("Soon (TM)");
@@ -108,3 +109,7 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
         w0 += dy0, w1 += dy1, w2 += dy2;
     }
 }
+
+template void Renderer::DrawTriangle<DrawMode::MONO>(Vertex *v0, Vertex *v1, Vertex *v2);
+template void Renderer::DrawTriangle<DrawMode::SHADED>(Vertex *v0, Vertex *v1, Vertex *v2);
+template void Renderer::DrawTriangle<DrawMode::TEXTURE>(Vertex *v0, Vertex *v1, Vertex *v2);
