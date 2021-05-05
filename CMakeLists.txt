@@ -5,6 +5,8 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/.cmake-modules/")
 
 set(CMAKE_CXX_STANDARD 17)
 
+#set(CMAKE_VERBOSE_MAKEFILE ON)
+
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
@@ -37,7 +39,7 @@ if (APPLE)
     #set(LIBS "-lc++abi -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo")
 elseif(UNIX AND NOT APPLE)
     # use groups for older gcc versions
-    if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
+    if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.0)
         set(LIBS "-Wl,--start-group -lGL -ldl")
     else()
         set(LIBS "-lGL -ldl")
