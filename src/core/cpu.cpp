@@ -112,7 +112,7 @@ void CPU::Step() {
                     in_delay_slot = true;
                     if ((jump_address & 0x3) != 0) {
                         Exception(ExceptionCode::StoreAddress);
-                        break;
+                        //break;
                     }
                     next_pc = jump_address;
                     branch_taken = true;
@@ -124,7 +124,7 @@ void CPU::Step() {
                     in_delay_slot = true;
                     if ((jump_address & 0x3) != 0) {
                         Exception(ExceptionCode::StoreAddress);
-                        break;
+                        //break;
                     }
                     next_pc = jump_address;
                     branch_taken = true;
