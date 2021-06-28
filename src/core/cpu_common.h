@@ -95,8 +95,9 @@ enum class ExceptionCode : u32 {
     Overflow = 0x0C,
 };
 
+constexpr u32 GP_REG_COUNT = 32;
 union GP_Registers {
-    u32 r[32] = {};
+    u32 r[GP_REG_COUNT] = {};
 
     struct {
         u32 zero;  // always zero
@@ -134,14 +135,20 @@ union GP_Registers {
     };
 };
 
-struct SP_Registers {
-    u32 pc = 0; // we set the pc to 0xbfc00000 during cpu init
-    u32 hi = 0;
-    u32 lo = 0;
+constexpr u32 SP_REG_COUNT = 3;
+union SP_Registers {
+    u32 spr[SP_REG_COUNT] = {};
+
+    struct {
+        u32 pc;  // we set the pc to 0xbfc00000 during cpu init
+        u32 hi;
+        u32 lo;
+    };
 };
 
+constexpr u32 COP_REG_COUNT = 16;
 union CP0_Registers {
-    u32 cpr[16] = {};
+    u32 cpr[COP_REG_COUNT] = {};
 
     struct {
         u32 cop0r0;
@@ -174,6 +181,28 @@ union CP0_Registers {
         u32 epc;        // return address from trap (R)
         u32 prid;       // processor ID (R)
     };
+};
+
+const char* const rnames[GP_REG_COUNT] = {
+    "0", "at", "v0", "v1",
+    "a0", "a1", "a2", "a3",
+    "t0", "t1", "t2", "t3",
+    "t4", "t5", "t6", "t7",
+    "s0", "s1", "s2", "s3",
+    "s4", "s5", "s6", "s7",
+    "t8", "t9", "k0", "k1",
+    "gp", "sp", "fp", "ra"
+};
+
+const char* const spnames[SP_REG_COUNT] = {
+    "pc", "hi", "lo"
+};
+
+const char* const coprnames[COP_REG_COUNT] = {
+    "0", "1", "2", "bpc",
+    "4", "bda", "jumpdest", "dcic",
+    "bad_vaddr", "bdam", "10", "bpcm",
+    "sr", "cause", "epc", "prid"
 };
 
 union Instruction {

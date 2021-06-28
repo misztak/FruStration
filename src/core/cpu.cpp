@@ -619,12 +619,42 @@ void CPU::DrawCpuState(bool* open) {
     ImGui::Begin("CPU State", open);
     ImGui::Separator();
 
-    // TODO: extra line for proper register names
+    if (ImGui::TreeNode("Edit")) {
+        static int curr_gp_reg = 0;
+        ImGui::Text("GP Registers ");
+        ImGui::SameLine();
+        ImGui::Combo("##gp_reg_list", &curr_gp_reg, rnames, GP_REG_COUNT, 10);
+        ImGui::SameLine();
+        ImGui::InputScalar("##gp_reg_edit", ImGuiDataType_U32, &gp.r[curr_gp_reg], nullptr, nullptr, "%08X",
+                           ImGuiInputTextFlags_CharsHexadecimal);
+
+        static int curr_sp_reg = 0;
+        ImGui::Text("SP Registers ");
+        ImGui::SameLine();
+        ImGui::Combo("##sp_reg_list", &curr_sp_reg, spnames, SP_REG_COUNT);
+        ImGui::SameLine();
+        ImGui::InputScalar("##sp_reg_edit", ImGuiDataType_U32, &sp.spr[curr_sp_reg], nullptr, nullptr, "%08X",
+                           ImGuiInputTextFlags_CharsHexadecimal);
+
+        static int curr_cop_reg = 0;
+        ImGui::Text("COP0 Registers ");
+        ImGui::SameLine();
+        ImGui::Combo("##cop_reg_list", &curr_cop_reg, coprnames, COP_REG_COUNT, 10);
+        ImGui::SameLine();
+        ImGui::InputScalar("##cop_reg_edit", ImGuiDataType_U32, &cp.cpr[curr_cop_reg], nullptr, nullptr, "%08X",
+                           ImGuiInputTextFlags_CharsHexadecimal);
+
+        ImGui::TreePop();
+    }
+
+    ImGui::Separator();
+
     ImGui::Text("GP Registers");
     ImGui::Columns(4);
     for (u32 col=0; col<4; col++) {
         for (u32 row=0; row<8; row++) {
-            ImGui::Text(" R%-3u %08X", row + col * 8, gp.r[row + col * 8]);
+            const u32 index = row + col * 8;
+            ImGui::Text(" $%-3s %08X", rnames[index], gp.r[row + col * 8]);
         }
         ImGui::NextColumn();
     }
@@ -643,7 +673,8 @@ void CPU::DrawCpuState(bool* open) {
     ImGui::Columns(4);
     for (u32 col=0; col<4; col++) {
         for (u32 row=0; row<4; row++) {
-            ImGui::Text(" R%-3u %08X", row + col * 4, cp.cpr[row + col * 4]);
+            const u32 index = row + col * 4;
+            ImGui::Text(" $%-10s %08X", coprnames[index], cp.cpr[row + col * 4]);
         }
         ImGui::NextColumn();
     }

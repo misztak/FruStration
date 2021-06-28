@@ -249,11 +249,10 @@ void Disassembler::PrintInstruction(const char* name, u32 r1, u32 r2, u32 r3) {
     if (r3 != 32) result.append(fmt::format(", {}=0x{:X}", rnames[r3], cpu->gp.r[r3]));
 }
 
-void Disassembler::PrintInstructionWithConstant(const char* name, u32 constant, u32 r1, u32 r2, u32 r3) {
+void Disassembler::PrintInstructionWithConstant(const char* name, u32 constant, u32 r1, u32 r2) {
     result.append(fmt::format("{}", name));
     if (r1 != 32) result.append(fmt::format(" ${}", rnames[r1]));
     if (r2 != 32) result.append(fmt::format(" ${}", rnames[r2]));
-    if (r3 != 32) result.append(fmt::format(" ${}", rnames[r3]));
     result.append(fmt::format(" 0x{:08X}", constant));
 
     if (!with_current_value) return;
@@ -261,7 +260,6 @@ void Disassembler::PrintInstructionWithConstant(const char* name, u32 constant, 
 
     if (r1 != 32) result.append(fmt::format("{}=0x{:X}", rnames[r1], cpu->gp.r[r1]));
     if (r2 != 32) result.append(fmt::format(", {}=0x{:X}", rnames[r2], cpu->gp.r[r2]));
-    if (r3 != 32) result.append(fmt::format(", {}=0x{:X}", rnames[r3], cpu->gp.r[r3]));
 }
 
 void Disassembler::PrintLoadStoreInstruction(const char* name, u32 rt, u32 base, s32 offset) {
