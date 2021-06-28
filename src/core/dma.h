@@ -76,7 +76,7 @@ private:
         } control;
 
         bool ready() {
-            bool trigger = (control.sync_mode == SyncMode::Manual) ? control.start_trigger : true;
+            bool trigger = control.sync_mode != SyncMode::Manual || control.start_trigger;
             return control.start_busy && trigger;
         }
     };

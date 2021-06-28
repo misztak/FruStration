@@ -495,7 +495,7 @@ void CPU::Step() {
             Exception(ExceptionCode::CopError);
             break;
         default:
-            LOG_CRIT << fmt::format("Invalid opcode 0x%02X [0x%08X]\n", (u32)instr.n.op.GetValue(), instr.value);
+            LOG_CRIT << fmt::format("Invalid opcode 0x{:02X} [0x{:08X}]\n", (u32)instr.n.op.GetValue(), instr.value);
             Exception(ExceptionCode::ReservedInstr);
     }
 
