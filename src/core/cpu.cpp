@@ -35,7 +35,7 @@ void CPU::Reset() {
 
     was_in_delay_slot = false, in_delay_slot = false;
     was_branch_taken = false, branch_taken = false;
-    for (auto& v : delay_entries) v = {0, 0};
+    pending_delay_entry = {0, 0}, new_delay_entry = {0, 0};
     instr.value = 0;
 }
 
@@ -377,7 +377,7 @@ void CPU::Step() {
             u32 address = Get(instr.n.rs) + instr.imm_se();
 
             u32 aligned_value = Load32(address & ~0x3);
-            u32 old_value = (delay_entries[0].reg == instr.n.rt) ? delay_entries[0].value : Get(instr.n.rt);
+            u32 old_value = (pending_delay_entry.reg == instr.n.rt) ? pending_delay_entry.value : Get(instr.n.rt);
 
             u32 new_value = 0;
             switch (address & 0x3) {
@@ -416,7 +416,7 @@ void CPU::Step() {
             u32 address = Get(instr.n.rs) + instr.imm_se();
 
             u32 aligned_value = Load32(address & ~0x3);
-            u32 old_value = (delay_entries[0].reg == instr.n.rt) ? delay_entries[0].value : Get(instr.n.rt);
+            u32 old_value = (pending_delay_entry.reg == instr.n.rt) ? pending_delay_entry.value : Get(instr.n.rt);
 
             u32 new_value = 0;
             switch (address & 0x3) {
@@ -562,10 +562,6 @@ void CPU::Store8(u32 address, u8 value) {
 
 void CPU::Set(u32 index, u32 value) {
     Assert(index < 32);
-    if (delay_entries[0].reg == index) {
-        delay_entries[0].reg = 0;
-        delay_entries[0].value = 0;
-    }
     gp.r[index] = value;
     gp.zero = 0;
 }
@@ -594,18 +590,20 @@ u32 CPU::GetCP0(u32 index) {
 void CPU::SetDelayEntry(u32 reg, u32 value) {
     Assert(reg < 32);
     //if (reg == 0) return;
-    if (delay_entries[0].reg == reg) {
-        delay_entries[0].reg = 0;
-        delay_entries[0].value = 0;
+    if (pending_delay_entry.reg == reg) {
+        pending_delay_entry.reg = 0;
+        pending_delay_entry.value = 0;
     }
 
-    delay_entries[1] = {reg, value};
+    new_delay_entry.reg = reg;
+    new_delay_entry.value = value;
 }
 
 void CPU::UpdateDelayEntries() {
-    gp.r[delay_entries[0].reg] = delay_entries[0].value;
-    delay_entries[0] = delay_entries[1];
-    delay_entries[1] = {0, 0};
+    gp.r[pending_delay_entry.reg] = pending_delay_entry.value;
+    pending_delay_entry = new_delay_entry;
+    new_delay_entry = {0, 0};
+
     gp.zero = 0;
 }
 

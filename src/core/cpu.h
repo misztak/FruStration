@@ -52,7 +52,7 @@ private:
     bool branch_taken = false, was_branch_taken = false;
     bool in_delay_slot = false, was_in_delay_slot = false;
 
-    LoadDelayEntry delay_entries[2] = {};
+    LoadDelayEntry pending_delay_entry = {}, new_delay_entry = {};
     Instruction instr;
 
     BUS* bus = nullptr;
