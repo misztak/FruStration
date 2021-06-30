@@ -43,7 +43,6 @@ private:
     u32 GetCP0(u32 index);
 
     void SetDelayEntry(u32 reg, u32 value);
-    void UpdateDelayEntries();
     void UpdatePC(u32 address);
 
     void Exception(ExceptionCode cause);

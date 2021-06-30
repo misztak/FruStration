@@ -499,7 +499,13 @@ void CPU::Step() {
             Exception(ExceptionCode::ReservedInstr);
     }
 
-    UpdateDelayEntries();
+    // update delay entries
+    gp.r[pending_delay_entry.reg] = pending_delay_entry.value;
+    pending_delay_entry = new_delay_entry;
+    new_delay_entry = {0, 0};
+
+    // first register always contains 0
+    gp.zero = 0;
 }
 
 void CPU::Exception(ExceptionCode cause) {
@@ -597,14 +603,6 @@ void CPU::SetDelayEntry(u32 reg, u32 value) {
 
     new_delay_entry.reg = reg;
     new_delay_entry.value = value;
-}
-
-void CPU::UpdateDelayEntries() {
-    gp.r[pending_delay_entry.reg] = pending_delay_entry.value;
-    pending_delay_entry = new_delay_entry;
-    new_delay_entry = {0, 0};
-
-    gp.zero = 0;
 }
 
 void CPU::UpdatePC(u32 address) {
