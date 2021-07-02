@@ -62,13 +62,16 @@ void CPU::Step() {
 #endif
 
     // handle interrupts
-    if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
-        Exception(ExceptionCode::Interrupt);
-    }
+    //if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
+    //    Exception(ExceptionCode::Interrupt);
+    //}
 
     // special actions for specific memory locations
-    // garbage
-    if (sp.pc == 0) halt = true;
+    // garbage area, should never be reached during bios setup
+    if (sp.pc == 0) {
+        LOG_CRIT << "Stuck in infinite loop, stopping emulator";
+        halt = true;
+    }
     // bios put_char calls
     if (sp.pc ==  0xA0 && Get(9) == 0x3C) bios.PutChar(Get(4));
     if (sp.pc ==  0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));

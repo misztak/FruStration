@@ -65,6 +65,9 @@ void GPU::SendGP0Cmd(u32 cmd) {
         case Gp0Command::quad_shaded_opaque:
             CommandAfterCount(7, std::bind(&GPU::DrawQuadShadedOpaque, this));
             break;
+        case Gp0Command::rect_tex_opaque:
+            CommandAfterCount(3, std::bind(&GPU::DrawRectTexture, this));
+            break;
         case Gp0Command::dot_mono_opaque:
             CommandAfterCount(1, [&] {
                 Vertex dot;
@@ -100,12 +103,12 @@ void GPU::SendGP0Cmd(u32 cmd) {
         case Gp0Command::draw_area_top_left:
             drawing_area_top = static_cast<u16>((cmd >> 10) & 0x1FF);
             drawing_area_left = static_cast<u16>(cmd & 0x3FF);
-            LOG_DEBUG << "Set draw area top=" << drawing_area_top << ", left=" << drawing_area_left;
+            //LOG_DEBUG << "Set draw area top=" << drawing_area_top << ", left=" << drawing_area_left;
             break;
         case Gp0Command::draw_area_bottom_right:
             drawing_area_bottom = static_cast<u16>((cmd >> 10) & 0x1FF);
             drawing_area_right = static_cast<u16>(cmd & 0x3FF);
-            LOG_DEBUG << "Set draw area bottom=" << drawing_area_bottom << ", right=" << drawing_area_right;
+            //LOG_DEBUG << "Set draw area bottom=" << drawing_area_bottom << ", right=" << drawing_area_right;
             break;
         case Gp0Command::draw_offset: {
             const u16 x = static_cast<u16>(cmd & 0x7FF);
@@ -132,7 +135,10 @@ void GPU::SendGP1Cmd(u32 cmd) {
             ResetCommand();
             break;
         case Gp1Command::cmd_buf_reset:
-            // TODO: implement me
+            LOG_DEBUG << "Reset command buffer [Unimplemented]";
+            break;
+        case Gp1Command::ack_gpu_interrupt:
+            LOG_DEBUG << "ACK GPU Interrupt [Unimplemented]";
             break;
         case Gp1Command::display_enable:
             status.display_disabled = cmd & 0x1;
@@ -212,7 +218,10 @@ void GPU::DrawQuadTextureBlendOpaque() {
         vertices[i].SetPoint(command_buffer[(i * 2) + 1]);
         vertices[i].c.SetColor(command_buffer[0]);
         vertices[i].SetTextPoint(command_buffer[(i * 2) + 2]);
+        //printf("(x=%d, y=%d) ", vertices[i].x, vertices[i].y);
     }
+    //printf("\n");
+
     renderer.DrawTriangle<DrawMode::TEXTURE>(&vertices[0], &vertices[1], &vertices[2]);
     renderer.DrawTriangle<DrawMode::TEXTURE>(&vertices[1], &vertices[2], &vertices[3]);
 }
@@ -226,6 +235,19 @@ void GPU::DrawTriangleShadedOpaque() {
         vertices[i].SetTextPoint(0);
     }
     renderer.DrawTriangle<DrawMode::SHADED>(&vertices[0], &vertices[1], &vertices[2]);
+}
+
+void GPU::DrawRectTexture() {
+    //LOG_DEBUG << "DrawRectTexture";
+    // Texpage gets set up separately via GP0(0xE1)
+    renderer.palette = command_buffer[2] >> 16;
+
+    rectangle.SetStart(command_buffer[1]);
+    rectangle.SetTextPoint(command_buffer[2]);
+    rectangle.SetSize(command_buffer[3]);
+    rectangle.c.SetColor(command_buffer[0]);
+
+    renderer.DrawRectangle();
 }
 
 void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
@@ -251,7 +273,7 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
         x_pos_max = x_pos + width;
         Assert(x_pos_max < VRAM_WIDTH);
 
-        LOG_DEBUG << "Expecting " << words_remaining << " words from CPU to GPU";
+        //LOG_DEBUG << "Expecting " << words_remaining << " words from CPU to GPU";
         mode = Mode::Data;
     } else if (mode == Mode::Data) {
         // first halfword
@@ -328,6 +350,7 @@ u32 GPU::ReadStat() {
     hack &= ~(1u << 19);
     return hack;
     //return status.value;
+    //return 0b01011110100000000000000000000000;
 }
 
 u16* GPU::GetVRAM() {

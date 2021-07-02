@@ -31,6 +31,22 @@ struct Vertex {
     }
 };
 
+struct Rectangle {
+    u16 start_x, start_y;
+    u16 size_x, size_y;
+    Color c;
+    u8 tex_x, tex_y;
+    ALWAYS_INLINE void SetStart(u32 value) {
+        start_x = value, start_y = value >> 16;
+    }
+    ALWAYS_INLINE void SetSize(u32 value) {
+        size_x = value, size_y = value >> 16;
+    }
+    ALWAYS_INLINE void SetTextPoint(u32 value) {
+        tex_x = value, tex_y = value >> 8;
+    }
+};
+
 enum class DrawMode : u32 {
     MONO,
     SHADED,
@@ -44,6 +60,8 @@ public:
 
     template <DrawMode mode>
     void DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2);
+
+    void DrawRectangle();
 
     u16 palette = 0;
 private:

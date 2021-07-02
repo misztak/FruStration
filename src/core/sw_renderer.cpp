@@ -28,7 +28,7 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
 
     // make sure vertices are oriented counter-clockwise
     // swapping any two vertices is enough
-    if (EdgeFunction(v0, v1, v2) < 0) std::swap(v2, v0);
+    if (EdgeFunction(v0, v1, v2) < 0) std::swap(v0, v1);
 
     // bounding box
     u16 minX = std::min({v0->x, v1->x, v2->x});
@@ -36,7 +36,7 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
     u16 minY = std::min({v0->y, v1->y, v2->y});
     u16 maxY = std::max({v0->y, v1->y, v2->y});
 
-    // clamp against drawing area
+    // clip against drawing area
     // origin is top-left
     minX = std::clamp(minX, gpu->drawing_area_left, gpu->drawing_area_right);
     maxX = std::clamp(maxX, gpu->drawing_area_left, gpu->drawing_area_right);
@@ -44,12 +44,12 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
     maxY = std::clamp(maxY, gpu->drawing_area_top, gpu->drawing_area_bottom);
 
     // prepare per-pixel increments
-    s32 A01 = v0->y - v1->y, B01 = v1->x - v0->x;
-    s32 A12 = v1->y - v2->y, B12 = v2->x - v1->x;
-    s32 A20 = v2->y - v0->y, B20 = v0->x - v2->x;
+    const s32 A01 = v0->y - v1->y, B01 = v1->x - v0->x;
+    const s32 A12 = v1->y - v2->y, B12 = v2->x - v1->x;
+    const s32 A20 = v2->y - v0->y, B20 = v0->x - v2->x;
 
     // area of the parallelogram
-    s32 area = EdgeFunction(v0, v1, v2);
+    const s32 area = EdgeFunction(v0, v1, v2);
     // colinear
     if (area == 0) return;
 
@@ -121,6 +121,20 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
         w01_row += B01;
         w12_row += B12;
         w20_row += B20;
+    }
+}
+
+void Renderer::DrawRectangle() {
+    auto& rect = gpu->rectangle;
+    Assert(rect.size_x < 1024);
+    Assert(rect.size_y < 512);
+
+    const u16 end_x = rect.start_x + rect.size_x;
+    const u16 end_y = rect.start_y + rect.size_y;
+    for (u16 y = rect.start_y; y < end_y; y++) {
+        for (u16 x = rect.start_x; x < end_x; x++) {
+            gpu->vram[x + GPU::VRAM_WIDTH * y] = 0xFF;
+        }
     }
 }
 

@@ -80,11 +80,11 @@ void DMA::Store(u32 address, u32 value) {
 }
 
 void DMA::StartTransfer(u32 index) {
-    auto dir = static_cast<Direction>(channel[index].control.transfer_direction);
+    //auto dir = static_cast<Direction>(channel[index].control.transfer_direction);
     // TODO: write a better log message
-    LOG_DEBUG << fmt::format("Starting DMA transfer to {} on channel {} in mode {} starting at address 0x{:08X}",
-           (dir == Direction::ToRAM) ? "RAM" : "device", index,
-           (u32)channel[index].control.sync_mode.GetValue(), channel[index].base_address);
+    //LOG_DEBUG << fmt::format("Starting DMA transfer to {} on channel {} in mode {} starting at address 0x{:08X}",
+    //       (dir == Direction::ToRAM) ? "RAM" : "device", index,
+    //       (u32)channel[index].control.sync_mode.GetValue(), channel[index].base_address);
     // TODO: chopping and priority handling
     
     switch (channel[index].control.sync_mode) {
@@ -172,7 +172,7 @@ void DMA::TransferLinkedList(u32 index) {
     auto& ch = channel[index];
     auto channel_type = static_cast<DMA_Channel>(index);
 
-    if (channel_type != DMA_Channel::GPU || ch.control.transfer_direction == Direction::ToRAM) 
+    if (channel_type != DMA_Channel::GPU || ch.control.transfer_direction == Direction::ToRAM)
         Panic("DMA linked list mode only available for GPU channel in ToDevice mode");
 
     // align and wrap the address
