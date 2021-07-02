@@ -45,7 +45,7 @@ This is a modified version of NanoLog. The following changes have been made:
 
 namespace nanolog
 {
-    enum class LogLevel : uint8_t { DBG, TTY, INFO, WARN, CRIT };
+    enum class LogLevel : uint8_t { TTY, DBG, INFO, WARN, CRIT };
     
     class NanoLogLine
     {
