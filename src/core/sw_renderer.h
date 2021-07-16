@@ -45,6 +45,19 @@ struct Rectangle {
     ALWAYS_INLINE void SetTextPoint(u32 value) {
         tex_x = value, tex_y = value >> 8;
     }
+
+    enum class DrawMode : u32 {
+        MONO, TEXTURED
+    };
+    enum class Size : u32 {
+        ONE, EIGHT, SIXTEEN, VARIABLE
+    };
+    enum class Opacity : u32 {
+        OPAQUE, SEMI_TRANSPARENT
+    };
+    enum class Texture : u32 {
+        RAW, BLENDING, NONE
+    };
 };
 
 enum class DrawMode : u32 {
@@ -60,8 +73,16 @@ public:
 
     template <DrawMode mode>
     void DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2);
+    template <DrawMode mode>
+    void DrawTriangleAVX2(Vertex* v0, Vertex* v1, Vertex* v2, u16 minX, u16 maxX, u16 minY, u16 maxY);
 
-    void DrawRectangle();
+    void DrawRectangleWith(Rectangle::DrawMode mode, Rectangle::Size size, Rectangle::Opacity opacity, Rectangle::Texture texture);
+
+    template <Rectangle::Size size, Rectangle::Opacity opacity>
+    void DrawRectangleMono();
+
+    template <Rectangle::Size size, Rectangle::Opacity opacity, Rectangle::Texture texture>
+    void DrawRectangleTextured();
 
     u16 palette = 0;
 private:

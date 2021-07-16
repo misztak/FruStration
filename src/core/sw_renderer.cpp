@@ -1,6 +1,8 @@
 #include "sw_renderer.h"
 
 #include <algorithm>
+#include <tuple>
+#include <immintrin.h>
 
 #include "fmt/format.h"
 #include "gpu.h"
@@ -96,10 +98,13 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
                     if (gpu->status.tex_page_colors == 0) {
                         u32 tx = std::min<u32>(base_x + (tex_x / 4), 1023u);
                         u32 ty = std::min<u32>(base_y + tex_y, 511u);
+
                         u16 palette_value = gpu->vram[tx + GPU::VRAM_WIDTH * ty];
                         u16 palette_index = (palette_value >> ((tex_x % 4) * 4)) & 0xFu;
+
                         u16 texel_x = std::min<u32>((palette & 0x3F) * 16 + palette_index, 1023u);
                         u16 texel_y = (palette >> 6) & 0x1FF;
+
                         u16 texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
                         //LOG_DEBUG << "Texel " << texel << " from location (" << texel_x << ',' << texel_y << ')';
                         if (texel) {
@@ -124,13 +129,90 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
     }
 }
 
-void Renderer::DrawRectangle() {
-    auto& rect = gpu->rectangle;
-    Assert(rect.size_x < 1024);
-    Assert(rect.size_y < 512);
+template <DrawMode mode>
+void Renderer::DrawTriangleAVX2(Vertex *v0, Vertex *v1, Vertex *v2, u16 minX, u16 maxX, u16 minY, u16 maxY) {}
 
-    const u16 end_x = rect.start_x + rect.size_x;
-    const u16 end_y = rect.start_y + rect.size_y;
+void Renderer::DrawRectangleWith(Rectangle::DrawMode mode, Rectangle::Size size, Rectangle::Opacity opacity,
+                                  Rectangle::Texture texture) {
+#define FN(SIZE, OPACITY) \
+    &Renderer::DrawRectangleMono<Rectangle::Size::SIZE, Rectangle::Opacity::OPACITY>
+
+    // inspired by Duckstation's approach for selecting triangle draw functions
+    using DrawRectangleFunctions = void (Renderer::*)();
+    static constexpr DrawRectangleFunctions mono_functions[4][2] = {
+        {FN(ONE, OPAQUE),       FN(ONE, SEMI_TRANSPARENT)},
+        {FN(EIGHT, OPAQUE),     FN(EIGHT, SEMI_TRANSPARENT)},
+        {FN(SIXTEEN, OPAQUE),   FN(EIGHT, SEMI_TRANSPARENT)},
+        {FN(VARIABLE, OPAQUE),  FN(VARIABLE, SEMI_TRANSPARENT)}};
+
+#undef FN
+
+#define FN(SIZE, OPACITY, TEXTURE) \
+    &Renderer::DrawRectangleTextured<Rectangle::Size::SIZE, Rectangle::Opacity::OPACITY, Rectangle::Texture::TEXTURE>
+
+    static constexpr DrawRectangleFunctions texture_functions[4][2][2] = {
+        {{FN(ONE, OPAQUE, RAW),                 FN(ONE, OPAQUE, BLENDING)},
+         {FN(ONE, SEMI_TRANSPARENT, RAW),       FN(ONE, SEMI_TRANSPARENT, BLENDING)}},
+        {{FN(EIGHT, OPAQUE, RAW),               FN(EIGHT, OPAQUE, BLENDING)},
+         {FN(EIGHT, SEMI_TRANSPARENT, RAW),     FN(EIGHT, SEMI_TRANSPARENT, BLENDING)}},
+        {{FN(SIXTEEN, OPAQUE, RAW),             FN(SIXTEEN, OPAQUE, BLENDING)},
+         {FN(SIXTEEN, SEMI_TRANSPARENT, RAW),   FN(SIXTEEN, SEMI_TRANSPARENT, BLENDING)}},
+        {{FN(VARIABLE, OPAQUE, RAW),            FN(VARIABLE, OPAQUE, BLENDING)},
+         {FN(VARIABLE, SEMI_TRANSPARENT, RAW),  FN(VARIABLE, SEMI_TRANSPARENT, BLENDING)}}};
+
+#undef FN
+
+    // call the appropriate draw function
+    if (mode == Rectangle::DrawMode::MONO) {
+        (this->*mono_functions[u32(size)][u32(opacity)])();
+    } else {
+        (this->*texture_functions[u32(size)][u32(opacity)][u32(texture)])();
+    }
+}
+
+template <Rectangle::Size size>
+static constexpr std::tuple<u16, u16> GetSize(Rectangle& rect) {
+#define MAKE(x, y) std::make_tuple((u16) x, (u16) y)
+
+    switch (size) {
+        case Rectangle::Size::ONE: return MAKE(1, 1);
+        case Rectangle::Size::EIGHT: return MAKE(8, 8);
+        case Rectangle::Size::SIXTEEN: return MAKE(16, 16);
+        case Rectangle::Size::VARIABLE: return MAKE(rect.size_x, rect.size_y);
+    }
+
+#undef MAKE
+}
+
+template <Rectangle::Size size, Rectangle::Opacity opacity>
+void Renderer::DrawRectangleMono() {
+    auto& rect = gpu->rectangle;
+
+    auto [size_x, size_y] = GetSize<size>(rect);
+    DebugAssert(size_x < 1024);
+    DebugAssert(size_y < 512);
+
+    const u16 end_x = rect.start_x + size_x;
+    const u16 end_y = rect.start_y + size_y;
+
+    for (u16 y = rect.start_y; y < end_y; y++) {
+        for (u16 x = rect.start_x; x < end_x; x++) {
+            gpu->vram[x + GPU::VRAM_WIDTH * y] = rect.c.To5551();
+        }
+    }
+}
+
+template <Rectangle::Size size, Rectangle::Opacity opacity, Rectangle::Texture texture>
+void Renderer::DrawRectangleTextured() {
+    auto& rect = gpu->rectangle;
+
+    auto [size_x, size_y] = GetSize<size>(rect);
+    DebugAssert(size_x < 1024);
+    DebugAssert(size_y < 512);
+
+    const u16 end_x = rect.start_x + size_x;
+    const u16 end_y = rect.start_y + size_y;
+
     for (u16 y = rect.start_y; y < end_y; y++) {
         for (u16 x = rect.start_x; x < end_x; x++) {
             gpu->vram[x + GPU::VRAM_WIDTH * y] = 0xFF;

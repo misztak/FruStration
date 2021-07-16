@@ -30,7 +30,8 @@ private:
     void DrawQuadShadedOpaque();
     void DrawQuadTextureBlendOpaque();
     void DrawTriangleShadedOpaque();
-    void DrawRectTexture();
+    void DrawRectangleMono(Rectangle::Size size, Rectangle::Opacity opacity);
+    void DrawRectangleTexture(Rectangle::Size size, Rectangle::Opacity opacity, Rectangle::Texture texture);
     void CopyRectCpuToVram(u32 data = 0);
     void CopyRectVramToCpu();
 
