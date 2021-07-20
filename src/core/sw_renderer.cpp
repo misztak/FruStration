@@ -78,9 +78,9 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
                 if constexpr (mode == DrawMode::SHADED) {
                     Color color;
                     // shading
-                    color.r = (s32(v0->c.r) * w12 + s32(v1->c.r) * w20 + s32(v2->c.r) * w01) / area / 8;
-                    color.g = (s32(v0->c.g) * w12 + s32(v1->c.g) * w20 + s32(v2->c.g) * w01) / area / 8;
-                    color.b = (s32(v0->c.b) * w12 + s32(v1->c.b) * w20 + s32(v2->c.b) * w01) / area / 8;
+                    color.r = (s32(v0->c.r) * w12 + s32(v1->c.r) * w20 + s32(v2->c.r) * w01) / area;
+                    color.g = (s32(v0->c.g) * w12 + s32(v1->c.g) * w20 + s32(v2->c.g) * w01) / area;
+                    color.b = (s32(v0->c.b) * w12 + s32(v1->c.b) * w20 + s32(v2->c.b) * w01) / area;
                     gpu->vram[px + GPU::VRAM_WIDTH * py] = color.To5551();
                 }
                 if constexpr (mode == DrawMode::TEXTURE) {
