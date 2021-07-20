@@ -64,7 +64,7 @@ int main(int, char**) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags =
         (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow("FruStration", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+    SDL_Window* window = SDL_CreateWindow("FruStration", 3840, 0,
                                           Display::WIDTH, Display::HEIGHT, window_flags);
     if (!window) {
         LOG_CRIT << "Failed to create SDL_Window";

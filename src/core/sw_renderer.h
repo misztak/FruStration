@@ -12,7 +12,7 @@ struct Color {
         r = u8(value), g = u8(value >> 8), b = u8(value >> 16);
     }
     ALWAYS_INLINE u16 To5551() const {
-        return (0x8000 | ((b & 0x1F) << 10) | ((g & 0x1F) << 5) | (r & 0x1F));
+        return (0x8000 | ((b >> 3) << 10) | ((g >> 3) << 5) | (r >> 3));
     }
 };
 

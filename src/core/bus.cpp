@@ -183,7 +183,10 @@ void BUS::Store(u32 address, Value value) {
             return;
         }
         if (InArea(0x1F801C00, 644, masked_addr)) return; // SPU
-        if (InArea(0x1F801800, 4, masked_addr)) Panic("CDROM");  // CDROM
+        if (InArea(0x1F801800, 4, masked_addr)) { // CDROM
+            cpu->halt = true;
+            LOG_DEBUG << "Write to CDROM controller [Unimplemented]";
+        }
         LOG_WARN << fmt::format("Store<{}> call to IO Ports [0x{:X} @ 0x{:08X}] - Ignored",
                                 sizeof(Value) * 8, value, address);
         return;
