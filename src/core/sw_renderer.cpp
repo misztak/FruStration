@@ -103,7 +103,7 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
                         u16 texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
                         //LOG_DEBUG << "Texel " << texel << " from location (" << texel_x << ',' << texel_y << ')';
                         if (texel) {
-                            gpu->vram[px + GPU::VRAM_WIDTH * py] = 0xFF;
+                            gpu->vram[px + GPU::VRAM_WIDTH * py] = texel;
                         }
                     } else {
                         Panic("Soon (TM)");

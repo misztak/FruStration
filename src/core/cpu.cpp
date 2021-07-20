@@ -84,7 +84,9 @@ void CPU::Step() {
     // at this point the pc contains the address of the delay slot instruction
     // next_pc points to the instruction right after the delay slot
 
-    if (current_pc & 0x3) {
+    // TODO: at what point should this be called/checked
+    if (unlikely(current_pc & 0x3)) {
+        LOG_CRIT << "Invalid program counter";
         Exception(ExceptionCode::LoadAddress);
         return;
     }
@@ -115,7 +117,7 @@ void CPU::Step() {
                     in_delay_slot = true;
                     if ((jump_address & 0x3) != 0) {
                         Exception(ExceptionCode::StoreAddress);
-                        //break;
+                        break;
                     }
                     next_pc = jump_address;
                     branch_taken = true;
@@ -127,7 +129,7 @@ void CPU::Step() {
                     in_delay_slot = true;
                     if ((jump_address & 0x3) != 0) {
                         Exception(ExceptionCode::StoreAddress);
-                        //break;
+                        break;
                     }
                     next_pc = jump_address;
                     branch_taken = true;
@@ -255,7 +257,7 @@ void CPU::Step() {
             test ^= is_bgez;
 
             in_delay_slot = true;
-            if (is_link) gp.ra = next_pc;
+            if (is_link) Set(31, next_pc);
             if (test) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
                 branch_taken = true;
@@ -269,7 +271,7 @@ void CPU::Step() {
             branch_taken = true;
             break;
         case PrimaryOpcode::jal:
-            gp.ra = next_pc;
+            Set(31, next_pc);
             next_pc &= 0xF0000000;
             next_pc |= instr.jump_target << 2;
             in_delay_slot = true;
@@ -571,6 +573,12 @@ void CPU::Store8(u32 address, u8 value) {
 
 void CPU::Set(u32 index, u32 value) {
     Assert(index < 32);
+    // overwrite delay entry if it's in the same register
+    if (pending_delay_entry.reg == index) {
+        pending_delay_entry.reg = 0;
+        pending_delay_entry.value = 0;
+    }
+
     gp.r[index] = value;
     gp.zero = 0;
 }
@@ -599,6 +607,7 @@ u32 CPU::GetCP0(u32 index) {
 void CPU::SetDelayEntry(u32 reg, u32 value) {
     Assert(reg < 32);
     //if (reg == 0) return;
+    // overwrite delay entry if it's in the same register
     if (pending_delay_entry.reg == reg) {
         pending_delay_entry.reg = 0;
         pending_delay_entry.value = 0;
