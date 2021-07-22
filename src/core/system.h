@@ -13,6 +13,7 @@ class BUS;
 class DMA;
 class GPU;
 class InterruptController;
+class TimerController;
 class Debugger;
 
 class System {
@@ -45,5 +46,6 @@ private:
     std::unique_ptr<DMA> dma;
     std::unique_ptr<GPU> gpu;
     std::unique_ptr<InterruptController> interrupt;
+    std::unique_ptr<TimerController> timers;
     std::unique_ptr<Debugger> debugger;
 };

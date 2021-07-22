@@ -5,6 +5,7 @@
 #include "dma.h"
 #include "gpu.h"
 #include "interrupt.h"
+#include "timer.h"
 #include "debugger.h"
 #include "macros.h"
 
@@ -20,10 +21,11 @@ void System::Init() {
     dma = std::make_unique<DMA>();
     gpu = std::make_unique<GPU>();
     interrupt = std::make_unique<InterruptController>();
+    timers = std::make_unique<TimerController>();
     debugger = std::make_unique<Debugger>();
 
     cpu->Init(bus.get(), debugger.get());
-    bus->Init(dma.get(), gpu.get(), cpu.get(), interrupt.get(), debugger.get());
+    bus->Init(dma.get(), gpu.get(), cpu.get(), interrupt.get(), timers.get(), debugger.get());
     dma->Init(bus.get(), gpu.get(), interrupt.get());
     gpu->Init();
     interrupt->Init(cpu.get());
@@ -51,6 +53,7 @@ void System::Reset() {
     dma->Reset();
     gpu->Reset();
     interrupt->Reset();
+    timers->Reset();
     debugger->Reset();
     LOG_INFO << "System reset";
 }

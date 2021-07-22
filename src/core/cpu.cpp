@@ -62,9 +62,9 @@ void CPU::Step() {
 #endif
 
     // handle interrupts
-    //if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
-    //    Exception(ExceptionCode::Interrupt);
-    //}
+    if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
+        Exception(ExceptionCode::Interrupt);
+    }
 
     // special actions for specific memory locations
     // garbage area, should never be reached during bios setup
@@ -84,7 +84,7 @@ void CPU::Step() {
     // at this point the pc contains the address of the delay slot instruction
     // next_pc points to the instruction right after the delay slot
 
-    // TODO: at what point should this be called/checked
+    // TODO: at what point should this be called/checked?
     if (unlikely(current_pc & 0x3)) {
         LOG_CRIT << "Invalid program counter";
         Exception(ExceptionCode::LoadAddress);
@@ -257,7 +257,7 @@ void CPU::Step() {
             test ^= is_bgez;
 
             in_delay_slot = true;
-            if (is_link) Set(31, next_pc);
+            if (is_link) Set(GP_Registers::RA, next_pc);
             if (test) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
                 branch_taken = true;
@@ -271,7 +271,7 @@ void CPU::Step() {
             branch_taken = true;
             break;
         case PrimaryOpcode::jal:
-            Set(31, next_pc);
+            Set(GP_Registers::RA, next_pc);
             next_pc &= 0xF0000000;
             next_pc |= instr.jump_target << 2;
             in_delay_slot = true;

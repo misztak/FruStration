@@ -37,7 +37,7 @@ u32 InterruptController::LoadStat() {
 void InterruptController::StoreMask(u32 value) {
     LOG_DEBUG << fmt::format("IMASK SET [0b{:011b}] --> [0b{:011b}]", mask.value & IRQ_MASK, value & IRQ_MASK);
     // for now only allow interrupts that we can "handle"
-    Assert((value & ~(0b1001)) == 0);
+    Assert((value & ~(0b1101)) == 0);
     mask.value = value;
     UpdateCP0Interrupt(2);
 }

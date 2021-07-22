@@ -8,6 +8,7 @@ add_library(core
         sw_renderer.cpp
         bios.cpp
         interrupt.cpp
+        timer.cpp
         debugger.cpp)
 
 target_include_directories(core PUBLIC ../../libs/nanolog)

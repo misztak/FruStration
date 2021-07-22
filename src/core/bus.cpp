@@ -6,6 +6,7 @@
 #include "gpu.h"
 #include "cpu.h"
 #include "interrupt.h"
+#include "timer.h"
 #include "debugger.h"
 #include "imgui.h"
 #include "imgui_memory_editor.h"
@@ -16,11 +17,12 @@ LOG_CHANNEL(BUS);
 
 BUS::BUS() : bios(BIOS_SIZE), ram(RAM_SIZE, 0xCA), scratchpad(SCRATCH_SIZE) {}
 
-void BUS::Init(DMA* d, GPU* g, CPU::CPU* c, InterruptController* i, Debugger* debug) {
+void BUS::Init(DMA* d, GPU* g, CPU::CPU* c, InterruptController* i, TimerController* t, Debugger* debug) {
     dma = d;
     gpu = g;
     cpu = c;
     interrupt = i;
+    timers = t;
     debugger = debug;
 }
 
@@ -114,11 +116,11 @@ ValueType BUS::Load(u32 address) {
         switch (masked_addr) {
             case(0x1F801070): return interrupt->LoadStat();
             case(0x1F801074): return interrupt->LoadMask();
-            case(0x1F801110): return 0; // Timer 1 (horizontal retrace)
             case(0x1F801810): return gpu->gpu_read; // GPUREAD
             case(0x1F801814): return (ValueType) gpu->ReadStat(); // GPUSTAT
         }
         if (InArea(0x1F801080, 120, masked_addr)) return (ValueType) dma->Load(masked_addr - 0x1F801080);
+        if (InArea(0x1F801100, 48, masked_addr)) return (ValueType) timers->Load(masked_addr - 0x1F801100);
         if (InArea(0x1F801C00, 644, masked_addr)) return 0; // SPU
         if (InArea(0x1F801040, 16, masked_addr)) return 0;  // Joypad
         Panic("Tried to load from IO Ports [0x%08X]", address);
@@ -178,15 +180,21 @@ void BUS::Store(u32 address, Value value) {
             case(0x1F801810): gpu->SendGP0Cmd(value); return;
             case(0x1F801814): gpu->SendGP1Cmd(value); return;
         }
+
+        // DMA
         if (InArea(0x1F801080, 120, masked_addr)) {
             dma->Store(masked_addr - 0x1F801080, value);
             return;
         }
-        if (InArea(0x1F801C00, 644, masked_addr)) return; // SPU
-        if (InArea(0x1F801800, 4, masked_addr)) { // CDROM
-            cpu->halt = true;
-            LOG_DEBUG << "Write to CDROM controller [Unimplemented]";
+
+        // Timer
+        if (InArea(0x1F801100, 48, masked_addr)) {
+            timers->Store(masked_addr - 0x1F801100, value);
+            return;
         }
+
+        if (InArea(0x1F801C00, 644, masked_addr)) return; // SPU
+        if (InArea(0x1F801800, 4, masked_addr)) {} // CDROM
         LOG_WARN << fmt::format("Store<{}> call to IO Ports [0x{:X} @ 0x{:08X}] - Ignored",
                                 sizeof(Value) * 8, value, address);
         return;
