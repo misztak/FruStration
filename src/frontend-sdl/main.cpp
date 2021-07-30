@@ -91,36 +91,19 @@ int main(int, char**) {
         return 1;
     };
 
-    bool done = false;
-    while (!done) {
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_QUIT) done = true;
-            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                event.window.windowID == SDL_GetWindowID(window))
-                done = true;
-            if (event.type == SDL_KEYUP) {
-                if (event.key.keysym.scancode == SDL_SCANCODE_H) system.SetHalt(!system.IsHalted());
-            }
-        }
-        int vsync = SDL_GL_GetSwapInterval();
-        display.Draw(&done, vsync != 0);
+    system.VBlankCallback(std::bind(&Display::Update, &display));
 
+    while (!system.done) {
         if (!system.IsHalted()) {
-            // run for one frame
-            for (u32 cycles = 0; cycles < FRAME_CYCLES; cycles += 2) {
-                system.RunFrame();
+            // run for some cycles
+            // we need to stop occasionally in order to poll for key events
+            for (u32 cycles = 0; cycles < 5000; cycles ++) {
+                system.Step();
                 if (unlikely(system.IsHalted())) break;
             }
+        } else {
+            display.Update();
         }
-
-        // at the moment this is set to 60Hz
-        system.VBlank();
-
-        display.Render();
-
-        // display.Throttle(60);
     }
 
     ImGui_ImplOpenGL3_Shutdown();

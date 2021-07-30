@@ -4,6 +4,7 @@
 #include "cpu.h"
 #include "dma.h"
 #include "gpu.h"
+#include "cdrom.h"
 #include "interrupt.h"
 #include "timer.h"
 #include "debugger.h"
@@ -20,14 +21,16 @@ void System::Init() {
     bus = std::make_unique<BUS>();
     dma = std::make_unique<DMA>();
     gpu = std::make_unique<GPU>();
+    cdrom = std::make_unique<CDROM>();
     interrupt = std::make_unique<InterruptController>();
     timers = std::make_unique<TimerController>();
     debugger = std::make_unique<Debugger>();
 
     cpu->Init(bus.get(), debugger.get());
-    bus->Init(dma.get(), gpu.get(), cpu.get(), interrupt.get(), timers.get(), debugger.get());
+    bus->Init(dma.get(), gpu.get(), cpu.get(), cdrom.get(), interrupt.get(), timers.get(), debugger.get());
     dma->Init(bus.get(), gpu.get(), interrupt.get());
-    gpu->Init();
+    gpu->Init(interrupt.get());
+    timers->Init(gpu.get(), interrupt.get());
     interrupt->Init(cpu.get());
     debugger->Init(cpu.get());
     LOG_INFO << "Initialized PSX core";
@@ -35,6 +38,24 @@ void System::Init() {
 
 bool System::LoadBIOS(const std::string& bios_path) {
     return bus->LoadBIOS(bios_path);
+}
+
+void System::Step() {
+    for (u32 n = 0; n < 100; n++) {
+        cpu->Step();
+    }
+
+    // dma step
+    cdrom->Step();
+
+    // not sure about the step count, but it's too fast at 100
+    gpu->Step(150);
+
+    // timer step
+}
+
+void System::VBlankCallback(std::function<void()> callback) {
+    gpu->vblank_cb = callback;
 }
 
 void System::RunFrame() {
@@ -52,6 +73,7 @@ void System::Reset() {
     bus->Reset();
     dma->Reset();
     gpu->Reset();
+    cdrom->Reset();
     interrupt->Reset();
     timers->Reset();
     debugger->Reset();

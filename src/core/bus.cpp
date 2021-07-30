@@ -5,6 +5,7 @@
 #include "dma.h"
 #include "gpu.h"
 #include "cpu.h"
+#include "cdrom.h"
 #include "interrupt.h"
 #include "timer.h"
 #include "debugger.h"
@@ -17,10 +18,12 @@ LOG_CHANNEL(BUS);
 
 BUS::BUS() : bios(BIOS_SIZE), ram(RAM_SIZE, 0xCA), scratchpad(SCRATCH_SIZE) {}
 
-void BUS::Init(DMA* d, GPU* g, CPU::CPU* c, InterruptController* i, TimerController* t, Debugger* debug) {
+void BUS::Init(DMA* d, GPU* g, CPU::CPU* c, CDROM* cd, InterruptController* i, TimerController* t, Debugger* debug) {
+    // TODO: refactor this
     dma = d;
     gpu = g;
     cpu = c;
+    cdrom = cd;
     interrupt = i;
     timers = t;
     debugger = debug;
@@ -119,8 +122,20 @@ ValueType BUS::Load(u32 address) {
             case(0x1F801810): return gpu->gpu_read; // GPUREAD
             case(0x1F801814): return (ValueType) gpu->ReadStat(); // GPUSTAT
         }
-        if (InArea(0x1F801080, 120, masked_addr)) return (ValueType) dma->Load(masked_addr - 0x1F801080);
-        if (InArea(0x1F801100, 48, masked_addr)) return (ValueType) timers->Load(masked_addr - 0x1F801100);
+
+        // DMA
+        if (InArea(0x1F801080, 120, masked_addr))
+            return (ValueType) dma->Load(masked_addr - 0x1F801080);
+
+        // Timer
+        if (InArea(0x1F801100, 48, masked_addr))
+            return (ValueType) timers->Load(masked_addr - 0x1F801100);
+
+        // CDROM
+        if (InArea(0x1F801800, 4, masked_addr))
+            return (ValueType) cdrom->Load(masked_addr - 0x1F801800);
+
+
         if (InArea(0x1F801C00, 644, masked_addr)) return 0; // SPU
         if (InArea(0x1F801040, 16, masked_addr)) return 0;  // Joypad
         Panic("Tried to load from IO Ports [0x%08X]", address);
@@ -194,9 +209,14 @@ void BUS::Store(u32 address, Value value) {
         }
 
         if (InArea(0x1F801C00, 644, masked_addr)) return; // SPU
-        if (InArea(0x1F801800, 4, masked_addr)) {} // CDROM
-        LOG_WARN << fmt::format("Store<{}> call to IO Ports [0x{:X} @ 0x{:08X}] - Ignored",
-                                sizeof(Value) * 8, value, address);
+
+        // CDROM
+        if (InArea(0x1F801800, 4, masked_addr)) {
+            cdrom->Store(masked_addr - 0x1F801800, value);
+            return;
+        }
+
+        // ignore it
         return;
     }
     // BIOS

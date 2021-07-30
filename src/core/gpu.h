@@ -1,17 +1,22 @@
 #pragma once
 
 #include <array>
+#include <functional>
 
 #include "types.h"
 #include "bitfield.h"
 #include "sw_renderer.h"
 
+class InterruptController;
+
 class GPU {
 friend class Renderer;
 public:
     GPU();
-    void Init();
+    void Init(InterruptController* icontroller);
     void Reset();
+
+    void Step(u32 steps);
 
     u32 ReadStat();
     void SendGP0Cmd(u32 cmd);
@@ -19,6 +24,10 @@ public:
     u16* GetVRAM();
 
     void DrawGpuState(bool* open);
+
+    std::function<void()> vblank_cb = nullptr;
+
+    bool in_hblank = false, in_vblank = false;
 
     u32 gpu_read = 0;
 
@@ -36,11 +45,20 @@ private:
 
     void ResetCommand();
 
+    u32 HorizontalRes();
+    u32 VerticalRes();
+    u32 Scanlines();
+    u32 CyclesPerScanline();
+
     enum class DmaDirection : u32 {
         Off = 0,
         Fifo = 1,
         CpuToGp0 = 2,
         VramToCpu = 3,
+    };
+
+    enum class VideoMode : u32 {
+        NTSC, PAL
     };
 
     // TODO: more enums for types
@@ -61,7 +79,7 @@ private:
         BitField<u32, u32, 16, 1> horizontal_res_2;
         BitField<u32, u32, 17, 2> horizontal_res_1;
         BitField<u32, u32, 19, 1> vertical_res;
-        BitField<u32, u32, 20, 1> video_mode;
+        BitField<u32, VideoMode, 20, 1> video_mode;
         BitField<u32, u32, 21, 1> display_area_color_depth;
         BitField<u32, bool, 22, 1> vertical_interlace;
         BitField<u32, bool, 23, 1> display_disabled;
@@ -134,6 +152,9 @@ private:
         gpu_info = 0x10,
     };
 
+    u32 gpu_clock = 0;
+    u32 scanline = 0;
+
     u32 command_counter = 0;
     std::array<u32, 12> command_buffer;
 
@@ -153,4 +174,6 @@ private:
     std::array<Vertex, 4> vertices;
     Rectangle rectangle = {};
     Renderer renderer;
+
+    InterruptController* interrupt_controller = nullptr;
 };

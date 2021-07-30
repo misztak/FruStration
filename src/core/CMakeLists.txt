@@ -5,6 +5,7 @@ add_library(core
         bus.cpp
         dma.cpp
         gpu.cpp
+        cdrom.cpp
         sw_renderer.cpp
         bios.cpp
         interrupt.cpp

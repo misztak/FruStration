@@ -87,7 +87,7 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
     return true;
 }
 
-void Display::Draw(bool* done, bool vsync) {
+void Display::Draw() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame(window);
     ImGui::NewFrame();
@@ -100,7 +100,7 @@ void Display::Draw(bool* done, bool vsync) {
             if (ImGui::MenuItem("Pause", "H", &emu_paused)) emu->SetHalt(emu_paused);
             if (ImGui::MenuItem("Reset")) emu->Reset();
             ImGui::Separator();
-            if (ImGui::MenuItem("Quit")) *done = true;
+            if (ImGui::MenuItem("Quit")) emu->done = true;
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Settings")) {
@@ -133,7 +133,7 @@ void Display::Draw(bool* done, bool vsync) {
         ImGui::Begin("Stats", &show_stats_window, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
 
         ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-        ImGui::Text("Vsync: %s", vsync ? "enabled" : "disabled");
+        ImGui::Text("Vsync: %s", vsync_enabled ? "enabled" : "disabled");
         ImGui::End();
     }
 
@@ -159,6 +159,23 @@ void Display::Render() {
     }
 
     SDL_GL_SwapWindow(window);
+}
+
+void Display::Update() {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        ImGui_ImplSDL2_ProcessEvent(&event);
+        if (event.type == SDL_QUIT) emu->done = true;
+        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
+            event.window.windowID == SDL_GetWindowID(window))
+            emu->done = true;
+        if (event.type == SDL_KEYUP) {
+            if (event.key.keysym.scancode == SDL_SCANCODE_H) emu->SetHalt(!emu->IsHalted());
+        }
+    }
+
+    Draw();
+    Render();
 }
 
 void Display::Throttle(u32 fps) {

@@ -592,6 +592,7 @@ void CPU::SetCP0(u32 index, u32 value) {
     Assert(index < 16);
     // TODO: only allow setting writable registers
     if (index == 13) {
+        LOG_DEBUG << "Set value of CAUSE.IP to " << ((value & 0x300U) >> 8);
         // only bits 8-9 of CAUSE are writable
         cp.cause.value = (cp.cause.value & ~0x300U) | (value & 0x300U);
         return;

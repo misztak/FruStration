@@ -3,6 +3,7 @@
 #include "fmt/format.h"
 #include "imgui.h"
 #include "macros.h"
+#include "interrupt.h"
 
 LOG_CHANNEL(GPU);
 
@@ -14,8 +15,35 @@ GPU::GPU() {
     status.can_receive_dma_block = true;
 }
 
-void GPU::Init() {
+void GPU::Init(InterruptController* icontroller) {
+    interrupt_controller = icontroller;
+
     renderer.Init(this);
+}
+
+void GPU::Step(u32 steps) {
+    gpu_clock += static_cast<u32>(steps * (11.0 / 7.0));
+    in_hblank = false;
+    in_vblank = false;
+
+    // finished one scanline
+    if (gpu_clock >= CyclesPerScanline()) {
+        gpu_clock -= CyclesPerScanline();
+
+        scanline++;
+        in_hblank = true;
+
+        if (scanline == Scanlines()) {
+            scanline = 0;
+            in_vblank = true;
+
+            // VBlank
+            // update display
+            vblank_cb();
+
+            interrupt_controller->Request(IRQ::VBLANK);
+        }
+    }
 }
 
 void GPU::SendGP0Cmd(u32 cmd) {
@@ -161,7 +189,7 @@ void GPU::SendGP1Cmd(u32 cmd) {
         case Gp1Command::display_mode:
             status.horizontal_res_1 = cmd & 0x3;
             status.vertical_res = (cmd >> 2) & 0x1;
-            status.video_mode = (cmd >> 3) & 0x1;
+            status.video_mode = static_cast<VideoMode>((cmd >> 3) & 0x1);
             status.display_area_color_depth = (cmd >> 4) & 0x1;
             status.vertical_interlace = (cmd >> 5) & 0x1;
             status.horizontal_res_2 = (cmd >> 6) & 0x1;
@@ -299,6 +327,30 @@ void GPU::CopyRectVramToCpu() {
     LOG_WARN << "CopyRectVramToCpu - Not implemented";
 }
 
+u32 GPU::HorizontalRes() {
+    if (status.horizontal_res_2) return 368;
+
+    switch (status.horizontal_res_1) {
+        case 0: return 256;
+        case 1: return 480;
+        case 2: return 512;
+        case 3: return 640;
+        default: Panic("Invalid horizontal resolution");
+    }
+}
+
+u32 GPU::VerticalRes() {
+    return status.vertical_res ? 480 : 240;
+}
+
+u32 GPU::Scanlines() {
+    return status.video_mode == VideoMode::NTSC ? 263 : 314;
+}
+
+u32 GPU::CyclesPerScanline() {
+    return status.video_mode == VideoMode::NTSC ? 3413 : 3406;
+}
+
 void GPU::ResetCommand() {
     // TODO: FIFO and texture cache
     // TODO: just set status.value to zero?
@@ -335,7 +387,7 @@ void GPU::ResetCommand() {
     status.horizontal_res_1 = 0;
     status.horizontal_res_2 = 0;
     status.vertical_res = 0;
-    status.video_mode = 0;
+    status.video_mode = VideoMode::NTSC;
     status.vertical_interlace = true;
 
     display_horizontal_start = 0x200;
@@ -381,6 +433,10 @@ void GPU::Reset() {
     mode = Mode::Command;
     words_remaining = 0;
 
+    gpu_clock = 0;
+    scanline = 0;
+    in_hblank = in_vblank = false;
+
     std::fill(std::begin(vram), std::end(vram), 0);
 
     for (auto& v : vertices) v.Reset();
@@ -412,7 +468,16 @@ void GPU::DrawGpuState(bool* open) {
     ImGui::Text("[%3d,%3d]------+", drawing_area_left, drawing_area_top);
     ImGui::Text("    |          | ");
     ImGui::Text("    +------[%3d,%3d]", drawing_area_right, drawing_area_bottom);
-    ImGui::Text("Draw offset: x=%d, y=%d", drawing_x_offset, drawing_y_offset);
+
+    ImGui::Text("Draw offset:  x=%d, y=%d", drawing_x_offset, drawing_y_offset);
+    ImGui::Text("VRAM start:   x=%u, y=%u", display_vram_x_start, display_vram_y_start);
+    ImGui::Text("Horiz. range: start=%u, end=%u", display_horizontal_start, display_horizontal_end);
+    ImGui::Text("Line range:   start=%u, end=%u", display_line_start, display_line_end);
+
+    ImGui::Text("Video mode: %s", status.video_mode == VideoMode::NTSC ? "NTSC" : "PAL");
+    ImGui::Text("Horizontal resolution: %u", HorizontalRes());
+    ImGui::Text("Vertical resolution:   %u", VerticalRes());
+
     ImGui::Columns(1);
     ImGui::Separator();
 

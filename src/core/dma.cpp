@@ -55,7 +55,7 @@ void DMA::Store(u32 address, u32 value) {
         interrupt.value = (interrupt.value & ~WRITE_MASK) | (value & WRITE_MASK);
         // writing to channel ack resets it
         interrupt.value = interrupt.value & ~(value & RESET_ACK_MASK);
-        UpdateIRQStatus();
+        UpdateMasterFlag();
         return;
     }
 
@@ -95,6 +95,20 @@ void DMA::StartTransfer(u32 index) {
         case SyncMode::Request:
             TransferBlock(index);
             break;
+    }
+
+    // transfer is over
+    // set corresponding irq flag if enabled
+    if (interrupt.irq_master_enable && (interrupt.irq_enable & (1u << index))) {
+        interrupt.irq_flag |= 1u << index;
+    }
+
+    // send IRQ3 on 0-to-1 transition
+    bool previous_state = interrupt.irq_master_flag;
+    UpdateMasterFlag();
+    if (interrupt.irq_master_flag && !previous_state) {
+        // TODO: don't do this immediately?
+        interrupt_controller->Request(IRQ::DMA);
     }
 }
 
@@ -199,8 +213,7 @@ void DMA::TransferLinkedList(u32 index) {
     ch.control.start_trigger = false;
 }
 
-void DMA::UpdateIRQStatus() {
-    // TODO: check if this is right
+void DMA::UpdateMasterFlag() {
     interrupt.irq_master_flag =
         interrupt.force_irq || (interrupt.irq_master_enable && ((interrupt.irq_enable & interrupt.irq_flag) != 0));
 }

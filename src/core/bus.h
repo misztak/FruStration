@@ -7,6 +7,7 @@
 
 class DMA;
 class GPU;
+class CDROM;
 class InterruptController;
 class TimerController;
 class Debugger;
@@ -18,7 +19,7 @@ class CPU;
 class BUS {
 public:
     BUS();
-    void Init(DMA* dma, GPU* gpu, CPU::CPU* cpu, InterruptController* interrupt, TimerController* timers, Debugger* debugger);
+    void Init(DMA* dma, GPU* gpu, CPU::CPU* cpu, CDROM* cdrom, InterruptController* interrupt, TimerController* timers, Debugger* debugger);
     void Reset();
     bool LoadBIOS(const std::string& path);
     bool LoadPsExe(const std::string& path);
@@ -63,6 +64,7 @@ private:
     DMA* dma = nullptr;
     GPU* gpu = nullptr;
     CPU::CPU* cpu = nullptr;
+    CDROM* cdrom = nullptr;
     InterruptController* interrupt = nullptr;
     TimerController* timers = nullptr;
     Debugger* debugger = nullptr;

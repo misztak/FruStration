@@ -13,13 +13,15 @@ class Display {
 public:
     Display();
     bool Init(System* system, SDL_Window* window, SDL_GLContext context, const char* glsl_version);
-    void Draw(bool* done, bool vsync);
+    void Draw();
     void Render();
+    void Update();
     void Throttle(u32 fps);
 
     static constexpr u32 WIDTH = 1200;
     static constexpr u32 HEIGHT = 800;
 
+    bool vsync_enabled = true;
 private:
     bool show_demo_window = false;
     bool show_stats_window = true;
