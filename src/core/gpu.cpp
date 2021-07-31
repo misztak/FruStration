@@ -22,7 +22,9 @@ void GPU::Init(InterruptController* icontroller) {
 }
 
 void GPU::Step(u32 steps) {
-    gpu_clock += static_cast<u32>(steps * (11.0 / 7.0));
+    // video clock
+    gpu_clock += steps;
+
     in_hblank = false;
     in_vblank = false;
 
@@ -349,6 +351,14 @@ u32 GPU::Scanlines() {
 
 u32 GPU::CyclesPerScanline() {
     return status.video_mode == VideoMode::NTSC ? 3413 : 3406;
+}
+
+u32 GPU::DotClock() {
+    constexpr static u32 dotclocks[5] = {
+        10, 8, 5, 4, 7
+    };
+
+    return dotclocks[(status.horizontal_res_2 << 2) | status.horizontal_res_1];
 }
 
 void GPU::ResetCommand() {

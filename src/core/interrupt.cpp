@@ -48,12 +48,12 @@ u32 InterruptController::LoadMask() {
 }
 
 void InterruptController::UpdateCP0Interrupt() {
-    // the interrupt controller sets bit 10 of the cause register
-    constexpr u8 BIT_INDEX = 2;
+    // the interrupt controller sets bit 10 of the cause register (3rd bit in IP field)
+    constexpr u8 BIT_10 = static_cast<u8>(1u << 2);
 
     if (stat.value & mask.value)
-        cpu->cp.cause.IP |= static_cast<u8>((1U << BIT_INDEX));
+        cpu->cp.cause.IP |= BIT_10;
     else
-        cpu->cp.cause.IP &= static_cast<u8>(~(1U << BIT_INDEX));
+        cpu->cp.cause.IP &= ~BIT_10;
 }
 

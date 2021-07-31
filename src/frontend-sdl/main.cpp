@@ -22,7 +22,7 @@ int RunCore() {
     system.Init();
     if (!system.LoadBIOS(bios_path)) return 1;
 
-    system.Run();
+    while (true) system.Step();
     return 0;
 }
 

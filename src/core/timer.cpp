@@ -2,6 +2,7 @@
 
 #include "gpu.h"
 #include "interrupt.h"
+#include "imgui.h"
 #include "macros.h"
 #include "fmt/format.h"
 
@@ -17,13 +18,9 @@ void TimerController::Init(GPU* g, InterruptController* icontroller) {
 void TimerController::Step(u32 steps, u32 timer_index) {
     auto& timer = timers[timer_index];
 
-    bool send_irq = false;
-    if (!timer.mode.sync_enabled) {
-        // free run
-        Panic("Unimplemented");
-    }
+    bool sync = timer.mode.sync_enabled;
 
-    if (timer_index == 0) {
+    if (sync && timer_index == TMR0) {
         switch (timer.mode.sync_mode) {
             case 0:
                 timer.paused = gpu->in_hblank;
@@ -42,7 +39,7 @@ void TimerController::Step(u32 steps, u32 timer_index) {
                 }
                 break;
         }
-    } else if (timer_index == 1) {
+    } else if (sync && timer_index == TMR1) {
         switch (timer.mode.sync_mode) {
             case 0:
                 timer.paused = gpu->in_vblank;
@@ -61,7 +58,7 @@ void TimerController::Step(u32 steps, u32 timer_index) {
                 }
                 break;
         }
-    } else if (timer_index == 2) {
+    } else if (sync && timer_index == TMR2) {
         switch (timer.mode.sync_mode) {
             case 0:
             case 3:
@@ -73,16 +70,18 @@ void TimerController::Step(u32 steps, u32 timer_index) {
         }
     }
 
-    u16 last_value = timer.counter;
-    // TODO: increment
+    if (timer.paused) return;
 
-    if (timer.mode.reset_mode == ResetMode::AfterTarget && (last_value == (timer.target & 0xFFFF))) {
+    Increment(timer_index, steps);
+    bool send_irq = false;
+
+    if (timer.mode.reset_mode == ResetMode::AfterTarget && (timer.counter >= (timer.target & 0xFFFF))) {
         timer.counter = 0;
         timer.mode.reached_target = true;
         if (timer.mode.irq_on_target) send_irq = true;
     }
 
-    if (timer.mode.reset_mode == ResetMode::AfterMaxValue && (last_value == 0xFFFF)) {
+    if (timer.mode.reset_mode == ResetMode::AfterMaxValue && (timer.counter >= 0xFFFF)) {
         timer.counter = 0;
         timer.mode.reached_max_value = true;
         if (timer.mode.irq_on_max_value) send_irq = true;
@@ -113,13 +112,15 @@ u32 TimerController::Load(u32 address) {
     DebugAssert(timer_index <= 2);
 
     if (timer_address == 0x0) {
-        // unimplemented
-        Assert(timer_index != 0 && timer_index != 2);
         return timers[timer_index].counter;
     }
 
     if (timer_address == 0x4) {
-        return timers[timer_index].mode.value;
+        // reached flags get reset after read
+        u32 value = timers[timer_index].mode.value;
+        timers[timer_index].mode.reached_target = false;
+        timers[timer_index].mode.reached_max_value = false;
+        return value;
     }
 
     if (timer_address == 0x8) {
@@ -203,12 +204,93 @@ TimerController::ClockSource TimerController::GetClockSource(u32 index) {
     }
 }
 
-void TimerController::Reset() {
-    was_hblank = was_vblank = false;
+void TimerController::Increment(u32 index, u32 steps) {
+    constexpr double CPU_CLOCK_RATE = 11.0 / 7.0;
+    auto& timer = timers[index];
 
+    timer.acc_steps += steps;
+
+    ClockSource clock_source = GetClockSource(index);
+
+    switch (clock_source) {
+        case ClockSource::SysClock:
+            timer.counter += static_cast<u32>(timer.acc_steps / CPU_CLOCK_RATE);
+            timer.acc_steps = 0;
+            break;
+        case ClockSource::SysClockEighth:
+            timer.counter += static_cast<u32>(timer.acc_steps / 8 / CPU_CLOCK_RATE);
+            timer.acc_steps %= static_cast<u32>(8 * CPU_CLOCK_RATE);
+            break;
+        case ClockSource::HBlank:
+            timer.counter += static_cast<u32>(timer.acc_steps / gpu->CyclesPerScanline());
+            timer.acc_steps %= gpu->CyclesPerScanline();
+            break;
+        case ClockSource::DotClock:
+            timer.counter += static_cast<u32>(timer.acc_steps / gpu->DotClock());
+            timer.acc_steps %= gpu->DotClock();
+            break;
+    }
+}
+
+void TimerController::Reset() {
     for (auto& timer: timers) {
         timer.counter = 0;
         timer.mode.value = 0;
         timer.target = 0;
+        timer.paused = false;
+        timer.acc_steps = 0;
     }
+}
+
+void TimerController::DrawTimerState(bool* open) {
+    ImGui::Begin("Timer State", open);
+    ImGui::Columns(4);
+
+    const ImVec4 white(1.0, 1.0, 1.0, 1.0);
+    const ImVec4 grey(0.5, 0.5, 0.5, 1.0);
+    const char* const clock_source[4] = {
+        "System Clock", "System Clock / 8", "DotClock", "HBlank"
+    };
+
+    ImGui::Text("Status");
+    ImGui::Text("Counter");
+    ImGui::Text("Target");
+
+    ImGui::Text("Sync");
+    ImGui::Text("Sync mode");
+
+    ImGui::Text("IRQ on target");
+    ImGui::Text("IRQ on max value");
+
+    ImGui::Text("IRQ Mode");
+    ImGui::Text("IRQ Mode");
+
+    ImGui::Text("Clock Source");
+
+    ImGui::Text("IRQ allowed");
+    ImGui::Text("Reached target");
+    ImGui::Text("Reached max value");
+
+    ImGui::NextColumn();
+
+    for (u32 i = 0; i < 3; i++) {
+        auto& timer = timers[i];
+        ImGui::Text("TMR%u [%s]", i, timer.paused ? "paused" : "running");
+        ImGui::Text("%u", timer.counter);
+        ImGui::Text("%u [%s]", timer.target & 0xFFFF, timer.mode.reset_mode == ResetMode::AfterTarget ? "enabled" : "disabled");
+        ImGui::Text("%s", timer.mode.sync_enabled ? "enabled" : "disabled");
+        ImGui::TextColored(timer.mode.sync_enabled ? white : grey, "%u", timer.mode.sync_mode.GetValue());
+        ImGui::Text("%s", timer.mode.irq_on_target ? "yes" : "no");
+        ImGui::Text("%s", timer.mode.irq_on_max_value ? "yes" : "no");
+        ImGui::Text("%s", timer.mode.irq_repeat_mode ? "Repeat" : "One-Shot");
+        ImGui::Text("%s", timer.mode.irq_toggle_mode ? "Toggle" : "Pulse");
+        ImGui::Text("%s", clock_source[static_cast<u32>(GetClockSource(i))]);
+        ImGui::Text("%s", timer.mode.allow_irq ? "yes" : "no");
+        ImGui::Text("%s", timer.mode.reached_target ? "true" : "false");
+        ImGui::Text("%s", timer.mode.reached_max_value ? "true" : "false");
+        ImGui::NextColumn();
+    }
+    ImGui::Columns(1);
+
+    ImGui::End();
 }

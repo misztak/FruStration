@@ -25,6 +25,12 @@ public:
 
     void DrawGpuState(bool* open);
 
+    u32 HorizontalRes();
+    u32 VerticalRes();
+    u32 Scanlines();
+    u32 CyclesPerScanline();
+    u32 DotClock();
+
     std::function<void()> vblank_cb = nullptr;
 
     bool in_hblank = false, in_vblank = false;
@@ -44,11 +50,6 @@ private:
     void CopyRectVramToCpu();
 
     void ResetCommand();
-
-    u32 HorizontalRes();
-    u32 VerticalRes();
-    u32 Scanlines();
-    u32 CyclesPerScanline();
 
     enum class DmaDirection : u32 {
         Off = 0,

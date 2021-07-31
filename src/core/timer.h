@@ -6,6 +6,10 @@
 class GPU;
 class InterruptController;
 
+constexpr static u32 TMR0 = 0;
+constexpr static u32 TMR1 = 1;
+constexpr static u32 TMR2 = 2;
+
 class TimerController {
 public:
     TimerController();
@@ -15,6 +19,7 @@ public:
     u32 Load(u32 address);
     void Store(u32 address, u32 value);
 
+    void DrawTimerState(bool* open);
 private:
     enum class ResetMode: u32 {
         AfterMaxValue, AfterTarget
@@ -28,9 +33,8 @@ private:
     };
 
     ClockSource GetClockSource(u32 index);
+    void Increment(u32 index, u32 steps);
     void SendIRQ(u32 index);
-
-    bool was_hblank = false, was_vblank = false;
 
     struct Timer {
         u32 counter = 0;
@@ -54,6 +58,7 @@ private:
         u32 target = 0;
 
         bool paused = false;
+        u32 acc_steps = 0;
     };
 
     Timer timers[3] = {};

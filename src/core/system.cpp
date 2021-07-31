@@ -41,6 +41,7 @@ bool System::LoadBIOS(const std::string& bios_path) {
 }
 
 void System::Step() {
+    // 100 cpu instructions - 2 cycles per instruction
     for (u32 n = 0; n < 100; n++) {
         cpu->Step();
     }
@@ -48,24 +49,30 @@ void System::Step() {
     // dma step
     cdrom->Step();
 
-    // not sure about the step count, but it's too fast at 100
-    gpu->Step(150);
+    timers->Step(300, TMR0);
+    timers->Step(300, TMR1);
+    timers->Step(300, TMR2);
 
-    // timer step
+    // video clock is cpu clock multiplied by (11 / 7)
+    // also account for the cpu needing 2 cycles to finish one instruction
+    gpu->Step(300);
+}
+
+void System::SingleStep() {
+    cpu->Step();
+
+    // dma step
+    cdrom->Step();
+
+    timers->Step(3, TMR0);
+    timers->Step(3, TMR1);
+    timers->Step(3, TMR2);
+
+    gpu->Step(3);
 }
 
 void System::VBlankCallback(std::function<void()> callback) {
     gpu->vblank_cb = callback;
-}
-
-void System::RunFrame() {
-    cpu->Step();
-}
-
-void System::Run() {
-    while (true) {
-        cpu->Step();
-    }
 }
 
 void System::Reset() {
@@ -85,6 +92,7 @@ void System::DrawDebugWindows() {
     if (draw_cpu_state) cpu->DrawCpuState(&draw_cpu_state);
     if (draw_gpu_state) gpu->DrawGpuState(&draw_gpu_state);
     if (draw_debugger) debugger->DrawDebugger(&draw_debugger);
+    if (draw_timer_state) timers->DrawTimerState(&draw_timer_state);
 }
 
 u16* System::GetVRAM() {
@@ -100,6 +108,3 @@ void System::SetHalt(bool halt) {
     LOG_INFO << "System " << (halt ? "paused" : "resumed");
 }
 
-void System::VBlank() {
-    interrupt->Request(IRQ::VBLANK);
-}

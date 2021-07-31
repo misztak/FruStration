@@ -25,9 +25,7 @@ public:
     void Init();
     bool LoadBIOS(const std::string& bios_path);
     void Step();
-    void RunFrame();
-    void Run();
-    void VBlank();
+    void SingleStep();
 
     void VBlankCallback(std::function<void()> callback);
 
@@ -44,7 +42,7 @@ public:
     bool draw_cpu_state = true;
     bool draw_gpu_state = true;
     bool draw_debugger = true;
-    bool draw_disassembler = false;
+    bool draw_timer_state = true;
 
     u16* GetVRAM();
 private:
