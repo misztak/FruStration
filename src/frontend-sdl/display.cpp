@@ -8,6 +8,7 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
+#include "nfd.h"
 #include "system.h"
 #include "types.h"
 #include "macros.h"
@@ -94,7 +95,15 @@ void Display::Draw() {
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            ImGui::MenuItem("Open", "CTRL-O", false, false);
+            if (ImGui::MenuItem("Open", "CTRL-O")) {
+                nfdchar_t* out_path = nullptr;
+                nfdresult_t result = NFD_OpenDialog(nullptr, nullptr, &out_path);
+                if (result == NFD_OKAY) {
+                    LOG_INFO << "Selected file " << out_path;
+                } else if (result == NFD_ERROR) {
+                    LOG_WARN << "Failed to open file: " << NFD_GetError();
+                }
+            }
             ImGui::Separator();
             bool emu_paused = emu->IsHalted();
             if (ImGui::MenuItem("Pause", "H", &emu_paused)) emu->SetHalt(emu_paused);
