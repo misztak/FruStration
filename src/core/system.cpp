@@ -32,6 +32,7 @@ void System::Init() {
     gpu->Init(interrupt.get());
     timers->Init(gpu.get(), interrupt.get());
     interrupt->Init(cpu.get());
+    cdrom->Init(interrupt.get());
     debugger->Init(cpu.get());
     LOG_INFO << "Initialized PSX core";
 }

@@ -124,6 +124,7 @@ private:
     enum class Gp0Command : u32 {
         nop = 0x00,
         clear_cache = 0x01,
+        fill_vram = 0x02,
         quad_mono_opaque = 0x28,
         quad_tex_blend_opaque = 0x2c,
         triangle_shaded_opaque = 0x30,

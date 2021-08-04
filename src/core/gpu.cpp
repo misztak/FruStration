@@ -83,6 +83,19 @@ void GPU::SendGP0Cmd(u32 cmd) {
         case Gp0Command::clear_cache:
             // TODO: implement me
             break;
+        case Gp0Command::fill_vram:
+            CommandAfterCount(2, [&]{
+                Rectangle r;
+                r.c.SetColor(command_buffer[0]);
+                r.SetStart(command_buffer[1]);
+                r.SetSize(command_buffer[2]);
+                for (u32 y = r.start_y; y < r.start_y + r.size_y; y++) {
+                    for (u32 x = r.start_x; x < r.start_x + r.size_x; x++) {
+                        vram[y * VRAM_WIDTH + x] = r.c.To5551();
+                    }
+                }
+            });
+            break;
         case Gp0Command::quad_mono_opaque:
             CommandAfterCount(4, std::bind(&GPU::DrawQuadMonoOpaque, this));
             break;
@@ -358,6 +371,7 @@ u32 GPU::DotClock() {
         10, 8, 5, 4, 7
     };
 
+    DebugAssert(((status.horizontal_res_2 << 2) | status.horizontal_res_1) < 5);
     return dotclocks[(status.horizontal_res_2 << 2) | status.horizontal_res_1];
 }
 
@@ -484,7 +498,7 @@ void GPU::DrawGpuState(bool* open) {
     ImGui::Text("Horiz. range: start=%u, end=%u", display_horizontal_start, display_horizontal_end);
     ImGui::Text("Line range:   start=%u, end=%u", display_line_start, display_line_end);
 
-    ImGui::Text("Video mode: %s", status.video_mode == VideoMode::NTSC ? "NTSC" : "PAL");
+    ImGui::Text("Video mode: %s - %d BPP", status.video_mode == VideoMode::NTSC ? "NTSC" : "PAL", status.display_area_color_depth ? 24 : 15);
     ImGui::Text("Horizontal resolution: %u", HorizontalRes());
     ImGui::Text("Vertical resolution:   %u", VerticalRes());
 

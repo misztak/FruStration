@@ -11,8 +11,6 @@
 
 LOG_CHANNEL(MAIN);
 
-constexpr u32 FRAME_CYCLES = 33868800 / 60;
-
 constexpr bool RUN_HEADLESS = false;
 
 int RunCore() {
@@ -95,12 +93,7 @@ int main(int, char**) {
 
     while (!system.done) {
         if (!system.IsHalted()) {
-            // run for some cycles
-            // we need to stop occasionally in order to poll for key events
-            for (u32 cycles = 0; cycles < 5000; cycles ++) {
-                system.Step();
-                if (unlikely(system.IsHalted())) break;
-            }
+            system.Step();
         } else {
             display.Update();
         }

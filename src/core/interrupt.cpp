@@ -16,8 +16,6 @@ void InterruptController::Reset() {
 }
 
 void InterruptController::Request(IRQ irq) {
-    // for now only allow interrupts that we can "handle"
-    Assert(irq == IRQ::VBLANK || irq == IRQ::DMA);
     stat.value |= (u32)irq;
     UpdateCP0Interrupt();
 }
@@ -37,7 +35,7 @@ u32 InterruptController::LoadStat() {
 void InterruptController::StoreMask(u32 value) {
     LOG_DEBUG << fmt::format("IMASK SET [0b{:011b}] --> [0b{:011b}]", mask.value & IRQ_MASK, value & IRQ_MASK);
     // for now only allow interrupts that we can "handle"
-    Assert((value & ~(0b1101)) == 0);
+    Assert((value & ~(0b1111101)) == 0);
     mask.value = value;
     UpdateCP0Interrupt();
 }
