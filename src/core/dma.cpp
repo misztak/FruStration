@@ -145,11 +145,16 @@ void DMA::TransferBlock(u32 index) {
                 switch (channel_type) {
                     case DMA_Channel::MDECin:
                     case DMA_Channel::MDECout:
-                    case DMA_Channel::GPU:
                     case DMA_Channel::CDROM:
                     case DMA_Channel::SPU:
                     case DMA_Channel::PIO:
                         Panic("DMA block transfer for channel %u not implemented", index);
+                        break;
+                    case DMA_Channel::GPU:
+                        // invalid command value, only used to update GPUREAD
+                        gpu->SendGP0Cmd(0xFF);
+                        // read next 32-bit packet
+                        data = gpu->gpu_read;
                         break;
                     case DMA_Channel::OTC:
                         data = (transfer_count == 1) ? 0xFFFFFF : ((addr - 4) & 0x1FFFFF);

@@ -118,7 +118,8 @@ private:
 
     enum class Mode : u32 {
         Command,
-        Data,
+        DataFromCPU,
+        DataToCPU,
     };
 
     enum class Gp0Command : u32 {

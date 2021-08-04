@@ -49,12 +49,13 @@ void GPU::Step(u32 steps) {
 }
 
 void GPU::SendGP0Cmd(u32 cmd) {
-    if (mode == Mode::Data) {
+    if (mode == Mode::DataToCPU || mode == Mode::DataFromCPU) {
         if (words_remaining == 0) {
             mode = Mode::Command;
             command_counter = 0;
         } else {
-            CopyRectCpuToVram(cmd);
+            if (mode == Mode::DataFromCPU) CopyRectCpuToVram(cmd);
+            if (mode == Mode::DataToCPU) CopyRectVramToCpu();
             words_remaining--;
             // no reason to continue
             return;
@@ -316,9 +317,10 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
         x_pos_max = x_pos + width;
         Assert(x_pos_max < VRAM_WIDTH);
 
-        //LOG_DEBUG << "Expecting " << words_remaining << " words from CPU to GPU";
-        mode = Mode::Data;
-    } else if (mode == Mode::Data) {
+        mode = Mode::DataFromCPU;
+        //LOG_DEBUG << fmt::format("CopyCPUtoVram: {} words from (x={}, y={}) to (x={}, y={})",
+        //                         words_remaining, x_pos, y_pos, x_pos + width - 1, y_pos + height - 1);
+    } else if (mode == Mode::DataFromCPU) {
         // first halfword
         vram[x_pos + VRAM_WIDTH * y_pos] = data & 0xFFFF;
         // increment and check for overflow
@@ -334,12 +336,57 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
         // second halfword
         vram[x_pos + VRAM_WIDTH * y_pos] = data >> 16;
         increment();
+    } else {
+        Panic("Invalid GPU transfer mode during CopyRectCpuToVram");
     }
 }
 
 void GPU::CopyRectVramToCpu() {
-    // TODO: actual implementation
-    LOG_WARN << "CopyRectVramToCpu - Not implemented";
+    static u32 x_pos_max = 0;
+    static u32 x_pos = 0;
+    static u32 y_pos = 0;
+
+    if (mode == Mode::Command) {
+        const u32 pos = command_buffer[1];
+        x_pos = pos & 0x3FF;
+        y_pos = (pos >> 16) & 0x1FF;
+
+        const u32 resolution = command_buffer[2];
+        const u32 width = resolution & 0x3FF;
+        const u32 height = (resolution >> 16) & 0x1FF;
+        u32 img_size = width * height;
+        // round up
+        img_size = (img_size + 1) & ~0x1;
+        // the GPU uses 16-bit pixels but receives them in 32-bit packets
+        words_remaining = img_size / 2;
+
+        // determine the end of a line
+        x_pos_max = x_pos + width;
+        Assert(x_pos_max < VRAM_WIDTH);
+        mode = Mode::DataToCPU;
+        LOG_DEBUG << fmt::format("CopyVramToCPU: {} words from (x={}, y={}) to (x={}, y={})",
+                                 words_remaining, x_pos, y_pos, x_pos + width - 1, y_pos + height - 1);
+    } else if (mode == Mode::DataToCPU) {
+        // first halfword
+        u32 word1 = vram[x_pos + VRAM_WIDTH * y_pos];
+        // increment and check for overflow
+        auto increment = [&] {
+            x_pos++;
+            if (x_pos >= x_pos_max) {
+                y_pos = (y_pos + 1) % 512;
+                x_pos = command_buffer[1] & 0x3FF;
+            }
+        };
+        increment();
+
+        // second halfword
+        u32 word2 = vram[x_pos + VRAM_WIDTH * y_pos];
+        increment();
+
+        gpu_read = (word2 << 16) | word1;
+    } else {
+        Panic("Invalid GPU transfer mode during CopyRectVramToCpu");
+    }
 }
 
 u32 GPU::HorizontalRes() {

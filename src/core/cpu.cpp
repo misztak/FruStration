@@ -63,7 +63,7 @@ void CPU::Step() {
 
     // handle interrupts
     if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
-        Exception(ExceptionCode::Interrupt);
+        //Exception(ExceptionCode::Interrupt);
     }
 
     // special actions for specific memory locations
@@ -354,7 +354,7 @@ void CPU::Step() {
             }
             break;
         case PrimaryOpcode::cop2:
-            Panic("GTE not implemented");
+            LOG_DEBUG << fmt::format("Unimplemented GTE instruction 0x{:08X}", instr.value);
             break;
         case PrimaryOpcode::cop1:
         case PrimaryOpcode::cop3:
@@ -512,6 +512,15 @@ void CPU::Step() {
 }
 
 void CPU::Exception(ExceptionCode cause) {
+    if (cause == ExceptionCode::Interrupt) {
+        Instruction i;
+        i.value = Load32(sp.pc);
+        if (instr.n.op == PrimaryOpcode::cop2) {
+            LOG_DEBUG << "GTE command during interrupt, delaying interrupt";
+            return;
+        }
+    }
+
     const u32 handler = ((cp.sr.value & (1u << 22)) != 0) ? 0xBFC00180 : 0x80000080;
 
     // get interrupt/user pairs
