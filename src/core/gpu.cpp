@@ -357,7 +357,7 @@ void GPU::CopyRectVramToCpu() {
         u32 img_size = width * height;
         // round up
         img_size = (img_size + 1) & ~0x1;
-        // the GPU uses 16-bit pixels but receives them in 32-bit packets
+        // the GPU uses 16-bit pixels but sends them in 32-bit packets
         words_remaining = img_size / 2;
 
         // determine the end of a line

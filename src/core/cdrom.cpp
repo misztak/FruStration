@@ -49,7 +49,8 @@ void CDROM::ExecCommand(Command command) {
             // no disc
             //PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
             // licensed disc (NTSC)
-            PushResponse(INT3, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
+            PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
+
             break;
         default:
             Panic("Unimplemented CDROM command 0x%02X", static_cast<u8>(command));
@@ -95,9 +96,11 @@ u8 CDROM::Load(u32 address) {
 
     if (address == 0x1) {
         if (response_fifo.empty()) {
+            LOG_DEBUG << "Read from empty response fifo";
             // TODO: return old value if no new response arrived?
             return 0;
         } else {
+            LOG_DEBUG << "Read from response fifo";
             u8 response_byte = response_fifo.front();
             response_fifo.pop_front();
             return response_byte;
@@ -108,6 +111,7 @@ u8 CDROM::Load(u32 address) {
         u8 result = 0b11100000;
 
         if (!interrupt_fifo.empty()) result |= interrupt_fifo.front();
+        LOG_DEBUG << "Read from interrupt fifo";
 
         return result;
     }
@@ -154,6 +158,7 @@ void CDROM::Store(u32 address, u8 value) {
             // acknowledge an IRQ
             if (value & 0x07) {
                 DebugAssert(value == 0x07 || value == 0x1F);
+                LOG_DEBUG << "Acknowledged last interrupt";
                 if (!interrupt_fifo.empty()) interrupt_fifo.pop_front();
             }
         }

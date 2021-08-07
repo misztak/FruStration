@@ -63,7 +63,7 @@ void CPU::Step() {
 
     // handle interrupts
     if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
-        //Exception(ExceptionCode::Interrupt);
+        Exception(ExceptionCode::Interrupt);
     }
 
     // special actions for specific memory locations
