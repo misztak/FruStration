@@ -88,16 +88,8 @@ void System::Reset() {
     LOG_INFO << "System reset";
 }
 
-void System::DrawDebugWindows() {
-    if (draw_mem_viewer) bus->DrawMemEditor(&draw_mem_viewer);
-    if (draw_cpu_state) cpu->DrawCpuState(&draw_cpu_state);
-    if (draw_gpu_state) gpu->DrawGpuState(&draw_gpu_state);
-    if (draw_debugger) debugger->DrawDebugger(&draw_debugger);
-    if (draw_timer_state) timers->DrawTimerState(&draw_timer_state);
-}
-
-u16* System::GetVRAM() {
-    return gpu->GetVRAM();
+bool System::In24BPPMode() {
+    return (gpu->ReadStat() & (1u << 21)) != 0;
 }
 
 bool System::IsHalted() {
@@ -109,3 +101,18 @@ void System::SetHalt(bool halt) {
     LOG_INFO << "System " << (halt ? "paused" : "resumed");
 }
 
+u8* System::GetVideoOutput() {
+    return gpu->GetVideoOutput();
+}
+
+u16* System::GetVRAM() {
+    return gpu->GetVRAM();
+}
+
+void System::DrawDebugWindows() {
+    if (draw_mem_viewer) bus->DrawMemEditor(&draw_mem_viewer);
+    if (draw_cpu_state) cpu->DrawCpuState(&draw_cpu_state);
+    if (draw_gpu_state) gpu->DrawGpuState(&draw_gpu_state);
+    if (draw_debugger) debugger->DrawDebugger(&draw_debugger);
+    if (draw_timer_state) timers->DrawTimerState(&draw_timer_state);
+}

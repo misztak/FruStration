@@ -28,6 +28,8 @@ private:
 
     GLuint vram_tex_handler = 0;
 
+    GLuint output_tex_handler = 0;
+
     SDL_Window* window = nullptr;
     SDL_GLContext gl_context = nullptr;
 

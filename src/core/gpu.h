@@ -21,7 +21,9 @@ public:
     u32 ReadStat();
     void SendGP0Cmd(u32 cmd);
     void SendGP1Cmd(u32 cmd);
+
     u16* GetVRAM();
+    u8*  GetVideoOutput();
 
     void DrawGpuState(bool* open);
 
@@ -172,7 +174,10 @@ private:
     } command;
 
     // TODO: is VRAM filled with garbage at boot?
-    std::array<u16, VRAM_SIZE> vram;
+    std::vector<u16> vram;
+
+    // the actual output that gets displayed on the TV
+    std::vector<u8> output;
 
     std::array<Vertex, 4> vertices;
     Rectangle rectangle = {};

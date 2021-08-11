@@ -70,13 +70,25 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // build the texture
+    // build the vram texture (always 15BPP)
     glGenTextures(1, &vram_tex_handler);
     glBindTexture(GL_TEXTURE_2D, vram_tex_handler);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, system->GetVRAM());
     GLenum status;
+    if ((status = glGetError()) != GL_NO_ERROR) {
+        LOG_CRIT << "OpenGL error " << status << " during texture creation";
+        return false;
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // build the output texture (can be either 15BPP or 24BPP)
+    glGenTextures(1, &output_tex_handler);
+    glBindTexture(GL_TEXTURE_2D, output_tex_handler);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, nullptr);
     if ((status = glGetError()) != GL_NO_ERROR) {
         LOG_CRIT << "OpenGL error " << status << " during texture creation";
         return false;
@@ -136,6 +148,21 @@ void Display::Draw() {
         ImGui::SetNextWindowSize(ImVec2(1024 + 25, 512 + 60));
         ImGui::Begin("VRAM", nullptr, ImGuiWindowFlags_NoScrollbar);
         ImGui::Image((void*)(intptr_t)vram_tex_handler, ImVec2(1024, 512));
+        ImGui::End();
+    }
+
+    // video output
+    {
+        glBindTexture(GL_TEXTURE_2D, output_tex_handler);
+        if (emu->In24BPPMode()) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, emu->GetVideoOutput());
+        } else {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, emu->GetVideoOutput());
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(640 + 25, 480 + 60));
+        ImGui::Begin("Video", nullptr, ImGuiWindowFlags_NoScrollbar);
+        ImGui::Image((void*)(intptr_t)output_tex_handler, ImVec2(640, 480));
         ImGui::End();
     }
 

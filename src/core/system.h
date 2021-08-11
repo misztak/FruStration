@@ -33,6 +33,9 @@ public:
     void SetHalt(bool halt);
     void Reset();
 
+    bool In24BPPMode();
+    u8* GetVideoOutput();
+
     bool done = false;
 
     void DrawDebugWindows();

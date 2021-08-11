@@ -7,7 +7,7 @@
 
 LOG_CHANNEL(GPU);
 
-GPU::GPU() {
+GPU::GPU(): vram(VRAM_SIZE, 0), output(VRAM_SIZE * 2, 0) {
     status.display_disabled = true;
     // pretend that everything is ok
     status.can_receive_cmd_word = true;
@@ -480,6 +480,16 @@ u16* GPU::GetVRAM() {
     return vram.data();
 }
 
+u8* GPU::GetVideoOutput() {
+    // copy display area from vram to output
+    const u32 count = status.display_area_color_depth ? (640 * 3) : (640 * 2);
+    for (u32 y = 0; y < 480; y++) {
+        std::memcpy(output.data() + count * y, (u8*)(vram.data() + VRAM_WIDTH * y), count);
+    }
+
+    return output.data();
+}
+
 void GPU::Reset() {
     gpu_read = 0;
     status.value = 0;
@@ -508,7 +518,8 @@ void GPU::Reset() {
     scanline = 0;
     in_hblank = in_vblank = false;
 
-    std::fill(std::begin(vram), std::end(vram), 0);
+    std::fill(vram.begin(), vram.end(), 0);
+    std::fill(output.begin(), output.end(), 0);
 
     for (auto& v : vertices) v.Reset();
     renderer.palette = 0;
