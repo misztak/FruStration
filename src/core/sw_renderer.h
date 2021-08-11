@@ -45,25 +45,22 @@ struct Rectangle {
     ALWAYS_INLINE void SetTextPoint(u32 value) {
         tex_x = value, tex_y = value >> 8;
     }
-
-    enum class DrawMode : u32 {
-        MONO, TEXTURED
-    };
-    enum class Size : u32 {
-        ONE, EIGHT, SIXTEEN, VARIABLE
-    };
-    enum class Opacity : u32 {
-        OPAQUE, SEMI_TRANSPARENT
-    };
-    enum class Texture : u32 {
-        RAW, BLENDING, NONE
-    };
 };
 
 enum class DrawMode : u32 {
     MONO,
     SHADED,
     TEXTURE,
+};
+
+static constexpr u32 NO_FLAGS = 0u;
+static constexpr u32 SHADED   = (1u << 0);
+static constexpr u32 TEXTURED = (1u << 1);
+static constexpr u32 OPAQUE   = (1u << 2);
+static constexpr u32 BLENDING = (1u << 3);
+
+enum class RectSize : u32 {
+    ONE, EIGHT, SIXTEEN, VARIABLE
 };
 
 class Renderer {
@@ -76,13 +73,10 @@ public:
     template <DrawMode mode>
     void DrawTriangleAVX2(Vertex* v0, Vertex* v1, Vertex* v2, u16 minX, u16 maxX, u16 minY, u16 maxY);
 
-    void DrawRectangleWith(Rectangle::DrawMode mode, Rectangle::Size size, Rectangle::Opacity opacity, Rectangle::Texture texture);
+    template <RectSize size, u32 draw_flags>
+    void DrawRectangle();
 
-    template <Rectangle::Size size, Rectangle::Opacity opacity>
-    void DrawRectangleMono();
-
-    template <Rectangle::Size size, Rectangle::Opacity opacity, Rectangle::Texture texture>
-    void DrawRectangleTextured();
+    void Draw(u32 cmd);
 
     u16 palette = 0;
 private:

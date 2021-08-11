@@ -47,12 +47,6 @@ void GPU::SendGP0Cmd(u32 cmd) {
         }
     };
 
-#define DrawMonoRectangleWith(SIZE, OPACITY) \
-    std::bind(&GPU::DrawRectangleMono, this, Rectangle::SIZE, Rectangle::OPACITY)
-
-#define DrawRectangleWith(SIZE, OPACITY, TEXTURE) \
-    std::bind(&GPU::DrawRectangleTexture, this, Rectangle::SIZE, Rectangle::OPACITY, Rectangle::TEXTURE)
-
     switch (command.gp0_op) {
         case Gp0Command::nop:
             break;
@@ -72,11 +66,10 @@ void GPU::SendGP0Cmd(u32 cmd) {
             CommandAfterCount(7, std::bind(&GPU::DrawQuadShadedOpaque, this));
             break;
         case Gp0Command::rect_tex_opaque:
-            CommandAfterCount(3, DrawRectangleWith(Size::VARIABLE,
-                                                   Opacity::OPAQUE, Texture::BLENDING));
+            CommandAfterCount(3, std::bind(&GPU::DrawRectangleTexture, this));
             break;
         case Gp0Command::dot_mono_opaque:
-            CommandAfterCount(1, DrawMonoRectangleWith(Size::ONE,Opacity::OPAQUE));
+            CommandAfterCount(1, std::bind(&GPU::DrawRectangleMono, this));
             break;
         case Gp0Command::copy_rectangle_cpu_to_vram:
             CommandAfterCount(2, std::bind(&GPU::CopyRectCpuToVram, this, 0));
@@ -127,8 +120,6 @@ void GPU::SendGP0Cmd(u32 cmd) {
             Panic("Unimplemented GP0 command 0x%08X", cmd);
     }
 
-#undef DrawMonoRectangleWith
-#undef DrawRectangleWith
 }
 
 void GPU::SendGP1Cmd(u32 cmd) {
@@ -242,17 +233,17 @@ void GPU::DrawTriangleShadedOpaque() {
     renderer.DrawTriangle<DrawMode::SHADED>(&vertices[0], &vertices[1], &vertices[2]);
 }
 
-void GPU::DrawRectangleMono(Rectangle::Size size, Rectangle::Opacity opacity) {
+void GPU::DrawRectangleMono() {
     //LOG_DEBUG << "DrawRectangleMono";
 
     rectangle.c.SetColor(command_buffer[0]);
     rectangle.SetStart(command_buffer[1]);
     rectangle.SetSize(command_buffer[2]);
 
-    renderer.DrawRectangleWith(Rectangle::DrawMode::MONO, size, opacity, Rectangle::Texture::NONE);
+    renderer.Draw(command_buffer[0]);
 }
 
-void GPU::DrawRectangleTexture(Rectangle::Size size, Rectangle::Opacity opacity, Rectangle::Texture texture) {
+void GPU::DrawRectangleTexture() {
     //LOG_DEBUG << "DrawRectangleTexture";
 
     rectangle.c.SetColor(command_buffer[0]);
@@ -263,7 +254,7 @@ void GPU::DrawRectangleTexture(Rectangle::Size size, Rectangle::Opacity opacity,
     // Texpage gets set up separately via GP0(0xE1)
     renderer.palette = command_buffer[2] >> 16;
 
-    renderer.DrawRectangleWith(Rectangle::DrawMode::TEXTURED, size, opacity, texture);
+    renderer.Draw(command_buffer[0]);
 }
 
 void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {

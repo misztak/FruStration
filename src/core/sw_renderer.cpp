@@ -132,60 +132,24 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
 template <DrawMode mode>
 void Renderer::DrawTriangleAVX2(Vertex *v0, Vertex *v1, Vertex *v2, u16 minX, u16 maxX, u16 minY, u16 maxY) {}
 
-void Renderer::DrawRectangleWith(Rectangle::DrawMode mode, Rectangle::Size size, Rectangle::Opacity opacity,
-                                  Rectangle::Texture texture) {
-#define FN(SIZE, OPACITY) \
-    &Renderer::DrawRectangleMono<Rectangle::Size::SIZE, Rectangle::Opacity::OPACITY>
-
-    // inspired by Duckstation's approach for selecting triangle draw functions
-    using DrawRectangleFunctions = void (Renderer::*)();
-    static constexpr DrawRectangleFunctions mono_functions[4][2] = {
-        {FN(ONE, OPAQUE),       FN(ONE, SEMI_TRANSPARENT)},
-        {FN(EIGHT, OPAQUE),     FN(EIGHT, SEMI_TRANSPARENT)},
-        {FN(SIXTEEN, OPAQUE),   FN(EIGHT, SEMI_TRANSPARENT)},
-        {FN(VARIABLE, OPAQUE),  FN(VARIABLE, SEMI_TRANSPARENT)}};
-
-#undef FN
-
-#define FN(SIZE, OPACITY, TEXTURE) \
-    &Renderer::DrawRectangleTextured<Rectangle::Size::SIZE, Rectangle::Opacity::OPACITY, Rectangle::Texture::TEXTURE>
-
-    static constexpr DrawRectangleFunctions texture_functions[4][2][2] = {
-        {{FN(ONE, OPAQUE, RAW),                 FN(ONE, OPAQUE, BLENDING)},
-         {FN(ONE, SEMI_TRANSPARENT, RAW),       FN(ONE, SEMI_TRANSPARENT, BLENDING)}},
-        {{FN(EIGHT, OPAQUE, RAW),               FN(EIGHT, OPAQUE, BLENDING)},
-         {FN(EIGHT, SEMI_TRANSPARENT, RAW),     FN(EIGHT, SEMI_TRANSPARENT, BLENDING)}},
-        {{FN(SIXTEEN, OPAQUE, RAW),             FN(SIXTEEN, OPAQUE, BLENDING)},
-         {FN(SIXTEEN, SEMI_TRANSPARENT, RAW),   FN(SIXTEEN, SEMI_TRANSPARENT, BLENDING)}},
-        {{FN(VARIABLE, OPAQUE, RAW),            FN(VARIABLE, OPAQUE, BLENDING)},
-         {FN(VARIABLE, SEMI_TRANSPARENT, RAW),  FN(VARIABLE, SEMI_TRANSPARENT, BLENDING)}}};
-
-#undef FN
-
-    // call the appropriate draw function
-    if (mode == Rectangle::DrawMode::MONO) {
-        (this->*mono_functions[u32(size)][u32(opacity)])();
-    } else {
-        (this->*texture_functions[u32(size)][u32(opacity)][u32(texture)])();
-    }
-}
-
-template <Rectangle::Size size>
+template <RectSize size>
 static constexpr std::tuple<u16, u16> GetSize(Rectangle& rect) {
-#define MAKE(x, y) std::make_tuple((u16) x, (u16) y)
+#define MAKE(x, y) std::make_tuple(u16(x), u16(y))
 
     switch (size) {
-        case Rectangle::Size::ONE: return MAKE(1, 1);
-        case Rectangle::Size::EIGHT: return MAKE(8, 8);
-        case Rectangle::Size::SIXTEEN: return MAKE(16, 16);
-        case Rectangle::Size::VARIABLE: return MAKE(rect.size_x, rect.size_y);
+        case RectSize::ONE:      return MAKE(1, 1);
+        case RectSize::EIGHT:    return MAKE(8, 8);
+        case RectSize::SIXTEEN:  return MAKE(16, 16);
+        case RectSize::VARIABLE: return MAKE(rect.size_x, rect.size_y);
     }
 
 #undef MAKE
 }
 
-template <Rectangle::Size size, Rectangle::Opacity opacity>
-void Renderer::DrawRectangleMono() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc++11-narrowing"
+template <RectSize size, u32 draw_flags>
+void Renderer::DrawRectangle() {
     auto& rect = gpu->rectangle;
 
     auto [size_x, size_y] = GetSize<size>(rect);
@@ -197,26 +161,51 @@ void Renderer::DrawRectangleMono() {
 
     for (u16 y = rect.start_y; y < end_y; y++) {
         for (u16 x = rect.start_x; x < end_x; x++) {
-            gpu->vram[x + GPU::VRAM_WIDTH * y] = rect.c.To5551();
+            if constexpr (draw_flags & TEXTURED) {
+                // textured
+                gpu->vram[x + GPU::VRAM_WIDTH * y] = 0xFF;
+            } else {
+                // mono
+                gpu->vram[x + GPU::VRAM_WIDTH * y] = rect.c.To5551();
+            }
         }
     }
 }
+#pragma clang diagnostic pop
 
-template <Rectangle::Size size, Rectangle::Opacity opacity, Rectangle::Texture texture>
-void Renderer::DrawRectangleTextured() {
-    auto& rect = gpu->rectangle;
+void Renderer::Draw(u32 cmd) {
+    switch ((cmd >> 24)) {
+        case 0x60: DrawRectangle<RectSize::VARIABLE, OPAQUE>(); break;
+        case 0x62: DrawRectangle<RectSize::VARIABLE, NO_FLAGS>(); break;
+        case 0x68: DrawRectangle<RectSize::ONE, OPAQUE>(); break;
+        case 0x6A: DrawRectangle<RectSize::ONE, NO_FLAGS>(); break;
+        case 0x70: DrawRectangle<RectSize::EIGHT, OPAQUE>(); break;
+        case 0x72: DrawRectangle<RectSize::EIGHT, NO_FLAGS>(); break;
+        case 0x78: DrawRectangle<RectSize::SIXTEEN, OPAQUE>(); break;
+        case 0x7A: DrawRectangle<RectSize::SIXTEEN, NO_FLAGS>(); break;
 
-    auto [size_x, size_y] = GetSize<size>(rect);
-    DebugAssert(size_x < 1024);
-    DebugAssert(size_y < 512);
+        case 0x64: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE | BLENDING>(); break;
+        case 0x65: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE>(); break;
+        case 0x66: DrawRectangle<RectSize::VARIABLE, TEXTURED | BLENDING>(); break;
+        case 0x67: DrawRectangle<RectSize::VARIABLE, TEXTURED>(); break;
 
-    const u16 end_x = rect.start_x + size_x;
-    const u16 end_y = rect.start_y + size_y;
+        case 0x6C: DrawRectangle<RectSize::ONE, TEXTURED | OPAQUE | BLENDING>(); break;
+        case 0x6D: DrawRectangle<RectSize::ONE, TEXTURED | OPAQUE>(); break;
+        case 0x6E: DrawRectangle<RectSize::ONE, TEXTURED | BLENDING>(); break;
+        case 0x6F: DrawRectangle<RectSize::ONE, TEXTURED>(); break;
 
-    for (u16 y = rect.start_y; y < end_y; y++) {
-        for (u16 x = rect.start_x; x < end_x; x++) {
-            gpu->vram[x + GPU::VRAM_WIDTH * y] = 0xFF;
-        }
+        case 0x74: DrawRectangle<RectSize::EIGHT, TEXTURED | OPAQUE | BLENDING>(); break;
+        case 0x75: DrawRectangle<RectSize::EIGHT, TEXTURED | OPAQUE>(); break;
+        case 0x76: DrawRectangle<RectSize::EIGHT, TEXTURED | BLENDING>(); break;
+        case 0x77: DrawRectangle<RectSize::EIGHT, TEXTURED>(); break;
+
+        case 0x7C: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE | BLENDING>(); break;
+        case 0x7D: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE>(); break;
+        case 0x7E: DrawRectangle<RectSize::VARIABLE, TEXTURED | BLENDING>(); break;
+        case 0x7F: DrawRectangle<RectSize::VARIABLE, TEXTURED>(); break;
+
+        default:
+            Panic("Invalid draw command 0x%08X", cmd);
     }
 }
 
