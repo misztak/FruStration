@@ -133,6 +133,8 @@ union GP_Registers {
         u32 fp;  // frame pointer
         u32 ra;  // function return address
     };
+
+    static constexpr u32 RA = 31;
 };
 
 constexpr u32 SP_REG_COUNT = 3;

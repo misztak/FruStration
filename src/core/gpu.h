@@ -1,24 +1,41 @@
 #pragma once
 
 #include <array>
+#include <functional>
 
 #include "types.h"
 #include "bitfield.h"
 #include "sw_renderer.h"
 
+class InterruptController;
+
 class GPU {
 friend class Renderer;
 public:
     GPU();
-    void Init();
+    void Init(InterruptController* icontroller);
     void Reset();
+
+    void Step(u32 steps);
 
     u32 ReadStat();
     void SendGP0Cmd(u32 cmd);
     void SendGP1Cmd(u32 cmd);
+
     u16* GetVRAM();
+    u8*  GetVideoOutput();
 
     void DrawGpuState(bool* open);
+
+    u32 HorizontalRes();
+    u32 VerticalRes();
+    u32 Scanlines();
+    u32 CyclesPerScanline();
+    u32 DotClock();
+
+    std::function<void()> vblank_cb = nullptr;
+
+    bool in_hblank = false, in_vblank = false;
 
     u32 gpu_read = 0;
 
@@ -49,6 +66,10 @@ private:
         VramToCpu = 3,
     };
 
+    enum class VideoMode : u32 {
+        NTSC, PAL
+    };
+
     // TODO: more enums for types
     union {
         u32 value = 0;
@@ -67,7 +88,7 @@ private:
         BitField<u32, u32, 16, 1> horizontal_res_2;
         BitField<u32, u32, 17, 2> horizontal_res_1;
         BitField<u32, u32, 19, 1> vertical_res;
-        BitField<u32, u32, 20, 1> video_mode;
+        BitField<u32, VideoMode, 20, 1> video_mode;
         BitField<u32, u32, 21, 1> display_area_color_depth;
         BitField<u32, bool, 22, 1> vertical_interlace;
         BitField<u32, bool, 23, 1> display_disabled;
@@ -105,12 +126,14 @@ private:
 
     enum class Mode : u32 {
         Command,
-        Data,
+        DataFromCPU,
+        DataToCPU,
     };
 
     enum class Gp0Command : u32 {
         nop = 0x00,
         clear_cache = 0x01,
+        fill_vram = 0x02,
         quad_mono = 0x28,
         quad_textured = 0x2c,
         triangle_shaded = 0x30,
@@ -140,6 +163,9 @@ private:
         gpu_info = 0x10,
     };
 
+    u32 gpu_clock = 0;
+    u32 scanline = 0;
+
     u32 command_counter = 0;
     std::array<u32, 12> command_buffer;
 
@@ -154,9 +180,14 @@ private:
     } command;
 
     // TODO: is VRAM filled with garbage at boot?
-    std::array<u16, VRAM_SIZE> vram;
+    std::vector<u16> vram;
+
+    // the actual output that gets displayed on the TV
+    std::vector<u8> output;
 
     std::array<Vertex, 4> vertices;
     Rectangle rectangle = {};
     Renderer renderer;
+
+    InterruptController* interrupt_controller = nullptr;
 };

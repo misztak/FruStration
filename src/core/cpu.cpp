@@ -62,29 +62,27 @@ void CPU::Step() {
 #endif
 
     // handle interrupts
-    //if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
-    //    Exception(ExceptionCode::Interrupt);
-    //}
+    if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
+        Exception(ExceptionCode::Interrupt);
+    }
 
     // special actions for specific memory locations
-    // garbage area, should never be reached during bios setup
-    if (sp.pc == 0) {
-        LOG_CRIT << "Stuck in infinite loop, stopping emulator";
-        halt = true;
-    }
+    //
     // bios put_char calls
     if (sp.pc ==  0xA0 && Get(9) == 0x3C) bios.PutChar(Get(4));
     if (sp.pc ==  0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
     // psexe inject point
-    // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/helloworld.psexe");
-    // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpu.exe");
-    // if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpx.exe");
+    //if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/helloworld.psexe");
+    //if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpu.exe");
+    //if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpx.exe");
+    //if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/HelloWorld16BPP.exe");
+    //if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/ImageLoad.exe");
 
     UpdatePC(next_pc);
     // at this point the pc contains the address of the delay slot instruction
     // next_pc points to the instruction right after the delay slot
 
-    // TODO: at what point should this be called/checked
+    // TODO: at what point should this be called/checked?
     if (unlikely(current_pc & 0x3)) {
         LOG_CRIT << "Invalid program counter";
         Exception(ExceptionCode::LoadAddress);
@@ -257,7 +255,7 @@ void CPU::Step() {
             test ^= is_bgez;
 
             in_delay_slot = true;
-            if (is_link) Set(31, next_pc);
+            if (is_link) Set(GP_Registers::RA, next_pc);
             if (test) {
                 next_pc = sp.pc + (instr.imm_se() << 2);
                 branch_taken = true;
@@ -271,7 +269,7 @@ void CPU::Step() {
             branch_taken = true;
             break;
         case PrimaryOpcode::jal:
-            Set(31, next_pc);
+            Set(GP_Registers::RA, next_pc);
             next_pc &= 0xF0000000;
             next_pc |= instr.jump_target << 2;
             in_delay_slot = true;
@@ -356,7 +354,7 @@ void CPU::Step() {
             }
             break;
         case PrimaryOpcode::cop2:
-            Panic("GTE not implemented");
+            LOG_DEBUG << fmt::format("Unimplemented GTE instruction 0x{:08X}", instr.value);
             break;
         case PrimaryOpcode::cop1:
         case PrimaryOpcode::cop3:
@@ -514,6 +512,15 @@ void CPU::Step() {
 }
 
 void CPU::Exception(ExceptionCode cause) {
+    if (cause == ExceptionCode::Interrupt) {
+        Instruction i;
+        i.value = Load32(sp.pc);
+        if (instr.n.op == PrimaryOpcode::cop2) {
+            LOG_DEBUG << "GTE command during interrupt, delaying interrupt";
+            return;
+        }
+    }
+
     const u32 handler = ((cp.sr.value & (1u << 22)) != 0) ? 0xBFC00180 : 0x80000080;
 
     // get interrupt/user pairs
@@ -592,6 +599,7 @@ void CPU::SetCP0(u32 index, u32 value) {
     Assert(index < 16);
     // TODO: only allow setting writable registers
     if (index == 13) {
+        LOG_DEBUG << "Set value of CAUSE.IP to " << ((value & 0x300U) >> 8);
         // only bits 8-9 of CAUSE are writable
         cp.cause.value = (cp.cause.value & ~0x300U) | (value & 0x300U);
         return;

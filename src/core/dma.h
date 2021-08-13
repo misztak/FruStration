@@ -16,7 +16,7 @@ public:
     void Store(u32 address, u32 value);
 
 private:
-    void UpdateIRQStatus();
+    void UpdateMasterFlag();
     void StartTransfer(u32 channel);
     void TransferBlock(u32 channel);
     void TransferLinkedList(u32 channel);

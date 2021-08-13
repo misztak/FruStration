@@ -3,10 +3,11 @@
 #include "fmt/format.h"
 #include "imgui.h"
 #include "macros.h"
+#include "interrupt.h"
 
 LOG_CHANNEL(GPU);
 
-GPU::GPU() {
+GPU::GPU(): vram(VRAM_SIZE, 0), output(VRAM_SIZE * 2, 0) {
     status.display_disabled = true;
     // pretend that everything is ok
     status.can_receive_cmd_word = true;
@@ -14,17 +15,47 @@ GPU::GPU() {
     status.can_receive_dma_block = true;
 }
 
-void GPU::Init() {
+void GPU::Init(InterruptController* icontroller) {
+    interrupt_controller = icontroller;
+
     renderer.Init(this);
 }
 
+void GPU::Step(u32 steps) {
+    // video clock
+    gpu_clock += steps;
+
+    in_hblank = false;
+    in_vblank = false;
+
+    // finished one scanline
+    if (gpu_clock >= CyclesPerScanline()) {
+        gpu_clock -= CyclesPerScanline();
+
+        scanline++;
+        in_hblank = true;
+
+        if (scanline == Scanlines()) {
+            scanline = 0;
+            in_vblank = true;
+
+            // VBlank
+            // update display
+            vblank_cb();
+
+            interrupt_controller->Request(IRQ::VBLANK);
+        }
+    }
+}
+
 void GPU::SendGP0Cmd(u32 cmd) {
-    if (mode == Mode::Data) {
+    if (mode == Mode::DataToCPU || mode == Mode::DataFromCPU) {
         if (words_remaining == 0) {
             mode = Mode::Command;
             command_counter = 0;
         } else {
-            CopyRectCpuToVram(cmd);
+            if (mode == Mode::DataFromCPU) CopyRectCpuToVram(cmd);
+            if (mode == Mode::DataToCPU) CopyRectVramToCpu();
             words_remaining--;
             // no reason to continue
             return;
@@ -52,6 +83,19 @@ void GPU::SendGP0Cmd(u32 cmd) {
             break;
         case Gp0Command::clear_cache:
             // TODO: implement me
+            break;
+        case Gp0Command::fill_vram:
+            CommandAfterCount(2, [&]{
+                Rectangle r;
+                r.c.SetColor(command_buffer[0]);
+                r.SetStart(command_buffer[1]);
+                r.SetSize(command_buffer[2]);
+                for (u32 y = r.start_y; y < r.start_y + r.size_y; y++) {
+                    for (u32 x = r.start_x; x < r.start_x + r.size_x; x++) {
+                        vram[y * VRAM_WIDTH + x] = r.c.To5551();
+                    }
+                }
+            });
             break;
         case Gp0Command::quad_mono:
             CommandAfterCount(4, std::bind(&GPU::DrawQuadMono, this));
@@ -119,7 +163,6 @@ void GPU::SendGP0Cmd(u32 cmd) {
         default:
             Panic("Unimplemented GP0 command 0x%08X", cmd);
     }
-
 }
 
 void GPU::SendGP1Cmd(u32 cmd) {
@@ -131,7 +174,7 @@ void GPU::SendGP1Cmd(u32 cmd) {
             ResetCommand();
             break;
         case Gp1Command::cmd_buf_reset:
-            //LOG_DEBUG << "Reset command buffer [Unimplemented]";
+            LOG_DEBUG << "Reset command buffer [Unimplemented]";
             break;
         case Gp1Command::ack_gpu_interrupt:
             LOG_DEBUG << "ACK GPU Interrupt [Unimplemented]";
@@ -157,7 +200,7 @@ void GPU::SendGP1Cmd(u32 cmd) {
         case Gp1Command::display_mode:
             status.horizontal_res_1 = cmd & 0x3;
             status.vertical_res = (cmd >> 2) & 0x1;
-            status.video_mode = (cmd >> 3) & 0x1;
+            status.video_mode = static_cast<VideoMode>((cmd >> 3) & 0x1);
             status.display_area_color_depth = (cmd >> 4) & 0x1;
             status.vertical_interlace = (cmd >> 5) & 0x1;
             status.horizontal_res_2 = (cmd >> 6) & 0x1;
@@ -277,9 +320,10 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
         x_pos_max = x_pos + width;
         Assert(x_pos_max < VRAM_WIDTH);
 
-        //LOG_DEBUG << "Expecting " << words_remaining << " words from CPU to GPU";
-        mode = Mode::Data;
-    } else if (mode == Mode::Data) {
+        mode = Mode::DataFromCPU;
+        //LOG_DEBUG << fmt::format("CopyCPUtoVram: {} words from (x={}, y={}) to (x={}, y={})",
+        //                         words_remaining, x_pos, y_pos, x_pos + width - 1, y_pos + height - 1);
+    } else if (mode == Mode::DataFromCPU) {
         // first halfword
         vram[x_pos + VRAM_WIDTH * y_pos] = data & 0xFFFF;
         // increment and check for overflow
@@ -295,12 +339,90 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
         // second halfword
         vram[x_pos + VRAM_WIDTH * y_pos] = data >> 16;
         increment();
+    } else {
+        Panic("Invalid GPU transfer mode during CopyRectCpuToVram");
     }
 }
 
 void GPU::CopyRectVramToCpu() {
-    // TODO: actual implementation
-    LOG_WARN << "CopyRectVramToCpu - Not implemented";
+    static u32 x_pos_max = 0;
+    static u32 x_pos = 0;
+    static u32 y_pos = 0;
+
+    if (mode == Mode::Command) {
+        const u32 pos = command_buffer[1];
+        x_pos = pos & 0x3FF;
+        y_pos = (pos >> 16) & 0x1FF;
+
+        const u32 resolution = command_buffer[2];
+        const u32 width = resolution & 0x3FF;
+        const u32 height = (resolution >> 16) & 0x1FF;
+        u32 img_size = width * height;
+        // round up
+        img_size = (img_size + 1) & ~0x1;
+        // the GPU uses 16-bit pixels but sends them in 32-bit packets
+        words_remaining = img_size / 2;
+
+        // determine the end of a line
+        x_pos_max = x_pos + width;
+        Assert(x_pos_max < VRAM_WIDTH);
+        mode = Mode::DataToCPU;
+        LOG_DEBUG << fmt::format("CopyVramToCPU: {} words from (x={}, y={}) to (x={}, y={})",
+                                 words_remaining, x_pos, y_pos, x_pos + width - 1, y_pos + height - 1);
+    } else if (mode == Mode::DataToCPU) {
+        // first halfword
+        u32 word1 = vram[x_pos + VRAM_WIDTH * y_pos];
+        // increment and check for overflow
+        auto increment = [&] {
+            x_pos++;
+            if (x_pos >= x_pos_max) {
+                y_pos = (y_pos + 1) % 512;
+                x_pos = command_buffer[1] & 0x3FF;
+            }
+        };
+        increment();
+
+        // second halfword
+        u32 word2 = vram[x_pos + VRAM_WIDTH * y_pos];
+        increment();
+
+        gpu_read = (word2 << 16) | word1;
+    } else {
+        Panic("Invalid GPU transfer mode during CopyRectVramToCpu");
+    }
+}
+
+u32 GPU::HorizontalRes() {
+    if (status.horizontal_res_2) return 368;
+
+    switch (status.horizontal_res_1) {
+        case 0: return 256;
+        case 1: return 480;
+        case 2: return 512;
+        case 3: return 640;
+        default: Panic("Invalid horizontal resolution");
+    }
+}
+
+u32 GPU::VerticalRes() {
+    return status.vertical_res ? 480 : 240;
+}
+
+u32 GPU::Scanlines() {
+    return status.video_mode == VideoMode::NTSC ? 263 : 314;
+}
+
+u32 GPU::CyclesPerScanline() {
+    return status.video_mode == VideoMode::NTSC ? 3413 : 3406;
+}
+
+u32 GPU::DotClock() {
+    constexpr static u32 dotclocks[5] = {
+        10, 8, 5, 4, 7
+    };
+
+    DebugAssert(((status.horizontal_res_2 << 2) | status.horizontal_res_1) < 5);
+    return dotclocks[(status.horizontal_res_2 << 2) | status.horizontal_res_1];
 }
 
 void GPU::ResetCommand() {
@@ -339,7 +461,7 @@ void GPU::ResetCommand() {
     status.horizontal_res_1 = 0;
     status.horizontal_res_2 = 0;
     status.vertical_res = 0;
-    status.video_mode = 0;
+    status.video_mode = VideoMode::NTSC;
     status.vertical_interlace = true;
 
     display_horizontal_start = 0x200;
@@ -359,6 +481,16 @@ u32 GPU::ReadStat() {
 
 u16* GPU::GetVRAM() {
     return vram.data();
+}
+
+u8* GPU::GetVideoOutput() {
+    // copy display area from vram to output
+    const u32 count = status.display_area_color_depth ? (640 * 3) : (640 * 2);
+    for (u32 y = 0; y < 480; y++) {
+        std::memcpy(output.data() + count * y, (u8*)(vram.data() + VRAM_WIDTH * y), count);
+    }
+
+    return output.data();
 }
 
 void GPU::Reset() {
@@ -385,7 +517,12 @@ void GPU::Reset() {
     mode = Mode::Command;
     words_remaining = 0;
 
-    std::fill(std::begin(vram), std::end(vram), 0);
+    gpu_clock = 0;
+    scanline = 0;
+    in_hblank = in_vblank = false;
+
+    std::fill(vram.begin(), vram.end(), 0);
+    std::fill(output.begin(), output.end(), 0);
 
     for (auto& v : vertices) v.Reset();
     renderer.palette = 0;
@@ -416,7 +553,16 @@ void GPU::DrawGpuState(bool* open) {
     ImGui::Text("[%3d,%3d]------+", drawing_area_left, drawing_area_top);
     ImGui::Text("    |          | ");
     ImGui::Text("    +------[%3d,%3d]", drawing_area_right, drawing_area_bottom);
-    ImGui::Text("Draw offset: x=%d, y=%d", drawing_x_offset, drawing_y_offset);
+
+    ImGui::Text("Draw offset:  x=%d, y=%d", drawing_x_offset, drawing_y_offset);
+    ImGui::Text("VRAM start:   x=%u, y=%u", display_vram_x_start, display_vram_y_start);
+    ImGui::Text("Horiz. range: start=%u, end=%u", display_horizontal_start, display_horizontal_end);
+    ImGui::Text("Line range:   start=%u, end=%u", display_line_start, display_line_end);
+
+    ImGui::Text("Video mode: %s - %d BPP", status.video_mode == VideoMode::NTSC ? "NTSC" : "PAL", status.display_area_color_depth ? 24 : 15);
+    ImGui::Text("Horizontal resolution: %u", HorizontalRes());
+    ImGui::Text("Vertical resolution:   %u", VerticalRes());
+
     ImGui::Columns(1);
     ImGui::Separator();
 

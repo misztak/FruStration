@@ -55,7 +55,7 @@ void DMA::Store(u32 address, u32 value) {
         interrupt.value = (interrupt.value & ~WRITE_MASK) | (value & WRITE_MASK);
         // writing to channel ack resets it
         interrupt.value = interrupt.value & ~(value & RESET_ACK_MASK);
-        UpdateIRQStatus();
+        UpdateMasterFlag();
         return;
     }
 
@@ -96,6 +96,20 @@ void DMA::StartTransfer(u32 index) {
             TransferBlock(index);
             break;
     }
+
+    // transfer is over
+    // set corresponding irq flag if enabled
+    if (interrupt.irq_master_enable && (interrupt.irq_enable & (1u << index))) {
+        interrupt.irq_flag |= 1u << index;
+    }
+
+    // send IRQ3 on 0-to-1 transition
+    bool previous_state = interrupt.irq_master_flag;
+    UpdateMasterFlag();
+    if (interrupt.irq_master_flag && !previous_state) {
+        // TODO: don't do this immediately?
+        interrupt_controller->Request(IRQ::DMA);
+    }
 }
 
 void DMA::TransferBlock(u32 index) {
@@ -131,11 +145,16 @@ void DMA::TransferBlock(u32 index) {
                 switch (channel_type) {
                     case DMA_Channel::MDECin:
                     case DMA_Channel::MDECout:
-                    case DMA_Channel::GPU:
                     case DMA_Channel::CDROM:
                     case DMA_Channel::SPU:
                     case DMA_Channel::PIO:
                         Panic("DMA block transfer for channel %u not implemented", index);
+                        break;
+                    case DMA_Channel::GPU:
+                        // invalid command value, only used to update GPUREAD
+                        gpu->SendGP0Cmd(0xFF);
+                        // read next 32-bit packet
+                        data = gpu->gpu_read;
                         break;
                     case DMA_Channel::OTC:
                         data = (transfer_count == 1) ? 0xFFFFFF : ((addr - 4) & 0x1FFFFF);
@@ -199,8 +218,7 @@ void DMA::TransferLinkedList(u32 index) {
     ch.control.start_trigger = false;
 }
 
-void DMA::UpdateIRQStatus() {
-    // TODO: check if this is right
+void DMA::UpdateMasterFlag() {
     interrupt.irq_master_flag =
         interrupt.force_irq || (interrupt.irq_master_enable && ((interrupt.irq_enable & interrupt.irq_flag) != 0));
 }

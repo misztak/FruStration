@@ -8,6 +8,7 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
+#include "nfd.h"
 #include "system.h"
 #include "types.h"
 #include "macros.h"
@@ -69,7 +70,7 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // build the texture
+    // build the vram texture (always 15BPP)
     glGenTextures(1, &vram_tex_handler);
     glBindTexture(GL_TEXTURE_2D, vram_tex_handler);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -82,25 +83,45 @@ bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const
     }
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    // build the output texture (can be either 15BPP or 24BPP)
+    glGenTextures(1, &output_tex_handler);
+    glBindTexture(GL_TEXTURE_2D, output_tex_handler);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, nullptr);
+    if ((status = glGetError()) != GL_NO_ERROR) {
+        LOG_CRIT << "OpenGL error " << status << " during texture creation";
+        return false;
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     start = std::chrono::system_clock::now();
     end = std::chrono::system_clock::now();
     return true;
 }
 
-void Display::Draw(bool* done, bool vsync) {
+void Display::Draw() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame(window);
     ImGui::NewFrame();
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            ImGui::MenuItem("Open", "CTRL-O", false, false);
+            if (ImGui::MenuItem("Open", "CTRL-O")) {
+                nfdchar_t* out_path = nullptr;
+                nfdresult_t result = NFD_OpenDialog(nullptr, nullptr, &out_path);
+                if (result == NFD_OKAY) {
+                    LOG_INFO << "Selected file " << out_path;
+                } else if (result == NFD_ERROR) {
+                    LOG_WARN << "Failed to open file: " << NFD_GetError();
+                }
+            }
             ImGui::Separator();
             bool emu_paused = emu->IsHalted();
             if (ImGui::MenuItem("Pause", "H", &emu_paused)) emu->SetHalt(emu_paused);
             if (ImGui::MenuItem("Reset")) emu->Reset();
             ImGui::Separator();
-            if (ImGui::MenuItem("Quit")) *done = true;
+            if (ImGui::MenuItem("Quit")) emu->done = true;
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Settings")) {
@@ -110,6 +131,7 @@ void Display::Draw(bool* done, bool vsync) {
             ImGui::MenuItem("Stats", nullptr, &show_stats_window);
             ImGui::MenuItem("CPU Stats", nullptr, &emu->draw_cpu_state);
             ImGui::MenuItem("GPU Stats", nullptr, &emu->draw_gpu_state);
+            ImGui::MenuItem("Timer Stats", nullptr, &emu->draw_timer_state);
             ImGui::MenuItem("Debugger", nullptr, &emu->draw_debugger);
             ImGui::MenuItem("Mem Editor", nullptr, &emu->draw_mem_viewer);
             ImGui::MenuItem("Demo", nullptr, &show_demo_window);
@@ -129,11 +151,26 @@ void Display::Draw(bool* done, bool vsync) {
         ImGui::End();
     }
 
+    // video output
+    {
+        glBindTexture(GL_TEXTURE_2D, output_tex_handler);
+        if (emu->In24BPPMode()) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, emu->GetVideoOutput());
+        } else {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, emu->GetVideoOutput());
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(640 + 25, 480 + 60));
+        ImGui::Begin("Video", nullptr, ImGuiWindowFlags_NoScrollbar);
+        ImGui::Image((void*)(intptr_t)output_tex_handler, ImVec2(640, 480));
+        ImGui::End();
+    }
+
     if (show_stats_window) {
         ImGui::Begin("Stats", &show_stats_window, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
 
         ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-        ImGui::Text("Vsync: %s", vsync ? "enabled" : "disabled");
+        ImGui::Text("Vsync: %s", vsync_enabled ? "enabled" : "disabled");
         ImGui::End();
     }
 
@@ -159,6 +196,23 @@ void Display::Render() {
     }
 
     SDL_GL_SwapWindow(window);
+}
+
+void Display::Update() {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        ImGui_ImplSDL2_ProcessEvent(&event);
+        if (event.type == SDL_QUIT) emu->done = true;
+        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
+            event.window.windowID == SDL_GetWindowID(window))
+            emu->done = true;
+        if (event.type == SDL_KEYUP) {
+            if (event.key.keysym.scancode == SDL_SCANCODE_H) emu->SetHalt(!emu->IsHalted());
+        }
+    }
+
+    Draw();
+    Render();
 }
 
 void Display::Throttle(u32 fps) {

@@ -16,17 +16,15 @@ void InterruptController::Reset() {
 }
 
 void InterruptController::Request(IRQ irq) {
-    // for now only allow interrupts that we can "handle"
-    Assert(irq == IRQ::VBLANK || irq == IRQ::DMA);
     stat.value |= (u32)irq;
-    UpdateCP0Interrupt(2);
+    UpdateCP0Interrupt();
 }
 
 void InterruptController::StoreStat(u32 value) {
     u32 old_stat = stat.value;
     stat.value &= value;
     LOG_DEBUG << fmt::format("ISTAT ACK [0b{:011b}] --> [0b{:011b}]", old_stat & IRQ_MASK, stat.value & IRQ_MASK);
-    UpdateCP0Interrupt(2);
+    UpdateCP0Interrupt();
 }
 
 u32 InterruptController::LoadStat() {
@@ -37,9 +35,9 @@ u32 InterruptController::LoadStat() {
 void InterruptController::StoreMask(u32 value) {
     LOG_DEBUG << fmt::format("IMASK SET [0b{:011b}] --> [0b{:011b}]", mask.value & IRQ_MASK, value & IRQ_MASK);
     // for now only allow interrupts that we can "handle"
-    Assert((value & ~(0b1001)) == 0);
+    Assert((value & ~(0b1111101)) == 0);
     mask.value = value;
-    UpdateCP0Interrupt(2);
+    UpdateCP0Interrupt();
 }
 
 u32 InterruptController::LoadMask() {
@@ -47,10 +45,13 @@ u32 InterruptController::LoadMask() {
     return mask.value;
 }
 
-void InterruptController::UpdateCP0Interrupt(u8 bit_index) {
+void InterruptController::UpdateCP0Interrupt() {
+    // the interrupt controller sets bit 10 of the cause register (3rd bit in IP field)
+    constexpr u8 BIT_10 = static_cast<u8>(1u << 2);
+
     if (stat.value & mask.value)
-        cpu->cp.cause.IP |= static_cast<u8>((1U << bit_index));
+        cpu->cp.cause.IP |= BIT_10;
     else
-        cpu->cp.cause.IP &= static_cast<u8>(~(1U << bit_index));
+        cpu->cp.cause.IP &= ~BIT_10;
 }
 

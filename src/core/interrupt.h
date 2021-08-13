@@ -33,7 +33,7 @@ public:
     u32 LoadMask();
 
 private:
-    void UpdateCP0Interrupt(u8 bit_index);
+    void UpdateCP0Interrupt();
 
     static constexpr u32 IRQ_MASK = 0x7FF;
 
