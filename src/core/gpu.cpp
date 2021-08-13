@@ -53,22 +53,22 @@ void GPU::SendGP0Cmd(u32 cmd) {
         case Gp0Command::clear_cache:
             // TODO: implement me
             break;
-        case Gp0Command::quad_mono_opaque:
-            CommandAfterCount(4, std::bind(&GPU::DrawQuadMonoOpaque, this));
+        case Gp0Command::quad_mono:
+            CommandAfterCount(4, std::bind(&GPU::DrawQuadMono, this));
             break;
-        case Gp0Command::quad_tex_blend_opaque:
-            CommandAfterCount(8, std::bind(&GPU::DrawQuadTextureBlendOpaque, this));
+        case Gp0Command::quad_textured:
+            CommandAfterCount(8, std::bind(&GPU::DrawQuadTextured, this));
             break;
-        case Gp0Command::triangle_shaded_opaque:
-            CommandAfterCount(5, std::bind(&GPU::DrawTriangleShadedOpaque, this));
+        case Gp0Command::triangle_shaded:
+            CommandAfterCount(5, std::bind(&GPU::DrawTriangleShaded, this));
             break;
-        case Gp0Command::quad_shaded_opaque:
-            CommandAfterCount(7, std::bind(&GPU::DrawQuadShadedOpaque, this));
+        case Gp0Command::quad_shaded:
+            CommandAfterCount(7, std::bind(&GPU::DrawQuadShaded, this));
             break;
-        case Gp0Command::rect_tex_opaque:
+        case Gp0Command::rectangle_textured:
             CommandAfterCount(3, std::bind(&GPU::DrawRectangleTexture, this));
             break;
-        case Gp0Command::dot_mono_opaque:
+        case Gp0Command::rectangle_mono:
             CommandAfterCount(1, std::bind(&GPU::DrawRectangleMono, this));
             break;
         case Gp0Command::copy_rectangle_cpu_to_vram:
@@ -177,29 +177,27 @@ void GPU::SendGP1Cmd(u32 cmd) {
     }
 }
 
-void GPU::DrawQuadMonoOpaque() {
+void GPU::DrawQuadMono() {
     //LOG_DEBUG << "DrawQuadMonoOpaque";
     for (u8 i = 0; i < 4; i++) {
         vertices[i].SetPoint(command_buffer[i + 1]);
         vertices[i].c.SetColor(command_buffer[0]);
         vertices[i].SetTextPoint(0);
     }
-    renderer.DrawTriangle<DrawMode::MONO>(&vertices[0], &vertices[1], &vertices[2]);
-    renderer.DrawTriangle<DrawMode::MONO>(&vertices[1], &vertices[2], &vertices[3]);
+    renderer.Draw(command_buffer[0]);
 }
 
-void GPU::DrawQuadShadedOpaque() {
+void GPU::DrawQuadShaded() {
     //LOG_DEBUG << "DrawQuadShadedOpaque";
     for (u8 i = 0; i < 4; i++) {
         vertices[i].SetPoint(command_buffer[(i * 2) + 1]);
         vertices[i].c.SetColor(command_buffer[(i * 2)]);
         vertices[i].SetTextPoint(0);
     }
-    renderer.DrawTriangle<DrawMode::SHADED>(&vertices[0], &vertices[1], &vertices[2]);
-    renderer.DrawTriangle<DrawMode::SHADED>(&vertices[1], &vertices[2], &vertices[3]);
+    renderer.Draw(command_buffer[0]);
 }
 
-void GPU::DrawQuadTextureBlendOpaque() {
+void GPU::DrawQuadTextured() {
     //LOG_DEBUG << "DrawQuadTextureBlendOpaque";
     renderer.palette = command_buffer[2] >> 16;
 
@@ -218,11 +216,10 @@ void GPU::DrawQuadTextureBlendOpaque() {
     }
     //printf("\n");
 
-    renderer.DrawTriangle<DrawMode::TEXTURE>(&vertices[0], &vertices[1], &vertices[2]);
-    renderer.DrawTriangle<DrawMode::TEXTURE>(&vertices[1], &vertices[2], &vertices[3]);
+    renderer.Draw(command_buffer[0]);
 }
 
-void GPU::DrawTriangleShadedOpaque() {
+void GPU::DrawTriangleShaded() {
     //LOG_DEBUG << "DrawTriangleShadedOpaque";
 
     for (u8 i = 0; i < 3; i++) {
@@ -230,7 +227,7 @@ void GPU::DrawTriangleShadedOpaque() {
         vertices[i].c.SetColor(command_buffer[(i * 2)]);
         vertices[i].SetTextPoint(0);
     }
-    renderer.DrawTriangle<DrawMode::SHADED>(&vertices[0], &vertices[1], &vertices[2]);
+    renderer.Draw(command_buffer[0]);
 }
 
 void GPU::DrawRectangleMono() {

@@ -26,10 +26,13 @@ public:
     static constexpr u32 VRAM_HEIGHT = 512;
     static constexpr u32 VRAM_SIZE = 1024 * 512;
 private:
-    void DrawQuadMonoOpaque();
-    void DrawQuadShadedOpaque();
-    void DrawQuadTextureBlendOpaque();
-    void DrawTriangleShadedOpaque();
+    void DrawQuadMono();
+    void DrawQuadShaded();
+    void DrawQuadTextured();
+
+    void DrawTriangleMono();
+    void DrawTriangleShaded();
+    void DrawTriangleTextured();
 
     void DrawRectangleMono();
     void DrawRectangleTexture();
@@ -108,12 +111,12 @@ private:
     enum class Gp0Command : u32 {
         nop = 0x00,
         clear_cache = 0x01,
-        quad_mono_opaque = 0x28,
-        quad_tex_blend_opaque = 0x2c,
-        triangle_shaded_opaque = 0x30,
-        quad_shaded_opaque = 0x38,
-        rect_tex_opaque = 0x64,
-        dot_mono_opaque = 0x68,
+        quad_mono = 0x28,
+        quad_textured = 0x2c,
+        triangle_shaded = 0x30,
+        quad_shaded = 0x38,
+        rectangle_textured = 0x64,
+        rectangle_mono = 0x68,
         copy_rectangle_cpu_to_vram = 0xa0,
         copy_rectangle_vram_to_cpu = 0xc0,
         draw_mode = 0xe1,

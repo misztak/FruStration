@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <tuple>
-#include <immintrin.h>
 
 #include "fmt/format.h"
 #include "gpu.h"
@@ -22,11 +21,22 @@ static constexpr s32 EdgeFunction(Vertex* v0, Vertex* v1, s16 px, s16 py) {
     return (s32) ((v1->x - v0->x) * (py - v0->y) - (v1->y - v0->y) * (px - v0->x));
 }
 
-template <DrawMode mode>
-void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc++11-narrowing"
+template <u32 draw_flags>
+void Renderer::DrawTriangle() {
+    if ((draw_flags & (TEXTURED | SHADED)) == (TEXTURED | SHADED)) Panic("Unimplemented");
     // made possible by Fabian Giesen's great series of articles about software rasterizers
     // starting with:
     // https://fgiesen.wordpress.com/2013/02/06/the-barycentric-conspirac/
+
+    // fetch the vertices
+    Vertex *v0, *v1, *v2;
+    if constexpr (draw_flags & SECOND_TRIANGLE) {
+        v0 = &gpu->vertices[1], v1 = &gpu->vertices[2], v2 = &gpu->vertices[3];
+    } else {
+        v0 = &gpu->vertices[0], v1 = &gpu->vertices[1], v2 = &gpu->vertices[2];
+    }
 
     // make sure vertices are oriented counter-clockwise
     // swapping any two vertices is enough
@@ -73,11 +83,11 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
             // just use the sign bits
             if ((w01 | w12 | w20) >= 0) {
                 // draw the pixel
-                if constexpr (mode == DrawMode::MONO) {
+                if constexpr (!(draw_flags & (TEXTURED | SHADED))) {
                     // all vertices store the same color value
                     gpu->vram[px + GPU::VRAM_WIDTH * py] = v0->c.To5551();
                 }
-                if constexpr (mode == DrawMode::SHADED) {
+                if constexpr (draw_flags & SHADED) {
                     Color color;
                     // shading
                     color.r = (s32(v0->c.r) * w12 + s32(v1->c.r) * w20 + s32(v2->c.r) * w01) / area;
@@ -85,7 +95,7 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
                     color.b = (s32(v0->c.b) * w12 + s32(v1->c.b) * w20 + s32(v2->c.b) * w01) / area;
                     gpu->vram[px + GPU::VRAM_WIDTH * py] = color.To5551();
                 }
-                if constexpr (mode == DrawMode::TEXTURE) {
+                if constexpr (draw_flags & TEXTURED) {
                     u8 tex_x = std::clamp((v0->tex_x * w12 + v1->tex_x * w20 + v2->tex_x * w01) / area, 0, 255);
                     u8 tex_y = std::clamp((v0->tex_y * w12 + v1->tex_y * w20 + v2->tex_y * w01) / area, 0, 255);
 
@@ -128,9 +138,14 @@ void Renderer::DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
         w20_row += B20;
     }
 }
+#pragma clang diagnostic pop
 
-template <DrawMode mode>
-void Renderer::DrawTriangleAVX2(Vertex *v0, Vertex *v1, Vertex *v2, u16 minX, u16 maxX, u16 minY, u16 maxY) {}
+template <u32 draw_flags>
+void Renderer::Draw4PointPolygon() {
+    // build 4-point polygon using two calls to DrawTriangle
+    DrawTriangle<draw_flags>();
+    DrawTriangle<draw_flags | SECOND_TRIANGLE>();
+}
 
 template <RectSize size>
 static constexpr std::tuple<u16, u16> GetSize(Rectangle& rect) {
@@ -175,6 +190,28 @@ void Renderer::DrawRectangle() {
 
 void Renderer::Draw(u32 cmd) {
     switch ((cmd >> 24)) {
+        case 0x20: DrawTriangle<OPAQUE>(); break;
+        case 0x22: DrawTriangle<NO_FLAGS>(); break;
+        case 0x24: DrawTriangle<TEXTURED | OPAQUE | BLENDING>(); break;
+        case 0x25: DrawTriangle<TEXTURED | OPAQUE>(); break;
+        case 0x26: DrawTriangle<TEXTURED | BLENDING>(); break;
+        case 0x27: DrawTriangle<TEXTURED>(); break;
+        case 0x30: DrawTriangle<SHADED | OPAQUE>(); break;
+        case 0x32: DrawTriangle<SHADED>(); break;
+        case 0x34: DrawTriangle<TEXTURED | SHADED | OPAQUE | BLENDING>(); break;
+        case 0x36: DrawTriangle<TEXTURED | SHADED | BLENDING>(); break;
+
+        case 0x28: Draw4PointPolygon<OPAQUE>(); break;
+        case 0x2A: Draw4PointPolygon<NO_FLAGS>(); break;
+        case 0x2C: Draw4PointPolygon<TEXTURED | OPAQUE | BLENDING>(); break;
+        case 0x2D: Draw4PointPolygon<TEXTURED | OPAQUE>(); break;
+        case 0x2E: Draw4PointPolygon<TEXTURED | BLENDING>(); break;
+        case 0x2F: Draw4PointPolygon<TEXTURED>(); break;
+        case 0x38: Draw4PointPolygon<SHADED | OPAQUE>(); break;
+        case 0x3A: Draw4PointPolygon<SHADED>(); break;
+        case 0x3C: Draw4PointPolygon<TEXTURED | SHADED | OPAQUE | BLENDING>(); break;
+        case 0x3E: Draw4PointPolygon<TEXTURED | SHADED | BLENDING>(); break;
+
         case 0x60: DrawRectangle<RectSize::VARIABLE, OPAQUE>(); break;
         case 0x62: DrawRectangle<RectSize::VARIABLE, NO_FLAGS>(); break;
         case 0x68: DrawRectangle<RectSize::ONE, OPAQUE>(); break;
@@ -189,10 +226,11 @@ void Renderer::Draw(u32 cmd) {
         case 0x66: DrawRectangle<RectSize::VARIABLE, TEXTURED | BLENDING>(); break;
         case 0x67: DrawRectangle<RectSize::VARIABLE, TEXTURED>(); break;
 
-        case 0x6C: DrawRectangle<RectSize::ONE, TEXTURED | OPAQUE | BLENDING>(); break;
-        case 0x6D: DrawRectangle<RectSize::ONE, TEXTURED | OPAQUE>(); break;
-        case 0x6E: DrawRectangle<RectSize::ONE, TEXTURED | BLENDING>(); break;
-        case 0x6F: DrawRectangle<RectSize::ONE, TEXTURED>(); break;
+        // textured dots make no sense, implement if used by a game?
+        //case 0x6C: DrawRectangle<RectSize::ONE, TEXTURED | OPAQUE | BLENDING>(); break;
+        //case 0x6D: DrawRectangle<RectSize::ONE, TEXTURED | OPAQUE>(); break;
+        //case 0x6E: DrawRectangle<RectSize::ONE, TEXTURED | BLENDING>(); break;
+        //case 0x6F: DrawRectangle<RectSize::ONE, TEXTURED>(); break;
 
         case 0x74: DrawRectangle<RectSize::EIGHT, TEXTURED | OPAQUE | BLENDING>(); break;
         case 0x75: DrawRectangle<RectSize::EIGHT, TEXTURED | OPAQUE>(); break;
@@ -208,7 +246,3 @@ void Renderer::Draw(u32 cmd) {
             Panic("Invalid draw command 0x%08X", cmd);
     }
 }
-
-template void Renderer::DrawTriangle<DrawMode::MONO>(Vertex *v0, Vertex *v1, Vertex *v2);
-template void Renderer::DrawTriangle<DrawMode::SHADED>(Vertex *v0, Vertex *v1, Vertex *v2);
-template void Renderer::DrawTriangle<DrawMode::TEXTURE>(Vertex *v0, Vertex *v1, Vertex *v2);

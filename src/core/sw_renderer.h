@@ -47,18 +47,6 @@ struct Rectangle {
     }
 };
 
-enum class DrawMode : u32 {
-    MONO,
-    SHADED,
-    TEXTURE,
-};
-
-static constexpr u32 NO_FLAGS = 0u;
-static constexpr u32 SHADED   = (1u << 0);
-static constexpr u32 TEXTURED = (1u << 1);
-static constexpr u32 OPAQUE   = (1u << 2);
-static constexpr u32 BLENDING = (1u << 3);
-
 enum class RectSize : u32 {
     ONE, EIGHT, SIXTEEN, VARIABLE
 };
@@ -68,10 +56,8 @@ public:
     Renderer();
     void Init(GPU* gpu);
 
-    template <DrawMode mode>
-    void DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2);
-    template <DrawMode mode>
-    void DrawTriangleAVX2(Vertex* v0, Vertex* v1, Vertex* v2, u16 minX, u16 maxX, u16 minY, u16 maxY);
+    template <u32 draw_flags>
+    void DrawTriangle();
 
     template <RectSize size, u32 draw_flags>
     void DrawRectangle();
@@ -80,5 +66,17 @@ public:
 
     u16 palette = 0;
 private:
+    template <u32 draw_flags>
+    void Draw4PointPolygon();
+
+    static constexpr u32 NO_FLAGS = 0u;
+    static constexpr u32 SHADED   = (1u << 0);
+    static constexpr u32 TEXTURED = (1u << 1);
+    static constexpr u32 OPAQUE   = (1u << 2);
+    static constexpr u32 BLENDING = (1u << 3);
+
+    // second triangle during 4-point polygon draw call
+    static constexpr u32 SECOND_TRIANGLE = (1u << 4);
+
     GPU* gpu = nullptr;
 };
