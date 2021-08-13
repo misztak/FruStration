@@ -97,28 +97,23 @@ void GPU::SendGP0Cmd(u32 cmd) {
                 }
             });
             break;
-        case Gp0Command::quad_mono_opaque:
-            CommandAfterCount(4, std::bind(&GPU::DrawQuadMonoOpaque, this));
+        case Gp0Command::quad_mono:
+            CommandAfterCount(4, std::bind(&GPU::DrawQuadMono, this));
             break;
-        case Gp0Command::quad_tex_blend_opaque:
-            CommandAfterCount(8, std::bind(&GPU::DrawQuadTextureBlendOpaque, this));
+        case Gp0Command::quad_textured:
+            CommandAfterCount(8, std::bind(&GPU::DrawQuadTextured, this));
             break;
-        case Gp0Command::triangle_shaded_opaque:
-            CommandAfterCount(5, std::bind(&GPU::DrawTriangleShadedOpaque, this));
+        case Gp0Command::triangle_shaded:
+            CommandAfterCount(5, std::bind(&GPU::DrawTriangleShaded, this));
             break;
-        case Gp0Command::quad_shaded_opaque:
-            CommandAfterCount(7, std::bind(&GPU::DrawQuadShadedOpaque, this));
+        case Gp0Command::quad_shaded:
+            CommandAfterCount(7, std::bind(&GPU::DrawQuadShaded, this));
             break;
-        case Gp0Command::rect_tex_opaque:
-            CommandAfterCount(3, std::bind(&GPU::DrawRectTexture, this));
+        case Gp0Command::rectangle_textured:
+            CommandAfterCount(3, std::bind(&GPU::DrawRectangleTexture, this));
             break;
-        case Gp0Command::dot_mono_opaque:
-            CommandAfterCount(1, [&] {
-                Vertex dot;
-                dot.SetPoint(command_buffer[1]);
-                dot.c.SetColor(command_buffer[0]);
-                vram[dot.x + VRAM_WIDTH * dot.y] = dot.c.To5551();
-            });
+        case Gp0Command::rectangle_mono:
+            CommandAfterCount(1, std::bind(&GPU::DrawRectangleMono, this));
             break;
         case Gp0Command::copy_rectangle_cpu_to_vram:
             CommandAfterCount(2, std::bind(&GPU::CopyRectCpuToVram, this, 0));
@@ -225,29 +220,27 @@ void GPU::SendGP1Cmd(u32 cmd) {
     }
 }
 
-void GPU::DrawQuadMonoOpaque() {
+void GPU::DrawQuadMono() {
     //LOG_DEBUG << "DrawQuadMonoOpaque";
     for (u8 i = 0; i < 4; i++) {
         vertices[i].SetPoint(command_buffer[i + 1]);
         vertices[i].c.SetColor(command_buffer[0]);
         vertices[i].SetTextPoint(0);
     }
-    renderer.DrawTriangle<DrawMode::MONO>(&vertices[0], &vertices[1], &vertices[2]);
-    renderer.DrawTriangle<DrawMode::MONO>(&vertices[1], &vertices[2], &vertices[3]);
+    renderer.Draw(command_buffer[0]);
 }
 
-void GPU::DrawQuadShadedOpaque() {
+void GPU::DrawQuadShaded() {
     //LOG_DEBUG << "DrawQuadShadedOpaque";
     for (u8 i = 0; i < 4; i++) {
         vertices[i].SetPoint(command_buffer[(i * 2) + 1]);
         vertices[i].c.SetColor(command_buffer[(i * 2)]);
         vertices[i].SetTextPoint(0);
     }
-    renderer.DrawTriangle<DrawMode::SHADED>(&vertices[0], &vertices[1], &vertices[2]);
-    renderer.DrawTriangle<DrawMode::SHADED>(&vertices[1], &vertices[2], &vertices[3]);
+    renderer.Draw(command_buffer[0]);
 }
 
-void GPU::DrawQuadTextureBlendOpaque() {
+void GPU::DrawQuadTextured() {
     //LOG_DEBUG << "DrawQuadTextureBlendOpaque";
     renderer.palette = command_buffer[2] >> 16;
 
@@ -266,11 +259,10 @@ void GPU::DrawQuadTextureBlendOpaque() {
     }
     //printf("\n");
 
-    renderer.DrawTriangle<DrawMode::TEXTURE>(&vertices[0], &vertices[1], &vertices[2]);
-    renderer.DrawTriangle<DrawMode::TEXTURE>(&vertices[1], &vertices[2], &vertices[3]);
+    renderer.Draw(command_buffer[0]);
 }
 
-void GPU::DrawTriangleShadedOpaque() {
+void GPU::DrawTriangleShaded() {
     //LOG_DEBUG << "DrawTriangleShadedOpaque";
 
     for (u8 i = 0; i < 3; i++) {
@@ -278,20 +270,31 @@ void GPU::DrawTriangleShadedOpaque() {
         vertices[i].c.SetColor(command_buffer[(i * 2)]);
         vertices[i].SetTextPoint(0);
     }
-    renderer.DrawTriangle<DrawMode::SHADED>(&vertices[0], &vertices[1], &vertices[2]);
+    renderer.Draw(command_buffer[0]);
 }
 
-void GPU::DrawRectTexture() {
-    //LOG_DEBUG << "DrawRectTexture";
-    // Texpage gets set up separately via GP0(0xE1)
-    renderer.palette = command_buffer[2] >> 16;
+void GPU::DrawRectangleMono() {
+    //LOG_DEBUG << "DrawRectangleMono";
 
+    rectangle.c.SetColor(command_buffer[0]);
+    rectangle.SetStart(command_buffer[1]);
+    rectangle.SetSize(command_buffer[2]);
+
+    renderer.Draw(command_buffer[0]);
+}
+
+void GPU::DrawRectangleTexture() {
+    //LOG_DEBUG << "DrawRectangleTexture";
+
+    rectangle.c.SetColor(command_buffer[0]);
     rectangle.SetStart(command_buffer[1]);
     rectangle.SetTextPoint(command_buffer[2]);
     rectangle.SetSize(command_buffer[3]);
-    rectangle.c.SetColor(command_buffer[0]);
 
-    renderer.DrawRectangle();
+    // Texpage gets set up separately via GP0(0xE1)
+    renderer.palette = command_buffer[2] >> 16;
+
+    renderer.Draw(command_buffer[0]);
 }
 
 void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
