@@ -8,6 +8,7 @@
 #include "interrupt.h"
 #include "timer.h"
 #include "debugger.h"
+#include "gdb_stub.h"
 #include "macros.h"
 
 LOG_CHANNEL(System);
@@ -35,6 +36,9 @@ void System::Init() {
     cdrom->Init(interrupt.get());
     debugger->Init(cpu.get());
     LOG_INFO << "Initialized PSX core";
+
+    SetHalt(true);
+    GDBServer(42069);
 }
 
 bool System::LoadBIOS(const std::string& bios_path) {
