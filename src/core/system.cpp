@@ -15,7 +15,9 @@ LOG_CHANNEL(System);
 
 System::System() = default;
 
-System::~System() = default;
+System::~System() {
+    if (GDB::ServerRunning()) GDB::Shutdown();
+}
 
 void System::Init() {
     cpu = std::make_unique<CPU::CPU>();
@@ -38,7 +40,10 @@ void System::Init() {
     LOG_INFO << "Initialized PSX core";
 
     SetHalt(true);
-    GDBServer(42069);
+    GDB::Init(42069);
+    if (GDB::ServerRunning()) {
+        while (GDB::KeepReceiving()) GDB::HandleClientRequest();
+    }
 }
 
 bool System::LoadBIOS(const std::string& bios_path) {

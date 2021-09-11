@@ -1,101 +1,66 @@
 #include "gdb_stub.h"
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <io.h>
+#include <iphlpapi.h>
+#include <ws2tcpip.h>
+#define SHUT_RDWR 2
+#else
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#endif
+
+#include <array>
 #include <sstream>
+#include <string>
+#include <string_view>
 
 #include "macros.h"
 #include "fmt/format.h"
 
 LOG_CHANNEL(GDB);
 
-GDBServer::GDBServer(u16 port) {
-    LOG_INFO << "Initializing GDB server on port " << port;
+namespace GDB {
+namespace {
+constexpr char HEX_CHARS[] = "0123456789abcdef";
 
-    s32 init_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (init_socket == -1) Panic("Failed to open socket");
+bool server_enabled = false;
+bool keep_receiving = false;
 
-    sockaddr_in init_sockaddr = {};
-    init_sockaddr.sin_family = AF_INET;
-    init_sockaddr.sin_addr.s_addr = INADDR_ANY;
-    init_sockaddr.sin_port = htons(port);
+std::array<s8, 256> rx_buffer = {};
 
-    // make sure we can bind to the same port without waiting
-    const s32 reuse_port = 1;
-    if (setsockopt(init_socket, SOL_SOCKET, SO_REUSEPORT, (const char *) &reuse_port, sizeof(reuse_port)) < 0) {
-        LOG_WARN << "Failed to set socket option REUSEPORT";
-    }
+s32 gdb_socket = -1;
 
-    if (bind(init_socket, (sockaddr *) &init_sockaddr, sizeof(init_sockaddr)) == -1) {
-        Panic("Failed to bind socket to port %d", port);
-    }
-
-    if (listen(init_socket, 20) == -1) {
-        Panic("Failed to listen with server socket");
-    }
-    LOG_INFO << "Waiting for GDB client...";
-
-    sockaddr_in gdb_sockaddr = {};
-    socklen_t socklen = sizeof(gdb_sockaddr);
-    gdb_socket = accept(init_socket, (sockaddr *) &gdb_sockaddr, &socklen);
-    if (gdb_socket < 0) {
-        Panic("Failed to connect to client");
-    }
-
-    LOG_INFO << "Connection established";
-
-    while (keep_receiving) HandleClientRequest();
-
-    if (init_socket != -1) {
-        shutdown(init_socket, SHUT_RDWR);
-    }
+#ifdef _WIN32
+WSADATA InitData;
+#endif
 }
 
-void GDBServer::HandleClientRequest() {
-    // get the next command
-    Receive();
-    
-    // handle ACK and ERR
-    std::string_view request((const char *) rx_buffer.data());
-    if (request.size() < 4) {
-        LOG_WARN << fmt::format("Invalid packet, too small: '{}'", request);
-        return;
-    }
-    if (request[0] == '+') request = request.substr(1);
-    if (request[0] == '-') {
-        LOG_WARN << "Client error";
-        return;
-    }
-    
-    // check if it's a valid packet
-    if (request[0] != '$' || request[request.size() - 3] != '#') {
-        LOG_WARN << fmt::format("Received invalid packet '{}'", request);
-        return;
-    }
-    // TODO: verify checksum
+static std::string ValuesToHex(u8* start, u32 length) {
+    char buffer[3] = {};
+    std::stringstream ss;
 
-    request = request.substr(1, request.size() - 4);
-    LOG_DEBUG << fmt::format("Received packet '{}'", request);
-
-    keep_receiving = true;
-    switch (request[0]) {
-        case '?':
-            // send signal, not sure about which one
-            Send("S00");
-            break;
-        case 'g':
-            Send(ReadRegisters());
-            keep_receiving = false;
-            break;
-        default:
-            //LOG_DEBUG << fmt::format("Unsupported request '{}', sending empty reply", request);
-            Send("");
+    for (u8* ptr = start; ptr < start + length; ptr++) {
+        buffer[1] = HEX_CHARS[*ptr & 0xF];
+        buffer[0] = HEX_CHARS[(*ptr >> 4) & 0xF];
+        ss << buffer;
     }
+
+    return ss.str();
 }
 
-std::string GDBServer::ReadRegisters() {
+static std::string CalcChecksum(std::string_view& packet) {
+    u8 csum = 0;
+    for (auto& c : packet) {
+        csum += (u8) c;
+    }
+    return ValuesToHex(&csum, 1);
+}
+
+static std::string ReadRegisters() {
     // number of registers in GDB remote protocol
     // starts with GP registers followed by special and (some) cop0 registers
     // and finally 35 unused FP registers
@@ -110,7 +75,7 @@ std::string GDBServer::ReadRegisters() {
     return ss.str();
 }
 
-void GDBServer::Send(std::string_view packet) {
+static void Send(std::string_view packet) {
     std::stringstream ss;
     ss << '+' << '$' << packet << '#' << CalcChecksum(packet);
     LOG_INFO << fmt::format("Sending packet '{}'", ss.str());
@@ -120,7 +85,7 @@ void GDBServer::Send(std::string_view packet) {
     }
 }
 
-void GDBServer::Receive() {
+static void Receive() {
     std::fill(rx_buffer.begin(), rx_buffer.end(), 0);
     ssize_t rx_len;
 
@@ -139,44 +104,136 @@ void GDBServer::Receive() {
     } while (rx_len == 1 && rx_buffer[0] == '+');
 }
 
-std::string GDBServer::CalcChecksum(std::string_view& packet) {
-    u8 csum = 0;
-    for (auto& c : packet) {
-        csum += (u8) c;
+bool HandleClientRequest() {
+    // get the next command
+    Receive();
+
+    // handle ACK and ERR
+    std::string_view request((const char *) rx_buffer.data());
+    if (request.size() < 4) {
+        LOG_WARN << fmt::format("Invalid packet, too small: '{}'", request);
+        return false;
     }
-    return ValueToHex(csum);
-}
-
-std::string GDBServer::ValueToHex(u32 value) {
-    constexpr u32 BUFFER_SIZE = 64;
-    char buffer[BUFFER_SIZE];
-
-    int result = snprintf(buffer, BUFFER_SIZE, "%02x", value);
-    if (result < 0 || result > (int) BUFFER_SIZE) {
-        LOG_WARN << "Failed to convert value to hex string";
-    }
-
-    return std::string(buffer);
-}
-
-std::string GDBServer::ValuesToHex(u8* start, u32 length) {
-    constexpr u32 BUFFER_SIZE = 3;
-    char buffer[BUFFER_SIZE] = {};
-    std::stringstream ss;
-
-    for (u8* ptr = start; ptr < start + length; ptr++) {
-        int result = snprintf(buffer, BUFFER_SIZE, "%02x", *ptr);
-        DebugAssert(result >= 0 && result < (int) BUFFER_SIZE);
-        ss << buffer;
+    if (request[0] == '+') request = request.substr(1);
+    if (request[0] == '-') {
+        LOG_WARN << "Client error";
+        return false;
     }
 
-    return ss.str();
+    // check if it's a valid packet
+    if (request[0] != '$' || request[request.size() - 3] != '#') {
+        LOG_WARN << fmt::format("Received invalid packet '{}'", request);
+        return false;
+    }
+
+    // remove packet header and checksum
+    std::string_view csum = request.substr(request.size() - 2, 2);
+    request = request.substr(1, request.size() - 4);
+
+    // verify checksum
+    if (csum != CalcChecksum(request)) {
+        LOG_WARN << fmt::format("Received packet with incorrect checksum '{}', expected {}", csum,
+                                CalcChecksum(request));
+        return false;
+    }
+
+    LOG_DEBUG << fmt::format("Received packet '{}'", request);
+
+    keep_receiving = true;
+    switch (request[0]) {
+        case '?':
+            // send signal, not sure about which one
+            Send("S00");
+            break;
+        case 'g':
+            Send(ReadRegisters());
+            keep_receiving = false;
+            break;
+        default:
+            //LOG_DEBUG << fmt::format("Unsupported request '{}', sending empty reply", request);
+            Send("");
+    }
+
+    return true;
 }
 
-GDBServer::~GDBServer() {
+void Init(u16 port) {
+    LOG_INFO << "Initializing GDB server on port " << port;
+    server_enabled = false;
+
+    s32 init_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (init_socket == -1) {
+        LOG_WARN << "Failed to open socket";
+        return;
+    }
+
+    sockaddr_in init_sockaddr = {};
+    init_sockaddr.sin_family = AF_INET;
+    init_sockaddr.sin_addr.s_addr = INADDR_ANY;
+    init_sockaddr.sin_port = htons(port);
+
+#ifdef _WIN32
+    WSAStartup(MAKEWORD(2, 2), &InitData);
+#endif
+
+    // make sure we can bind to the same port without waiting
+    const s32 reuse_port = 1;
+    if (setsockopt(init_socket, SOL_SOCKET, SO_REUSEPORT, (const char *) &reuse_port, sizeof(reuse_port)) < 0) {
+        LOG_WARN << "Failed to set socket option REUSEPORT";
+        return;
+    }
+
+    if (bind(init_socket, (sockaddr *) &init_sockaddr, sizeof(init_sockaddr)) == -1) {
+        LOG_WARN << fmt::format("Failed to bind socket to port {}", port);
+        return;
+    }
+
+    if (listen(init_socket, 20) == -1) {
+        LOG_WARN << "Failed to listen with server socket";
+        return;
+    }
+    LOG_INFO << "Waiting for GDB client...";
+
+    sockaddr_in gdb_sockaddr = {};
+    socklen_t socklen = sizeof(gdb_sockaddr);
+    gdb_socket = accept(init_socket, (sockaddr *) &gdb_sockaddr, &socklen);
+    if (gdb_socket < 0) {
+        LOG_WARN << "Failed to connect to client";
+        return;
+    }
+
+    // we first need to handle multiple initialization packets
+    keep_receiving = true;
+
+    server_enabled = true;
+    LOG_INFO << "Connection established";
+
+    shutdown(init_socket, SHUT_RDWR);
+}
+
+bool ServerRunning() {
+    return server_enabled;
+}
+
+bool KeepReceiving() {
+    return keep_receiving;
+}
+
+void Shutdown() {
     if (gdb_socket != -1) {
         shutdown(gdb_socket, SHUT_RDWR);
         gdb_socket = -1;
     }
+
+    keep_receiving = false;
+    server_enabled = false;
+
+#ifdef _WIN32
+    WSACleanup();
+#endif
+
     LOG_INFO << "Shutting down GDB server";
 }
+
+}
+
