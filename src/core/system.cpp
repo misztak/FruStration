@@ -16,7 +16,7 @@ LOG_CHANNEL(System);
 System::System() = default;
 
 System::~System() {
-    if (GDB::ServerRunning()) GDB::Shutdown();
+    GDB::Shutdown();
 }
 
 void System::Init() {
@@ -40,7 +40,7 @@ void System::Init() {
     LOG_INFO << "Initialized PSX core";
 
     SetHalt(true);
-    GDB::Init(42069);
+    GDB::Init(42069, debugger.get());
     if (GDB::ServerRunning()) {
         while (GDB::KeepReceiving()) GDB::HandleClientRequest();
     }

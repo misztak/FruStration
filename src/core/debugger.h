@@ -39,6 +39,8 @@ public:
     void DrawDebugger(bool* open);
     void Reset();
 
+    CPU::CPU* GetCPU();
+
     bool attached = false;
     bool single_step = false;
 private:

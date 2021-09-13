@@ -6,6 +6,7 @@
 #include <iphlpapi.h>
 #include <ws2tcpip.h>
 #define SHUT_RDWR 2
+using ssize_t = long long;
 #else
 #include <unistd.h>
 #include <sys/types.h>
@@ -17,9 +18,11 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <charconv>
 
 #include "macros.h"
 #include "fmt/format.h"
+#include "cpu.h"
 
 LOG_CHANNEL(GDB);
 
@@ -34,19 +37,20 @@ std::array<s8, 256> rx_buffer = {};
 
 s32 gdb_socket = -1;
 
+Debugger* debugger = nullptr;
+
 #ifdef _WIN32
 WSADATA InitData;
 #endif
 }
 
 static std::string ValuesToHex(u8* start, u32 length) {
-    char buffer[3] = {};
     std::stringstream ss;
 
     for (u8* ptr = start; ptr < start + length; ptr++) {
-        buffer[1] = HEX_CHARS[*ptr & 0xF];
-        buffer[0] = HEX_CHARS[(*ptr >> 4) & 0xF];
-        ss << buffer;
+        char snd = HEX_CHARS[*ptr & 0xF];
+        char fst = HEX_CHARS[(*ptr >> 4) & 0xF];
+        ss << fst << snd;
     }
 
     return ss.str();
@@ -61,16 +65,67 @@ static std::string CalcChecksum(std::string_view& packet) {
 }
 
 static std::string ReadRegisters() {
-    // number of registers in GDB remote protocol
+    // all registers supported by GDB remote protocol
     // starts with GP registers followed by special and (some) cop0 registers
     // and finally 35 unused FP registers
-    constexpr u32 GDB_REGISTER_COUNT = 73;
-    constexpr u32 GDB_USED_REGISTERS = 38;
+    constexpr u32 GDB_UNUSED_REGISTERS = 35;
 
     // registers are stored same way as everything else
     // 1 32-bit register == 8 hex chars
     // little endian
     std::stringstream ss;
+
+    CPU::CPU* cpu = debugger->GetCPU();
+
+    ss << ValuesToHex((u8*) cpu->gp.r, 32 * sizeof(u32));
+    ss << ValuesToHex((u8*) &cpu->cp.sr, sizeof(u32));
+    ss << ValuesToHex((u8*) &cpu->sp.lo, sizeof(u32));
+    ss << ValuesToHex((u8*) &cpu->sp.hi, sizeof(u32));
+    ss << ValuesToHex((u8*) &cpu->cp.bad_vaddr, sizeof(u32));
+    ss << ValuesToHex((u8*) &cpu->cp.cause, sizeof(u32));
+    ss << ValuesToHex((u8*) &cpu->sp.pc, sizeof(u32));
+
+    // unused FP registers
+    for (u32 i = 0; i < GDB_UNUSED_REGISTERS; i++) {
+        ss << "00000000";
+    }
+
+    return ss.str();
+}
+
+static std::string ReadRegister(u32 index) {
+    constexpr u32 GDB_REGISTER_COUNT = 73;
+    constexpr u32 GDB_USED_REGISTERS = 38;
+
+    if (index >= GDB_REGISTER_COUNT) {
+        LOG_WARN << fmt::format("Invalid index {} for register", index);
+    }
+
+    CPU::CPU* cpu = debugger->GetCPU();
+    std::stringstream ss;
+
+    if (index >= GDB_USED_REGISTERS) {
+        // FP register or invalid register
+        ss << "00000000";
+    } else if (index < 32) {
+        // GP register
+        ss << ValuesToHex((u8*) &cpu->gp.r[index], sizeof(u32));
+    } else {
+        // everything else
+        u32 rel_index = index - 32;
+        u32 reg = 0;
+
+        switch (rel_index) {
+            case 0: reg = cpu->cp.sr.value; break;
+            case 1: reg = cpu->sp.lo; break;
+            case 2: reg = cpu->sp.hi; break;
+            case 3: reg = cpu->cp.bad_vaddr; break;
+            case 4: reg = cpu->cp.cause.value; break;
+            case 5: reg = cpu->sp.pc; break;
+        }
+
+        ss << ValuesToHex((u8*) &reg, sizeof(u32));
+    }
 
     return ss.str();
 }
@@ -105,6 +160,8 @@ static void Receive() {
 }
 
 bool HandleClientRequest() {
+    if (!server_enabled) return false;
+
     // get the next command
     Receive();
 
@@ -137,7 +194,8 @@ bool HandleClientRequest() {
         return false;
     }
 
-    LOG_DEBUG << fmt::format("Received packet '{}'", request);
+    LOG_INFO << fmt::format("Received packet '{}'", request);
+    std::string_view params = request.substr(1);
 
     keep_receiving = true;
     switch (request[0]) {
@@ -146,7 +204,23 @@ bool HandleClientRequest() {
             Send("S00");
             break;
         case 'g':
+            // read all registers
             Send(ReadRegisters());
+            break;
+        case 'p': {
+            // read single register, index is in hex
+            u32 index;
+            auto result = std::from_chars(params.data(), params.data() + params.size(), index, 16);
+            if (result.ec == std::errc()) {
+                Send(ReadRegister(index));
+            } else {
+                LOG_WARN << "Failed to parse register index";
+                Send("E00");
+            }
+            break; }
+        case 'm':
+            // read memory
+            Send("");
             keep_receiving = false;
             break;
         default:
@@ -157,8 +231,12 @@ bool HandleClientRequest() {
     return true;
 }
 
-void Init(u16 port) {
+void Init(u16 port, Debugger* dbg) {
+    if (server_enabled) return;
+    debugger = dbg;
+
     LOG_INFO << "Initializing GDB server on port " << port;
+    // set to false in case init fails
     server_enabled = false;
 
     s32 init_socket = socket(AF_INET, SOCK_STREAM, 0);

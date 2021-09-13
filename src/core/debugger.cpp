@@ -116,6 +116,10 @@ void Debugger::DrawDebugger(bool* open) {
     ImGui::End();
 }
 
+CPU::CPU* Debugger::GetCPU() {
+    return cpu;
+}
+
 void Debugger::Reset() {
     // we only want to reset the instruction buffer
     ring_ptr = 0;
