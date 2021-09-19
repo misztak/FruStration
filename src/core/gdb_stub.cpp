@@ -256,7 +256,7 @@ void Init(u16 port, Debugger* dbg) {
 
     // make sure we can bind to the same port without waiting
     const s32 reuse_port = 1;
-    if (setsockopt(init_socket, SOL_SOCKET, SO_REUSEPORT, (const char *) &reuse_port, sizeof(reuse_port)) < 0) {
+    if (setsockopt(init_socket, SOL_SOCKET, SO_REUSEADDR, (const char *) &reuse_port, sizeof(reuse_port)) < 0) {
         LOG_WARN << "Failed to set socket option REUSEPORT";
         return;
     }
