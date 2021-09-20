@@ -36,14 +36,9 @@ void System::Init() {
     timers->Init(gpu.get(), interrupt.get());
     interrupt->Init(cpu.get());
     cdrom->Init(interrupt.get());
-    debugger->Init(cpu.get());
-    LOG_INFO << "Initialized PSX core";
+    debugger->Init(cpu.get(), bus.get());
 
-    SetHalt(true);
-    GDB::Init(42069, debugger.get());
-    if (GDB::ServerRunning()) {
-        while (GDB::KeepReceiving()) GDB::HandleClientRequest();
-    }
+    LOG_INFO << "Initialized PSX core";
 }
 
 bool System::LoadBIOS(const std::string& bios_path) {
@@ -116,6 +111,15 @@ u8* System::GetVideoOutput() {
 
 u16* System::GetVRAM() {
     return gpu->GetVRAM();
+}
+
+void System::StartGDBServer() {
+    SetHalt(true);
+
+    GDB::Init(42069, debugger.get());
+    if (GDB::ServerRunning()) {
+        while (GDB::KeepReceiving()) GDB::HandleClientRequest();
+    }
 }
 
 void System::DrawDebugWindows() {

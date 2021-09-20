@@ -1,7 +1,8 @@
 #pragma once
 
 #include "types.h"
-#include "debugger.h"
+
+class Debugger;
 
 namespace GDB {
 

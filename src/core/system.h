@@ -39,13 +39,19 @@ public:
     bool done = false;
 
     void DrawDebugWindows();
+    void StartGDBServer();
 
-    // TODO: manage stuff like this through a config system
+    // TODO: actual config system
+    // bootleg config
     bool draw_mem_viewer = false;
     bool draw_cpu_state = true;
     bool draw_gpu_state = true;
     bool draw_debugger = true;
     bool draw_timer_state = true;
+
+    bool cfg_gdb_server_enabled = false;
+
+    // end of config
 
     u16* GetVRAM();
 private:

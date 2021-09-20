@@ -22,13 +22,20 @@ using ssize_t = long long;
 
 #include "macros.h"
 #include "fmt/format.h"
+#include "bus.h"
 #include "cpu.h"
+#include "debugger.h"
 
 LOG_CHANNEL(GDB);
 
 namespace GDB {
 namespace {
 constexpr char HEX_CHARS[] = "0123456789abcdef";
+
+constexpr u32 GDB_REGISTER_COUNT = 73;
+constexpr u32 GDB_USED_REGISTERS = 38;
+constexpr u32 GDB_UNUSED_REGISTERS = 35;
+constexpr u32 GP_REGISTER_COUNT = 32;
 
 bool server_enabled = false;
 bool keep_receiving = false;
@@ -68,7 +75,6 @@ static std::string ReadRegisters() {
     // all registers supported by GDB remote protocol
     // starts with GP registers followed by special and (some) cop0 registers
     // and finally 35 unused FP registers
-    constexpr u32 GDB_UNUSED_REGISTERS = 35;
 
     // registers are stored same way as everything else
     // 1 32-bit register == 8 hex chars
@@ -77,7 +83,7 @@ static std::string ReadRegisters() {
 
     CPU::CPU* cpu = debugger->GetCPU();
 
-    ss << ValuesToHex((u8*) cpu->gp.r, 32 * sizeof(u32));
+    ss << ValuesToHex((u8*) cpu->gp.r, GP_REGISTER_COUNT * sizeof(u32));
     ss << ValuesToHex((u8*) &cpu->cp.sr, sizeof(u32));
     ss << ValuesToHex((u8*) &cpu->sp.lo, sizeof(u32));
     ss << ValuesToHex((u8*) &cpu->sp.hi, sizeof(u32));
@@ -94,11 +100,8 @@ static std::string ReadRegisters() {
 }
 
 static std::string ReadRegister(u32 index) {
-    constexpr u32 GDB_REGISTER_COUNT = 73;
-    constexpr u32 GDB_USED_REGISTERS = 38;
-
     if (index >= GDB_REGISTER_COUNT) {
-        LOG_WARN << fmt::format("Invalid index {} for register", index);
+        LOG_WARN << fmt::format("Invalid register index {}", index);
     }
 
     CPU::CPU* cpu = debugger->GetCPU();
@@ -107,12 +110,12 @@ static std::string ReadRegister(u32 index) {
     if (index >= GDB_USED_REGISTERS) {
         // FP register or invalid register
         ss << "00000000";
-    } else if (index < 32) {
+    } else if (index < GP_REGISTER_COUNT) {
         // GP register
         ss << ValuesToHex((u8*) &cpu->gp.r[index], sizeof(u32));
     } else {
         // everything else
-        u32 rel_index = index - 32;
+        u32 rel_index = index - GP_REGISTER_COUNT;
         u32 reg = 0;
 
         switch (rel_index) {
@@ -125,6 +128,18 @@ static std::string ReadRegister(u32 index) {
         }
 
         ss << ValuesToHex((u8*) &reg, sizeof(u32));
+    }
+
+    return ss.str();
+}
+
+static std::string ReadMemory(u32 start, u32 length) {
+    BUS* bus = debugger->GetBUS();
+    std::stringstream ss;
+
+    for (u32 i = 0; i < length; i++) {
+        u8 value = bus->Read(start + i);
+        ss << ValuesToHex(&value, sizeof(u8));
     }
 
     return ss.str();
@@ -218,11 +233,25 @@ bool HandleClientRequest() {
                 Send("E00");
             }
             break; }
-        case 'm':
+        case 'm': {
             // read memory
-            Send("");
+            u32 delim_pos = params.find(',');
+            std::string_view addr_str = params.substr(0, delim_pos);
+            std::string_view len_str = params.substr(delim_pos + 1);
+
+            u32 address, length;
+            auto result_1 = std::from_chars(addr_str.data(), addr_str.data() + addr_str.size(), address, 16);
+            auto result_2 = std::from_chars(len_str.data(), len_str.data() + len_str.size(), length, 16);
+            if (result_1.ec != std::errc() || result_2.ec != std::errc()) {
+                LOG_WARN << "Failed to parse memory address or length";
+                Send("E00");
+            } else {
+                LOG_DEBUG << fmt::format("Reading memory from 0x{:08X} to 0x{:08X}", address, address + length);
+                Send(ReadMemory(address, length));
+            }
+
             keep_receiving = false;
-            break;
+            break; }
         default:
             //LOG_DEBUG << fmt::format("Unsupported request '{}', sending empty reply", request);
             Send("");
@@ -231,9 +260,9 @@ bool HandleClientRequest() {
     return true;
 }
 
-void Init(u16 port, Debugger* dbg) {
+void Init(u16 port, Debugger* _debugger) {
     if (server_enabled) return;
-    debugger = dbg;
+    debugger = _debugger;
 
     LOG_INFO << "Initializing GDB server on port " << port;
     // set to false in case init fails
@@ -255,6 +284,7 @@ void Init(u16 port, Debugger* dbg) {
 #endif
 
     // make sure we can bind to the same port without waiting
+    // can't use SO_REUSEPORT because windows does not support it
     const s32 reuse_port = 1;
     if (setsockopt(init_socket, SOL_SOCKET, SO_REUSEADDR, (const char *) &reuse_port, sizeof(reuse_port)) < 0) {
         LOG_WARN << "Failed to set socket option REUSEPORT";

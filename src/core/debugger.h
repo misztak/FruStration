@@ -8,6 +8,7 @@
 namespace CPU {
 class CPU;
 }
+class BUS;
 
 class Debugger {
 public:
@@ -35,11 +36,12 @@ public:
         ring_ptr = (ring_ptr + 1) & 127;
     }
 
-    void Init(CPU::CPU* cpu);
+    void Init(CPU::CPU* cpu, BUS* bus);
     void DrawDebugger(bool* open);
     void Reset();
 
     CPU::CPU* GetCPU();
+    BUS* GetBUS();
 
     bool attached = false;
     bool single_step = false;
@@ -71,4 +73,5 @@ private:
     u32 ring_ptr = 0;
     std::array<std::pair<u32, u32>, BUFFER_SIZE> last_instructions;
     CPU::CPU* cpu = nullptr;
+    BUS* bus = nullptr;
 };

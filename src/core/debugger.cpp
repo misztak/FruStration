@@ -1,10 +1,12 @@
 #include "debugger.h"
 
 #include "cpu.h"
+#include "bus.h"
 #include "imgui.h"
 
-void Debugger::Init(CPU::CPU* c) {
-    cpu = c;
+void Debugger::Init(CPU::CPU* _cpu, BUS* _bus) {
+    cpu = _cpu;
+    bus = _bus;
 }
 
 void Debugger::DrawDebugger(bool* open) {
@@ -118,6 +120,10 @@ void Debugger::DrawDebugger(bool* open) {
 
 CPU::CPU* Debugger::GetCPU() {
     return cpu;
+}
+
+BUS* Debugger::GetBUS() {
+    return bus;
 }
 
 void Debugger::Reset() {

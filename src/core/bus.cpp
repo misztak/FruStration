@@ -247,6 +247,55 @@ void BUS::Store(u32 address, Value value) {
     return;
 }
 
+u8 BUS::Read(u32 address) {
+    const u32 physical_addr = MaskRegion(address);
+
+    // RAM
+    if (InArea(RAM_START, RAM_SIZE, physical_addr)) return *(ram.data() + physical_addr);
+    // Scratchpad
+    if (InArea(SCRATCH_START, SCRATCH_SIZE, physical_addr))
+        return *(scratchpad.data() + (physical_addr - SCRATCH_START));
+    // MMIO
+    // TODO: return the actual values instead of 0
+    if (InArea(IO_PORTS_START, IO_PORTS_SIZE, physical_addr)) {
+        switch (physical_addr) {
+            case(0x1F801070): return 0;
+            case(0x1F801074): return 0;
+            case(0x1F801810): return 0; // GPUREAD
+            case(0x1F801814): return 0; // GPUSTAT
+        }
+
+        // DMA
+        if (InArea(0x1F801080, 120, physical_addr))
+            return 0;
+
+        // Timer
+        if (InArea(0x1F801100, 48, physical_addr))
+            return 0;
+
+        // CDROM
+        if (InArea(0x1F801800, 4, physical_addr))
+            return 0;
+
+
+        if (InArea(0x1F801C00, 644, physical_addr)) return 0; // SPU
+        if (InArea(0x1F801040, 16, physical_addr)) return 0;  // Joypad
+    }
+    // BIOS
+    if (InArea(BIOS_START, BIOS_SIZE, physical_addr))
+        return *(bios.data() + (physical_addr - BIOS_START));
+    // Cache Control
+    if (InArea(CACHE_CTRL_START, CACHE_CTRL_SIZE, physical_addr)) return 0;
+    // Expansion Region 1
+    if (InArea(EXP_REG_1_START, EXP_REG_1_SIZE, physical_addr)) return 0xFF;
+    // Expansion Region 2
+    if (InArea(EXP_REG_2_START, EXP_REG_2_SIZE, physical_addr)) return 0xFF;
+    // Expansion Region 3
+    if (InArea(EXP_REG_3_START, EXP_REG_3_SIZE, physical_addr)) return 0xFF;
+
+    return 0;
+}
+
 void BUS::Reset() {
     // TODO: add ability to change bios file during reset
     std::fill(ram.begin(), ram.end(), 0xCA);

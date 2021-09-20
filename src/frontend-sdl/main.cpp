@@ -83,6 +83,8 @@ int main(int, char**) {
     if (!system.LoadBIOS("../bios/SCPH1001.BIN")) return 1;
     //if (!system.LoadBIOS("../bios/SCPH7002.BIN")) return 1;
 
+    system.StartGDBServer();
+
     Display display;
     if (!display.Init(&system, window, gl_context, glsl_version)) {
         LOG_CRIT << "Failed to initialize imgui display";
