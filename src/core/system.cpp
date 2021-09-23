@@ -46,10 +46,17 @@ bool System::LoadBIOS(const std::string& bios_path) {
 }
 
 void System::Step() {
+    // the step counter is static to prevent going out of sync with
+    // the other components in case a breakpoint is hit and Step() exits early
+    static u32 step = 0;
+
     // 100 cpu instructions - 2 cycles per instruction
-    for (u32 n = 0; n < 100; n++) {
+    while (step < 100) {
         cpu->Step();
+        step++;
+        if (unlikely(cpu->halt)) return;
     }
+    step = 0;
 
     // dma step
     cdrom->Step();
@@ -114,12 +121,18 @@ u16* System::GetVRAM() {
 }
 
 void System::StartGDBServer() {
+    if (!cfg_gdb_server_enabled) return;
+
     SetHalt(true);
 
+    Assert(debugger.get());
     GDB::Init(42069, debugger.get());
-    if (GDB::ServerRunning()) {
-        while (GDB::KeepReceiving()) GDB::HandleClientRequest();
-    }
+}
+
+void System::HandleGDBClientRequest() {
+    if (!cfg_gdb_server_enabled) return;
+
+    GDB::HandleClientRequest();
 }
 
 void System::DrawDebugWindows() {

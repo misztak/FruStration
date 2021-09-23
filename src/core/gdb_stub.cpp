@@ -19,6 +19,7 @@ using ssize_t = long long;
 #include <string>
 #include <string_view>
 #include <charconv>
+#include <optional>
 
 #include "macros.h"
 #include "fmt/format.h"
@@ -37,8 +38,13 @@ constexpr u32 GDB_USED_REGISTERS = 38;
 constexpr u32 GDB_UNUSED_REGISTERS = 35;
 constexpr u32 GP_REGISTER_COUNT = 32;
 
+constexpr u8 SIGQUIT = 3;
+
 bool server_enabled = false;
-bool keep_receiving = false;
+
+// changes to true after receiving continue or step command from client
+// resets once emulation stopped again
+bool received_step_or_continue_cmd = false;
 
 std::array<s8, 256> rx_buffer = {};
 
@@ -61,6 +67,15 @@ static std::string ValuesToHex(u8* start, u32 length) {
     }
 
     return ss.str();
+}
+
+static std::optional<u32> FromHexChars(std::string_view& string_view) {
+    constexpr s32 BASE_16 = 16;
+
+    u32 value;
+    auto result = std::from_chars(string_view.data(), string_view.data() + string_view.size(), value, BASE_16);
+
+    return (result.ec == std::errc()) ? std::optional(value) : std::nullopt;
 }
 
 static std::string CalcChecksum(std::string_view& packet) {
@@ -159,43 +174,84 @@ static void Receive() {
     std::fill(rx_buffer.begin(), rx_buffer.end(), 0);
     ssize_t rx_len;
 
-    do {
-        rx_len = read(gdb_socket, rx_buffer.data(), rx_buffer.size());
-        if (rx_len < 0) {
-            LOG_WARN << "Failed to receive package";
-            break;
-        }
+    rx_len = read(gdb_socket, rx_buffer.data(), rx_buffer.size());
 
-        if (rx_len == 0 || rx_buffer[0] == '-') {
-            LOG_WARN << "Client error";
-            break;
-        }
+    if (rx_len < 1) {
+        LOG_WARN << "Failed to receive package";
+    }
 
-    } while (rx_len == 1 && rx_buffer[0] == '+');
 }
 
-bool HandleClientRequest() {
-    if (!server_enabled) return false;
+static bool ReceivedNewPackage() {
+    fd_set read_fds;
+    FD_ZERO(&read_fds);
+    FD_SET(gdb_socket, &read_fds);
 
-    // get the next command
-    Receive();
+    // timeout will be set to zero, select will exit immediately (polling)
+    struct timeval tv = {};
 
-    // handle ACK and ERR
-    std::string_view request((const char *) rx_buffer.data());
-    if (request.size() < 4) {
-        LOG_WARN << fmt::format("Invalid packet, too small: '{}'", request);
+    if (select(gdb_socket + 1, &read_fds, nullptr, nullptr, &tv) < 0) {
+        LOG_WARN << "Call to select failed";
         return false;
     }
-    if (request[0] == '+') request = request.substr(1);
+
+    return FD_ISSET(gdb_socket, &read_fds) != 0;
+}
+
+void HandleClientRequest() {
+    if (!server_enabled) return;
+
+    // respond to finished continue or step command
+    if (received_step_or_continue_cmd) {
+        // make sure we aren't responding before the emulator stopped (should never happen)
+        DebugAssert(debugger->GetCPU()->halt);
+
+        // reset to normal command mode
+        received_step_or_continue_cmd = false;
+
+        // send the pending ACK and a SIGTRAP
+        Send("S05");
+        // exit early to give the client some time to send new requests
+        return;
+    }
+
+    // poll for new request
+    if (!ReceivedNewPackage()) return;
+
+    // get the new request
+    Receive();
+
+    // handle interrupt from client, treat it like a SIGINT
+    if (rx_buffer[0] == SIGQUIT) {
+        LOG_INFO << "Received interrupt from client";
+        Send("S02");
+        debugger->GetCPU()->halt = true;
+        return;
+    }
+
+    std::string_view request((const char *) rx_buffer.data());
+
+    // handle ACK and ERR
+    if (request[0] == '+') {
+        // nothing else to do
+        if (request.size() == 1) return;
+        // consume ACK
+        request = request.substr(1);
+    }
     if (request[0] == '-') {
         LOG_WARN << "Client error";
-        return false;
+        return;
+    }
+
+    if (request.size() < 4) {
+        LOG_WARN << fmt::format("Invalid packet, too small: '{}'", request);
+        return;
     }
 
     // check if it's a valid packet
     if (request[0] != '$' || request[request.size() - 3] != '#') {
         LOG_WARN << fmt::format("Received invalid packet '{}'", request);
-        return false;
+        return;
     }
 
     // remove packet header and checksum
@@ -206,28 +262,37 @@ bool HandleClientRequest() {
     if (csum != CalcChecksum(request)) {
         LOG_WARN << fmt::format("Received packet with incorrect checksum '{}', expected {}", csum,
                                 CalcChecksum(request));
-        return false;
+        return;
     }
 
     LOG_INFO << fmt::format("Received packet '{}'", request);
     std::string_view params = request.substr(1);
 
-    keep_receiving = true;
     switch (request[0]) {
         case '?':
             // send signal, not sure about which one
             Send("S00");
             break;
+        case 'c':
+            // continue
+            LOG_INFO << "Received continue command, resuming emulator...";
+            debugger->SetPausedState(false, false);
+            received_step_or_continue_cmd = true;
+            break;
         case 'g':
             // read all registers
             Send(ReadRegisters());
             break;
+        case 'k':
+            // client disconnected, kill server
+            LOG_INFO << "GDB client closed connection";
+            Shutdown();
+            break;
         case 'p': {
             // read single register, index is in hex
-            u32 index;
-            auto result = std::from_chars(params.data(), params.data() + params.size(), index, 16);
-            if (result.ec == std::errc()) {
-                Send(ReadRegister(index));
+            auto index = FromHexChars(params);
+            if (index) {
+                Send(ReadRegister(index.value()));
             } else {
                 LOG_WARN << "Failed to parse register index";
                 Send("E00");
@@ -239,25 +304,62 @@ bool HandleClientRequest() {
             std::string_view addr_str = params.substr(0, delim_pos);
             std::string_view len_str = params.substr(delim_pos + 1);
 
-            u32 address, length;
-            auto result_1 = std::from_chars(addr_str.data(), addr_str.data() + addr_str.size(), address, 16);
-            auto result_2 = std::from_chars(len_str.data(), len_str.data() + len_str.size(), length, 16);
-            if (result_1.ec != std::errc() || result_2.ec != std::errc()) {
-                LOG_WARN << "Failed to parse memory address or length";
+            auto address = FromHexChars(addr_str);
+            auto length = FromHexChars(len_str);
+            if (!address || !length) {
+                LOG_WARN << "Failed to parse memory address and/or length";
                 Send("E00");
             } else {
-                LOG_DEBUG << fmt::format("Reading memory from 0x{:08X} to 0x{:08X}", address, address + length);
-                Send(ReadMemory(address, length));
+                u32 end_address = address.value() + length.value();
+                LOG_DEBUG << fmt::format("Reading memory from 0x{:08x} to 0x{:08x}", address.value(), end_address);
+                Send(ReadMemory(address.value(), length.value()));
+            }
+            break; }
+        case 'M':
+            // TODO: write memory
+            Send("OK");
+            break;
+        case 'z':
+        case 'Z': {
+            // add/remove breakpoint
+            char type = params[0];
+            if (type != '0' && type != '1') {
+                LOG_WARN << "Unsupported Z command type " << type;
+                Send("");
+                break;
+            }
+            char bp_size = params[params.size() - 1];
+            if (bp_size != '4') {
+                LOG_WARN << "Unsupported Z command breakpoint size" << bp_size;
+                Send("");
+                break;
             }
 
-            keep_receiving = false;
+            // 32-bit sw/hw breakpoint
+            DebugAssert(params.size() - 4 == 8);
+            std::string_view bp_address_str = params.substr(2, 8);
+
+            auto bp_address = FromHexChars(bp_address_str);
+            if (bp_address) {
+                bool add_bp = request[0] == 'Z';
+                LOG_DEBUG << fmt::format("{} breakpoint at address 0x{:08x}", add_bp ? "Added" : "Removed",
+                                         bp_address.value());
+                if (add_bp) {
+                    debugger->AddBreakpoint(bp_address.value());
+                } else {
+                    debugger->RemoveBreakpoint(bp_address.value());
+                }
+                Send("OK");
+            } else {
+                LOG_WARN << "Failed to parse breakpoint address";
+                Send("E00");
+            }
+
             break; }
         default:
             //LOG_DEBUG << fmt::format("Unsupported request '{}', sending empty reply", request);
             Send("");
     }
-
-    return true;
 }
 
 void Init(u16 port, Debugger* _debugger) {
@@ -310,9 +412,6 @@ void Init(u16 port, Debugger* _debugger) {
         return;
     }
 
-    // we first need to handle multiple initialization packets
-    keep_receiving = true;
-
     server_enabled = true;
     LOG_INFO << "Connection established";
 
@@ -323,24 +422,19 @@ bool ServerRunning() {
     return server_enabled;
 }
 
-bool KeepReceiving() {
-    return keep_receiving;
-}
-
 void Shutdown() {
     if (gdb_socket != -1) {
         shutdown(gdb_socket, SHUT_RDWR);
         gdb_socket = -1;
+
+        LOG_INFO << "Shutting down GDB server";
     }
 
-    keep_receiving = false;
     server_enabled = false;
 
 #ifdef _WIN32
     WSACleanup();
 #endif
-
-    LOG_INFO << "Shutting down GDB server";
 }
 
 }

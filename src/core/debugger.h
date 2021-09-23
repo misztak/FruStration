@@ -13,14 +13,14 @@ class BUS;
 class Debugger {
 public:
     ALWAYS_INLINE bool IsBreakpoint(u32 address) {
-        return unlikely(attached && breakpoints.count(address));
+        return unlikely(breakpoints.size() != 0 && breakpoints.count(address));
     }
-    ALWAYS_INLINE bool BreakpointEnabled(u32 address) {
+    ALWAYS_INLINE bool IsBreakpointEnabled(u32 address) {
         return breakpoints.find(address)->second.enabled;
     }
 
     ALWAYS_INLINE bool IsWatchpoint(u32 address) {
-        return unlikely(attached && watchpoints.count(address));
+        return unlikely(watchpoints.count(address));
     }
     ALWAYS_INLINE bool WatchpointEnabledOnStore(u32 address) {
         auto& wp = watchpoints.find(address)->second;
@@ -40,11 +40,18 @@ public:
     void DrawDebugger(bool* open);
     void Reset();
 
+    void AddBreakpoint(u32 address);
+    void RemoveBreakpoint(u32 address);
+    void ToggleBreakpoint(u32 address);
+
+    void SetPausedState(bool paused, bool single_step);
+
     CPU::CPU* GetCPU();
     BUS* GetBUS();
 
-    bool attached = false;
     bool single_step = false;
+
+    bool show_disasm_view = false;
 private:
     struct Breakpoint {
         bool enabled = true;

@@ -40,6 +40,17 @@ void CPU::Reset() {
 }
 
 void CPU::Step() {
+    if (debugger->IsBreakpoint(sp.pc)) {
+        bool enabled = debugger->IsBreakpointEnabled(sp.pc);
+        debugger->ToggleBreakpoint(sp.pc);
+
+        if (enabled) {
+            LOG_DEBUG << "Hit breakpoint";
+            halt = true;
+            return;
+        }
+    }
+
     was_in_delay_slot = in_delay_slot;
     was_branch_taken = branch_taken;
 
@@ -50,10 +61,6 @@ void CPU::Step() {
 
     halt = debugger->single_step;
     debugger->StoreLastInstruction(sp.pc, instr.value);
-    if (debugger->IsBreakpoint(sp.pc) && debugger->BreakpointEnabled(sp.pc)) {
-        LOG_DEBUG << "Hit breakpoint";
-        halt = true;
-    }
 
 #ifdef DEBUG
     if (TRACE_BIOS_CALLS && sp.pc <= 0xC0) bios.TraceFunction(sp.pc, Get(9));

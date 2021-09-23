@@ -98,6 +98,8 @@ int main(int, char**) {
             system.Step();
         } else {
             display.Update();
+            // if the GDB server is disabled this will do nothing
+            system.HandleGDBClientRequest();
         }
     }
 

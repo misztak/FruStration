@@ -9,8 +9,7 @@ namespace GDB {
 void Init(u16 port, Debugger* debugger);
 void Shutdown();
 
-bool HandleClientRequest();
+void HandleClientRequest();
 
 bool ServerRunning();
-bool KeepReceiving();
 }

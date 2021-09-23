@@ -9,9 +9,28 @@ void Debugger::Init(CPU::CPU* _cpu, BUS* _bus) {
     bus = _bus;
 }
 
+void Debugger::AddBreakpoint(u32 address) {
+    breakpoints.insert_or_assign(address, Breakpoint());
+}
+
+void Debugger::RemoveBreakpoint(u32 address) {
+    breakpoints.erase(address);
+}
+
+void Debugger::ToggleBreakpoint(u32 address) {
+    auto bp = breakpoints.find(address);
+    if (bp == breakpoints.end()) return;
+    bp->second.enabled = !bp->second.enabled;
+}
+
+void Debugger::SetPausedState(bool paused, bool _single_step) {
+    cpu->halt = paused;
+    single_step = _single_step;
+}
+
 void Debugger::DrawDebugger(bool* open) {
     ImGui::Begin("Debugger", open);
-    ImGui::Checkbox("Active", &attached); ImGui::SameLine();
+    ImGui::Checkbox("Show instructions", &show_disasm_view); ImGui::SameLine();
     ImGui::Checkbox("Single Step", &single_step); ImGui::SameLine();
     if (ImGui::Button("Step")) {
         cpu->halt = false;
@@ -86,7 +105,7 @@ void Debugger::DrawDebugger(bool* open) {
     ImGui::PopID();
     ImGui::Separator();
 
-    if (attached) {
+    if (show_disasm_view) {
         static bool locked_to_bottom = true;
         const ImVec4 orange(.8f, .6f, .3f, 1.f);
         const bool is_line_visible = ImGui::BeginChild("__disasm_view", ImVec2(0, 0), true,

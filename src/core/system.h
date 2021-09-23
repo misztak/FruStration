@@ -40,6 +40,7 @@ public:
 
     void DrawDebugWindows();
     void StartGDBServer();
+    void HandleGDBClientRequest();
 
     // TODO: actual config system
     // bootleg config
@@ -49,7 +50,7 @@ public:
     bool draw_debugger = true;
     bool draw_timer_state = true;
 
-    bool cfg_gdb_server_enabled = false;
+    bool cfg_gdb_server_enabled = true;
 
     // end of config
 
