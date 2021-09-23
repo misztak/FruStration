@@ -12,6 +12,7 @@ bin
 .vs
 .vscode
 .ccls-cache
+.cache
 compile_commands.json
 
 # psexe files
