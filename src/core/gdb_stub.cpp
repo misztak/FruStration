@@ -38,7 +38,7 @@ constexpr u32 GDB_USED_REGISTERS = 38;
 constexpr u32 GDB_UNUSED_REGISTERS = 35;
 constexpr u32 GP_REGISTER_COUNT = 32;
 
-constexpr u8 SIGQUIT = 3;
+constexpr u8 CTRL_C = 3;
 
 bool server_enabled = false;
 
@@ -195,7 +195,7 @@ static bool ReceivedNewPackage() {
         return false;
     }
 
-    return FD_ISSET(gdb_socket, &read_fds) != 0;
+    return FD_ISSET(gdb_socket, &read_fds);
 }
 
 void HandleClientRequest() {
@@ -222,7 +222,7 @@ void HandleClientRequest() {
     Receive();
 
     // handle interrupt from client, treat it like a SIGINT
-    if (rx_buffer[0] == SIGQUIT) {
+    if (rx_buffer[0] == CTRL_C) {
         LOG_INFO << "Received interrupt from client";
         Send("S02");
         debugger->GetCPU()->halt = true;
@@ -270,8 +270,8 @@ void HandleClientRequest() {
 
     switch (request[0]) {
         case '?':
-            // send signal, not sure about which one
-            Send("S00");
+            // send SIGINT at start of session
+            Send("S02");
             break;
         case 'c':
             // continue
@@ -279,9 +279,19 @@ void HandleClientRequest() {
             debugger->SetPausedState(false, false);
             received_step_or_continue_cmd = true;
             break;
+        case 's':
+            // single step
+            LOG_INFO << "Received single step command, resuming emulator...";
+            debugger->SetPausedState(false, true);
+            received_step_or_continue_cmd = true;
+            break;
         case 'g':
             // read all registers
             Send(ReadRegisters());
+            break;
+        case 'G':
+            // TODO: write all registers
+            Send("OK");
             break;
         case 'k':
             // client disconnected, kill server
@@ -324,13 +334,13 @@ void HandleClientRequest() {
             // add/remove breakpoint
             char type = params[0];
             if (type != '0' && type != '1') {
-                LOG_WARN << "Unsupported Z command type " << type;
+                LOG_WARN << "Unsupported z/Z command type " << type;
                 Send("");
                 break;
             }
             char bp_size = params[params.size() - 1];
             if (bp_size != '4') {
-                LOG_WARN << "Unsupported Z command breakpoint size" << bp_size;
+                LOG_WARN << "Unsupported z/Z command breakpoint size" << bp_size;
                 Send("");
                 break;
             }
@@ -406,6 +416,7 @@ void Init(u16 port, Debugger* _debugger) {
 
     sockaddr_in gdb_sockaddr = {};
     socklen_t socklen = sizeof(gdb_sockaddr);
+
     gdb_socket = accept(init_socket, (sockaddr *) &gdb_sockaddr, &socklen);
     if (gdb_socket < 0) {
         LOG_WARN << "Failed to connect to client";

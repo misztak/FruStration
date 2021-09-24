@@ -19,8 +19,9 @@ void Debugger::RemoveBreakpoint(u32 address) {
 
 void Debugger::ToggleBreakpoint(u32 address) {
     auto bp = breakpoints.find(address);
-    if (bp == breakpoints.end()) return;
-    bp->second.enabled = !bp->second.enabled;
+    if (bp != breakpoints.end()) {
+        bp->second.enabled = !bp->second.enabled;
+    }
 }
 
 void Debugger::SetPausedState(bool paused, bool _single_step) {
