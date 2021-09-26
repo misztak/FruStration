@@ -14,7 +14,7 @@ LOG_CHANNEL(MAIN);
 constexpr bool RUN_HEADLESS = false;
 
 int RunCore() {
-    const std::string bios_path = "../../../bios/SCPH1001.BIN";
+    const std::string bios_path = "SCPH1001.BIN";
 
     System system;
     system.Init();
@@ -80,8 +80,8 @@ int main(int, char**) {
 
     System system;
     system.Init();
-    if (!system.LoadBIOS("../bios/SCPH1001.BIN")) return 1;
-    //if (!system.LoadBIOS("../bios/SCPH7002.BIN")) return 1;
+    if (!system.LoadBIOS("SCPH1001.BIN")) return 1;
+    //if (!system.LoadBIOS("SCPH7002.BIN")) return 1;
 
     system.StartGDBServer();
 
