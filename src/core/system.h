@@ -50,7 +50,7 @@ public:
     bool draw_debugger = true;
     bool draw_timer_state = true;
 
-    bool cfg_gdb_server_enabled = true;
+    bool cfg_gdb_server_enabled = false;
 
     // end of config
 

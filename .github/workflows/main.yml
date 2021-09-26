@@ -51,8 +51,7 @@ jobs:
         name: frustration-windows
         path: |
           bin/frustration.exe
-          libs/windows/sdl2/lib/SDL2.lib
-          libs/windows/sdl2/lib/SDL2main.lib
+          libs/windows/sdl2/bin/SDL2.dll
 
   update-release:
     runs-on: ubuntu-latest

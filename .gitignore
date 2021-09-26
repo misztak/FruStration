@@ -5,7 +5,7 @@ build-debug
 build-release
 
 # output folders
-bin
+/bin
 
 # IDEs
 .idea
