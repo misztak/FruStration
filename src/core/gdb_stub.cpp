@@ -153,7 +153,7 @@ static std::string ReadMemory(u32 start, u32 length) {
     std::stringstream ss;
 
     for (u32 i = 0; i < length; i++) {
-        u8 value = bus->Read(start + i);
+        u8 value = bus->Peek(start + i);
         ss << ValuesToHex(&value, sizeof(u8));
     }
 
@@ -179,7 +179,6 @@ static void Receive() {
     if (rx_len < 1) {
         LOG_WARN << "Failed to receive package";
     }
-
 }
 
 static bool ReceivedNewPackage() {

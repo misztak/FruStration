@@ -12,7 +12,9 @@ public:
     DMA();
     void Init(BUS* bus, GPU* gpu, InterruptController* controller);
     void Reset();
+
     u32 Load(u32 address);
+    u32 Peek(u32 address);
     void Store(u32 address, u32 value);
 
 private:

@@ -13,7 +13,9 @@ public:
     void Init(InterruptController* icontroller);
     void Reset();
     void Step();
+
     u8 Load(u32 address);
+    u8 Peek(u32 address);
     void Store(u32 address, u8 value);
 
 private:

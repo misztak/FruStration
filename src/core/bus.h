@@ -30,7 +30,8 @@ public:
     template <typename ValueType> ValueType Load(u32 address);
     template <typename Value> void Store(u32 address, Value value);
 
-    u8 Read(u32 address);
+    // read from memory without causing side effects (i.e. MMIO state changes)
+    u8 Peek(u32 address);
 private:
     ALWAYS_INLINE u32 MaskRegion(u32 address) { return address & MEM_REGION_MASKS[address >> 29]; }
 

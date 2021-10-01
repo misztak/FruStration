@@ -232,6 +232,23 @@ void TimerController::Increment(u32 index, u32 steps) {
     }
 }
 
+u32 TimerController::Peek(u32 address) {
+    const u32 timer_index = (address & 0xF0) >> 4;
+    const u32 timer_address = address & 0xF;
+    DebugAssert(timer_index <= 2);
+
+    if (timer_address == 0x0) {
+        return timers[timer_index].counter;
+    }
+    if (timer_address == 0x4) {
+        return timers[timer_index].mode.value;
+    }
+    if (timer_address == 0x8) {
+        return timers[timer_index].target;
+    }
+    return 0;
+}
+
 void TimerController::Reset() {
     for (auto& timer: timers) {
         timer.counter = 0;

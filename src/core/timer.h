@@ -16,7 +16,9 @@ public:
     void Init(GPU* gpu, InterruptController* icontroller);
     void Reset();
     void Step(u32 steps, u32 timer_index);
+
     u32 Load(u32 address);
+    u32 Peek(u32 address);
     void Store(u32 address, u32 value);
 
     void DrawTimerState(bool* open);

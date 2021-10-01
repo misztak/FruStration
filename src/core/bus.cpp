@@ -247,7 +247,11 @@ void BUS::Store(u32 address, Value value) {
     return;
 }
 
-u8 BUS::Read(u32 address) {
+u8 BUS::Peek(u32 address) {
+    const auto ToU8 = [&](u32 value) {
+        return (value >> (address & 0x3)) & 0xFF;
+    };
+
     const u32 physical_addr = MaskRegion(address);
 
     // RAM
@@ -256,26 +260,23 @@ u8 BUS::Read(u32 address) {
     if (InArea(SCRATCH_START, SCRATCH_SIZE, physical_addr))
         return *(scratchpad.data() + (physical_addr - SCRATCH_START));
     // MMIO
-    // TODO: return the actual values instead of 0
     if (InArea(IO_PORTS_START, IO_PORTS_SIZE, physical_addr)) {
-        switch (physical_addr) {
-            case(0x1F801070): return 0;
-            case(0x1F801074): return 0;
-            case(0x1F801810): return 0; // GPUREAD
-            case(0x1F801814): return 0; // GPUSTAT
-        }
+        if (InArea(0x1F801070, 4, physical_addr)) return ToU8(interrupt->LoadStat());
+        if (InArea(0x1F801074, 4, physical_addr)) return ToU8(interrupt->LoadMask());
+        if (InArea(0x1F801810, 4, physical_addr)) return ToU8(gpu->gpu_read);
+        if (InArea(0x1F801814, 4, physical_addr)) return ToU8(gpu->ReadStat());
 
         // DMA
         if (InArea(0x1F801080, 120, physical_addr))
-            return 0;
+            return dma->Peek(physical_addr);
 
         // Timer
         if (InArea(0x1F801100, 48, physical_addr))
-            return 0;
+            return timers->Peek(physical_addr);
 
         // CDROM
         if (InArea(0x1F801800, 4, physical_addr))
-            return 0;
+            return cdrom->Peek(physical_addr);
 
 
         if (InArea(0x1F801C00, 644, physical_addr)) return 0; // SPU

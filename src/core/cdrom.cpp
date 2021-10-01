@@ -50,7 +50,6 @@ void CDROM::ExecCommand(Command command) {
             //PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
             // licensed disc (NTSC)
             PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
-
             break;
         default:
             Panic("Unimplemented CDROM command 0x%02X", static_cast<u8>(command));
@@ -165,6 +164,21 @@ void CDROM::Store(u32 address, u8 value) {
         if (index == 2 || index == 3) Panic("Unimplemented");
         return;
     }
+}
+
+u8 CDROM::Peek(u32 address) {
+    if (address == 0x0) {
+        return status.value;
+    }
+    if (address == 0x1) {
+        return response_fifo.empty() ? 0 : response_fifo.front();
+    }
+    if (address == 0x3) {
+        u8 result = 0b11100000;
+        if (!interrupt_fifo.empty()) result |= interrupt_fifo.front();
+        return result;
+    }
+    return 0;
 }
 
 void CDROM::Reset() {

@@ -223,6 +223,25 @@ void DMA::UpdateMasterFlag() {
         interrupt.force_irq || (interrupt.irq_master_enable && ((interrupt.irq_enable & interrupt.irq_flag) != 0));
 }
 
+u32 DMA::Peek(u32 address) {
+    if (address == 0x70) return control.value;
+    if (address == 0x74) return interrupt.value;
+
+    const u32 channel_index = (address & 0x70) >> 4;
+    const u32 channel_address = address & 0xF;
+
+    if (channel_address == 0x0) {
+        return channel[channel_index].base_address;
+    }
+    if (channel_address == 0x4) {
+        return channel[channel_index].bcr.value;
+    }
+    if (channel_address == 0x8) {
+        return channel[channel_index].control.value;
+    }
+    return 0;
+}
+
 void DMA::Reset() {
     for (auto& c : channel) {
         c.base_address = 0;
