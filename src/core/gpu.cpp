@@ -4,6 +4,8 @@
 #include "imgui.h"
 #include "macros.h"
 #include "interrupt.h"
+#include "scheduler.h"
+#include "timer.h"
 
 LOG_CHANNEL(GPU);
 
@@ -13,12 +15,108 @@ GPU::GPU(): vram(VRAM_SIZE, 0), output(VRAM_SIZE * 2, 0) {
     status.can_receive_cmd_word = true;
     status.can_send_vram_to_cpu = true;
     status.can_receive_dma_block = true;
+
+    Scheduler::AddComponent(
+        Component::Type::GPU,
+        [this](u32 cycles) { StepTmp(cycles); },
+        [this] { return CyclesUntilNextEvent(); }
+    );
 }
 
-void GPU::Init(InterruptController* icontroller) {
+void GPU::Init(TimerController* tmr, InterruptController* icontroller) {
+    timer_controller = tmr;
     interrupt_controller = icontroller;
 
     renderer.Init(this);
+}
+
+void GPU::StepTmp(u32 cycles) {
+    DebugAssert(cycles <= cycles_until_next_event);
+
+    const float gpu_cycles = static_cast<float>(cycles) * (11.0 / 7.0);
+    const float dots = gpu_cycles / static_cast<float>(DotClock());
+
+    accumulated_dots += dots;
+
+    const float dots_per_scanline = static_cast<float>(CyclesPerScanline()) / static_cast<float>(DotClock());
+    while (accumulated_dots >= dots_per_scanline) {
+        accumulated_dots -= dots_per_scanline;
+        scanline = (scanline + 1) % Scanlines();
+        // TODO: even/odd bit
+    }
+
+    auto& dot_timer = timer_controller->timers[0];
+    if (dot_timer.mode.clock_source % 2) {
+        static float dotclock_dots = 0;
+        dotclock_dots += dots;
+        // TODO: update timer
+        dotclock_dots = std::fmod(dotclock_dots, 1.0f);
+    }
+
+    const bool currently_in_hblank = accumulated_dots >= static_cast<float>(HorizontalRes());
+
+    if (dot_timer.mode.sync_enabled) {
+        // TODO: update blanking stuff for timer 0
+    }
+
+    auto& hblank_timer = timer_controller->timers[1];
+    if (hblank_timer.mode.clock_source % 2) {
+        const u32 lines = static_cast<u32>(dots / dots_per_scanline);
+        // TODO: update hblank timer
+    }
+
+    was_in_hblank = currently_in_hblank;
+
+    const bool currently_in_vblank = scanline >= 240;
+
+    if (hblank_timer.mode.sync_enabled) {
+        // TODO: update blanking stuff for timer 1
+    }
+
+    if (!was_in_vblank && currently_in_vblank) {
+        interrupt_controller->Request(IRQ::VBLANK);
+
+        draw_frame = true;
+
+        // TODO: interlaced even/odd stuff
+    }
+
+    was_in_vblank = currently_in_vblank;
+}
+
+u32 GPU::CyclesUntilNextEvent() {
+    float gpu_cycles_until_next_event = std::numeric_limits<float>::max();
+
+    const float dots_per_cycle = 1.0f / static_cast<float>(DotClock());
+    const float dots_per_scanline = static_cast<float>(CyclesPerScanline()) / static_cast<float>(DotClock());
+
+    const float horizontal_res = static_cast<float>(HorizontalRes());
+
+    auto& dot_timer = timer_controller->timers[0];
+    if (dot_timer.mode.sync_enabled) {
+        // synced with hblank
+        const float cycles_until_hblank_flip =
+            ((accumulated_dots < horizontal_res ? horizontal_res : dots_per_scanline) - accumulated_dots) /
+            dots_per_cycle;
+        gpu_cycles_until_next_event = std::min(gpu_cycles_until_next_event, cycles_until_hblank_flip);
+    }
+
+    if (!dot_timer.paused && dot_timer.mode.clock_source % 2) {
+        // TODO: const float cycles_until_irq = ;
+    }
+
+    const u32 lines_until_vblank_flip = (scanline < 240 ? 240 : Scanlines()) - scanline;
+    // TODO
+
+    auto& hblank_timer = timer_controller->timers[1];
+    if (!hblank_timer.paused && hblank_timer.mode.clock_source % 2) {
+        const float cycles_until_hblank = ((accumulated_dots < horizontal_res ? horizontal_res : dots_per_scanline + horizontal_res) - accumulated_dots) / dots_per_cycle;
+        // TODO: const float cycles_until_irq = ;
+    }
+
+    cycles_until_next_event = static_cast<u32>(std::ceil(gpu_cycles_until_next_event / (11.0 / 7.0)));
+
+    return cycles_until_next_event;
 }
 
 void GPU::Step(u32 steps) {
@@ -397,7 +495,7 @@ u32 GPU::HorizontalRes() {
 
     switch (status.horizontal_res_1) {
         case 0: return 256;
-        case 1: return 480;
+        case 1: return 320;
         case 2: return 512;
         case 3: return 640;
         default: Panic("Invalid horizontal resolution");

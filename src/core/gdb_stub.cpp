@@ -224,7 +224,7 @@ void HandleClientRequest() {
     if (rx_buffer[0] == CTRL_C) {
         LOG_INFO << "Received interrupt from client";
         Send("S02");
-        debugger->GetCPU()->halt = true;
+        debugger->SetPausedState(true, false);
         return;
     }
 

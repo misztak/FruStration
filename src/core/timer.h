@@ -21,8 +21,12 @@ public:
     u32 Peek(u32 address);
     void Store(u32 address, u32 value);
 
+    void StepTmp(u32 cycles);
+    u32 CyclesUntilNextEvent();
+    void UpdateOnBlankFlip(bool entered_blank);
+
     void DrawTimerState(bool* open);
-private:
+
     enum class ResetMode: u32 {
         AfterMaxValue, AfterTarget
     };
@@ -33,10 +37,6 @@ private:
         DotClock,
         HBlank,
     };
-
-    ClockSource GetClockSource(u32 index);
-    void Increment(u32 index, u32 steps);
-    void SendIRQ(u32 index);
 
     struct Timer {
         u32 counter = 0;
@@ -64,6 +64,10 @@ private:
     };
 
     Timer timers[3] = {};
+private:
+    ClockSource GetClockSource(u32 index);
+    void Increment(u32 index, u32 steps);
+    void SendIRQ(u32 index);
 
     GPU* gpu = nullptr;
     InterruptController* interrupt_controller = nullptr;

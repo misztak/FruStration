@@ -4,6 +4,7 @@
 #include "cpu_common.h"
 #include "imgui.h"
 #include "macros.h"
+#include "scheduler.h"
 #include "fmt/format.h"
 
 LOG_CHANNEL(CPU);
@@ -70,6 +71,7 @@ void CPU::Step() {
 
     // handle interrupts
     if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
+        current_pc = sp.pc;
         Exception(ExceptionCode::Interrupt);
     }
 
@@ -516,6 +518,9 @@ void CPU::Step() {
 
     // first register always contains 0
     gp.zero = 0;
+
+    // tick the components
+    Scheduler::AddCycles(1);
 }
 
 void CPU::Exception(ExceptionCode cause) {

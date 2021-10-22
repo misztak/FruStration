@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <functional>
 
 #include "types.h"
 #include "bitfield.h"
@@ -52,7 +53,16 @@ private:
         GetQ,
         ReadTOC,
         VideoCD,
+        None = 255,
     };
+
+    enum class State : u32 {
+        Idle,
+        ExecutingFirstResponse,
+        ExecutingSecondResponse,
+    };
+
+    State state = State::Idle;
 
     static constexpr u32 FIFO_MAX_SIZE = 16;
 
@@ -65,7 +75,24 @@ private:
 
     void ExecCommand(Command command);
     void ExecSubCommand();
-    void PushResponse(u8 type, std::initializer_list<u8> value);
+    void PushResponse(u8 type, std::initializer_list<u8> response_values);
+    void PushResponse(u8 type, u8 response_value);
+
+    void SendInterrupt();
+
+    void StepTmp(u32 cycles);
+    u32 CyclesUntilNextEvent();
+
+    void ScheduleFirstResponse();
+    void ScheduleSecondResponse(std::function<void ()> command, s32 cycles);
+
+    std::function<void ()> second_response_command = nullptr;
+
+    u32 cycles_until_first_response = 0;
+    u32 cycles_until_second_response = 0;
+
+    Command pending_command = Command::None;
+    Command pending_second_response_command = Command::None;
 
     union {
         BitField<u8, bool, 0, 1> error;

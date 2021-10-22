@@ -7,13 +7,16 @@
 #include "bitfield.h"
 #include "sw_renderer.h"
 
+class TimerController;
 class InterruptController;
+
+constexpr u32 CPU_CLOCKS = 33868800;
 
 class GPU {
 friend class Renderer;
 public:
     GPU();
-    void Init(InterruptController* icontroller);
+    void Init(TimerController* timer, InterruptController* icontroller);
     void Reset();
 
     void Step(u32 steps);
@@ -37,12 +40,17 @@ public:
 
     bool in_hblank = false, in_vblank = false;
 
+    bool draw_frame = false;
+
     u32 gpu_read = 0;
 
     static constexpr u32 VRAM_WIDTH = 1024;
     static constexpr u32 VRAM_HEIGHT = 512;
     static constexpr u32 VRAM_SIZE = 1024 * 512;
 private:
+    void StepTmp(u32 cycles);
+    u32 CyclesUntilNextEvent();
+
     void DrawQuadMono();
     void DrawQuadShaded();
     void DrawQuadTextured();
@@ -163,8 +171,14 @@ private:
         gpu_info = 0x10,
     };
 
+    u32 cycles_until_next_event = 0;
+
+    float accumulated_dots = 0;
+
     u32 gpu_clock = 0;
     u32 scanline = 0;
+
+    bool was_in_hblank = false, was_in_vblank = false;
 
     u32 command_counter = 0;
     std::array<u32, 12> command_buffer;
@@ -189,5 +203,6 @@ private:
     Rectangle rectangle = {};
     Renderer renderer;
 
+    TimerController* timer_controller = nullptr;
     InterruptController* interrupt_controller = nullptr;
 };

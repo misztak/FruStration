@@ -10,6 +10,7 @@ add_library(core
         bios.cpp
         interrupt.cpp
         timer.cpp
+        scheduler.cpp
         debugger.cpp
         gdb_stub.cpp)
 

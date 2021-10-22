@@ -7,6 +7,7 @@
 #include "cdrom.h"
 #include "interrupt.h"
 #include "timer.h"
+#include "scheduler.h"
 #include "debugger.h"
 #include "gdb_stub.h"
 #include "macros.h"
@@ -32,7 +33,7 @@ void System::Init() {
     cpu->Init(bus.get(), debugger.get());
     bus->Init(dma.get(), gpu.get(), cpu.get(), cdrom.get(), interrupt.get(), timers.get(), debugger.get());
     dma->Init(bus.get(), gpu.get(), interrupt.get());
-    gpu->Init(interrupt.get());
+    gpu->Init(timers.get(), interrupt.get());
     timers->Init(gpu.get(), interrupt.get());
     interrupt->Init(cpu.get());
     cdrom->Init(interrupt.get());
@@ -96,6 +97,7 @@ void System::Reset() {
     interrupt->Reset();
     timers->Reset();
     debugger->Reset();
+    Scheduler::Reset();
     LOG_INFO << "System reset";
 }
 

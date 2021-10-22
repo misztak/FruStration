@@ -102,6 +102,18 @@ void TimerController::Step(u32 steps, u32 timer_index) {
 
 }
 
+void TimerController::StepTmp(u32 cycles) {
+
+}
+
+u32 TimerController::CyclesUntilNextEvent() {
+    return 0;
+}
+
+void TimerController::UpdateOnBlankFlip(bool entered_blank) {
+
+}
+
 u32 TimerController::Load(u32 address) {
 #if 0
     LOG_DEBUG << fmt::format("Load call to Timers [@ 0x{:02X}]", address);
