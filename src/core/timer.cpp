@@ -8,6 +8,121 @@
 
 LOG_CHANNEL(Timer);
 
+void TimerController::Timer::UpdateOnBlankFlip(u32 index, bool entered_blank) {
+    // nothing to do if blank state didn't change
+    if (gpu_currently_in_blank == entered_blank) return;
+
+    gpu_currently_in_blank = entered_blank;
+
+    if (gpu_currently_in_blank && mode.sync_enabled) {
+        switch (mode.sync_mode) {
+            case 0:
+                break;
+            case 1:
+            case 2:
+                counter = 0;
+                break;
+            case 3:
+                mode.sync_enabled = false;
+                break;
+        }
+    }
+
+    UpdatePaused(index);
+}
+
+void TimerController::Timer::UpdatePaused(u32 index) {
+    DebugAssert(index < 3);
+
+    if (mode.sync_enabled) {
+        if (index < 2) {
+            switch (mode.sync_mode) {
+                case 0: paused = gpu_currently_in_blank; break;
+                case 1: paused = false; break;
+                case 2: case 3: paused = !gpu_currently_in_blank; break;
+            }
+        } else {
+            // stop counter 'forever' in syncmode 0 and 3
+            // otherwise free run
+            paused = paused && (mode.sync_mode % 3 == 0);
+        }
+    } else {
+        // free run
+        paused = false;
+    }
+}
+
+u32 TimerController::Timer::CyclesUntilNextIRQ() {
+    u32 cycles = std::numeric_limits<u32>::max();
+
+    if (!paused) {
+        if (mode.irq_on_target) {
+            const u32 cycles_until_target = (counter < target) ? (target - counter) : ((MAX_COUNTER - counter) + target);
+            cycles = std::min(cycles, cycles_until_target);
+        }
+
+        if (mode.irq_on_max_value) {
+            const u32 cycles_until_max_value = MAX_COUNTER - counter;
+            cycles = std::min(cycles, cycles_until_max_value);
+        }
+    }
+
+    return cycles;
+}
+
+bool TimerController::Timer::Increment(u32 cycles) {
+    if (paused) return false;
+
+    DebugAssert(cycles <= CyclesUntilNextIRQ());
+
+    const u32 previous_counter_value = counter;
+    counter += cycles;
+
+    bool send_irq = false;
+
+    bool already_reached_target = previous_counter_value >= target;
+    if (counter >= target && (!already_reached_target || target == 0)) {
+        mode.reached_target = true;
+        send_irq |= mode.irq_on_target;
+        if (mode.reset_mode == ResetMode::AfterTarget && target > 0) {
+            counter %= target;
+        }
+    }
+
+    if (counter >= MAX_COUNTER) {
+        mode.reached_max_value = true;
+        send_irq |= mode.irq_on_max_value;
+        counter %= MAX_COUNTER;
+    }
+
+    auto SendIRQ = [&] {
+        if (!pending_irq || mode.irq_repeat_mode) {
+            pending_irq = true;
+            return true;
+        }
+        return false;
+    };
+
+    if (send_irq) {
+        if (mode.irq_toggle_mode) {
+            if (mode.irq_repeat_mode || mode.allow_irq) {
+                // toggle mode
+                mode.allow_irq = !mode.allow_irq;
+                // high to low transition
+                if (!mode.allow_irq) {
+                    return SendIRQ();
+                }
+            }
+        } else {
+            // pulse mode, Bit10 always set
+            mode.allow_irq = true;
+            return SendIRQ();
+        }
+    }
+
+    return false;
+}
+
 TimerController::TimerController() {}
 
 void TimerController::Init(GPU* g, InterruptController* icontroller) {
@@ -103,15 +218,68 @@ void TimerController::Step(u32 steps, u32 timer_index) {
 }
 
 void TimerController::StepTmp(u32 cycles) {
+    // timer 0
+    auto& dot_timer = timers[0];
+    if (dot_timer.mode.clock_source % 2 == 0) {
+        if (dot_timer.Increment(cycles)) {
+            interrupt_controller->Request(IRQ::TIMER0);
+        }
+    }
 
+    // timer 1
+    auto& hblank_timer = timers[1];
+    if (hblank_timer.mode.clock_source % 2 == 0) {
+        if (hblank_timer.Increment(cycles)) {
+            interrupt_controller->Request(IRQ::TIMER1);
+        }
+    }
+
+    // timer 2
+    auto& cpu_timer = timers[2];
+    const bool uses_div_8 = cpu_timer.mode.clock_source & 0x2;
+    u32 ticks;
+    if (uses_div_8) {
+        ticks = (cycles + div_8_remainder) / 8;
+        div_8_remainder = (cycles + div_8_remainder) % 8;
+    } else {
+        ticks = cycles;
+    }
+
+    if (cpu_timer.Increment(ticks)) {
+        interrupt_controller->Request(IRQ::TIMER2);
+        if (cpu_timer.mode.sync_enabled && cpu_timer.mode.sync_mode % 3 == 0) {
+            // stop permanently
+            cpu_timer.counter =
+                (cpu_timer.mode.irq_on_target && cpu_timer.mode.reached_target) ? cpu_timer.target : MAX_COUNTER;
+            cpu_timer.paused = true;
+        }
+    }
 }
 
 u32 TimerController::CyclesUntilNextEvent() {
-    return 0;
-}
+    u32 min_cycles = std::numeric_limits<u32>::max();
 
-void TimerController::UpdateOnBlankFlip(bool entered_blank) {
+    auto& dot_timer = timers[0];
+    if (dot_timer.mode.clock_source % 2 == 0) {
+        min_cycles = std::min(min_cycles, dot_timer.CyclesUntilNextIRQ());
+    }
 
+    auto& hblank_timer = timers[1];
+    if (hblank_timer.mode.clock_source % 2 == 0) {
+        min_cycles = std::min(min_cycles, hblank_timer.CyclesUntilNextIRQ());
+    }
+
+    auto& cpu_timer = timers[2];
+    const u32 raw_cycles = cpu_timer.CyclesUntilNextIRQ();
+    if (cpu_timer.mode.clock_source & 0x2) {
+        if (raw_cycles != std::numeric_limits<u32>::max()) {
+            min_cycles = std::min(min_cycles, raw_cycles * 8 - div_8_remainder);
+        }
+    } else {
+        min_cycles = std::min(min_cycles, raw_cycles);
+    }
+
+    return min_cycles;
 }
 
 u32 TimerController::Load(u32 address) {

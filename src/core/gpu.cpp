@@ -49,20 +49,20 @@ void GPU::StepTmp(u32 cycles) {
     if (dot_timer.mode.clock_source % 2) {
         static float dotclock_dots = 0;
         dotclock_dots += dots;
-        // TODO: update timer
+        dot_timer.Increment(static_cast<u32>(dotclock_dots));
         dotclock_dots = std::fmod(dotclock_dots, 1.0f);
     }
 
     const bool currently_in_hblank = accumulated_dots >= static_cast<float>(HorizontalRes());
 
     if (dot_timer.mode.sync_enabled) {
-        // TODO: update blanking stuff for timer 0
+        dot_timer.UpdateOnBlankFlip(TMR0, currently_in_hblank);
     }
 
     auto& hblank_timer = timer_controller->timers[1];
     if (hblank_timer.mode.clock_source % 2) {
         const u32 lines = static_cast<u32>(dots / dots_per_scanline);
-        // TODO: update hblank timer
+        hblank_timer.Increment(static_cast<u32>(currently_in_hblank && !was_in_vblank) + lines);
     }
 
     was_in_hblank = currently_in_hblank;
@@ -70,7 +70,7 @@ void GPU::StepTmp(u32 cycles) {
     const bool currently_in_vblank = scanline >= 240;
 
     if (hblank_timer.mode.sync_enabled) {
-        // TODO: update blanking stuff for timer 1
+        hblank_timer.UpdateOnBlankFlip(TMR1, currently_in_vblank);
     }
 
     if (!was_in_vblank && currently_in_vblank) {
@@ -82,6 +82,14 @@ void GPU::StepTmp(u32 cycles) {
     }
 
     was_in_vblank = currently_in_vblank;
+}
+
+constexpr static float VideoCyclesPerScanline() {
+    // GetVideoCyclesPerFrame() / GetScanlines()
+    constexpr float VideoClockSpeed = (44100 * 0x300) * 11 / 7;
+    constexpr float RefreshRateNTSC = 60;
+    constexpr float ScanlinesNTSC = 263;
+    return (VideoClockSpeed / RefreshRateNTSC) / ScanlinesNTSC;
 }
 
 u32 GPU::CyclesUntilNextEvent() {
@@ -102,16 +110,19 @@ u32 GPU::CyclesUntilNextEvent() {
     }
 
     if (!dot_timer.paused && dot_timer.mode.clock_source % 2) {
-        // TODO: const float cycles_until_irq = ;
+        const float cycles_until_irq = dot_timer.CyclesUntilNextIRQ() / dots_per_cycle;
+        gpu_cycles_until_next_event = std::min(gpu_cycles_until_next_event, cycles_until_irq);
     }
 
     const u32 lines_until_vblank_flip = (scanline < 240 ? 240 : Scanlines()) - scanline;
-    // TODO
+    const float cycles_until_vblank_flip = lines_until_vblank_flip * VideoCyclesPerScanline() - accumulated_dots / dots_per_cycle;
+    gpu_cycles_until_next_event = std::min(gpu_cycles_until_next_event, cycles_until_vblank_flip);
 
     auto& hblank_timer = timer_controller->timers[1];
     if (!hblank_timer.paused && hblank_timer.mode.clock_source % 2) {
         const float cycles_until_hblank = ((accumulated_dots < horizontal_res ? horizontal_res : dots_per_scanline + horizontal_res) - accumulated_dots) / dots_per_cycle;
-        // TODO: const float cycles_until_irq = ;
+        const float cycles_until_irq = hblank_timer.CyclesUntilNextIRQ() * VideoCyclesPerScanline() - cycles_until_hblank;
+        gpu_cycles_until_next_event = std::min(gpu_cycles_until_next_event, cycles_until_irq);
     }
 
     cycles_until_next_event = static_cast<u32>(std::ceil(gpu_cycles_until_next_event / (11.0 / 7.0)));

@@ -6,6 +6,8 @@
 class GPU;
 class InterruptController;
 
+constexpr u32 MAX_COUNTER = 0xFFFF;
+
 constexpr static u32 TMR0 = 0;
 constexpr static u32 TMR1 = 1;
 constexpr static u32 TMR2 = 2;
@@ -23,7 +25,6 @@ public:
 
     void StepTmp(u32 cycles);
     u32 CyclesUntilNextEvent();
-    void UpdateOnBlankFlip(bool entered_blank);
 
     void DrawTimerState(bool* open);
 
@@ -60,7 +61,17 @@ public:
         u32 target = 0;
 
         bool paused = false;
+        bool pending_irq = false;
+
         u32 acc_steps = 0;
+
+        bool gpu_currently_in_blank = false;
+
+        bool Increment(u32 cycles);
+
+        void UpdateOnBlankFlip(u32 index, bool entered_blank);
+        void UpdatePaused(u32 index);
+        u32 CyclesUntilNextIRQ();
     };
 
     Timer timers[3] = {};
@@ -68,6 +79,8 @@ private:
     ClockSource GetClockSource(u32 index);
     void Increment(u32 index, u32 steps);
     void SendIRQ(u32 index);
+
+    u32 div_8_remainder = 0;
 
     GPU* gpu = nullptr;
     InterruptController* interrupt_controller = nullptr;
