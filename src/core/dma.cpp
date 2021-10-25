@@ -3,6 +3,7 @@
 #include "bus.h"
 #include "gpu.h"
 #include "interrupt.h"
+#include "scheduler.h"
 #include "macros.h"
 #include "fmt/format.h"
 
@@ -112,6 +113,14 @@ void DMA::StartTransfer(u32 index) {
     }
 }
 
+static u32 CyclesForTransfer(u32 channel_index, u32 count) {
+    switch (channel_index) {
+        case 3: return (count * 0x2800) / 0x100;
+        case 4: return (count * 0x0420) / 0x100;
+        default: return (count * 0x0110) / 0x100;
+    }
+}
+
 void DMA::TransferBlock(u32 index) {
     auto& ch = channel[index];
     auto channel_type = static_cast<DMA_Channel>(index);
@@ -130,6 +139,8 @@ void DMA::TransferBlock(u32 index) {
         case SyncMode::LinkedList:
             Panic("This should never be reached");
     }
+
+    const u32 total_word_count = transfer_count;
 
     // TODO: decrement block_count
     // TODO: decrement MADR in Request and LinkedList mode
@@ -185,6 +196,8 @@ void DMA::TransferBlock(u32 index) {
     // TODO: reset other values (interrupts?)
     ch.control.start_busy = false;
     ch.control.start_trigger = false;
+
+    Scheduler::AddCycles(CyclesForTransfer(index, total_word_count));
 }
 
 void DMA::TransferLinkedList(u32 index) {
@@ -197,6 +210,8 @@ void DMA::TransferLinkedList(u32 index) {
     // align and wrap the address
     u32 addr = ch.base_address & ADDR_MASK;
 
+    u32 total_transfer_count = 0;
+
     for (;;) {
         u32 header = bus->Load<u32>(addr);
         u32 transfer_size = header >> 24;
@@ -208,6 +223,8 @@ void DMA::TransferLinkedList(u32 index) {
             transfer_size--;
         }
 
+        total_transfer_count += transfer_size;
+
         if ((header & 0x800000) != 0) break;
 
         addr = header & ADDR_MASK;
@@ -216,6 +233,8 @@ void DMA::TransferLinkedList(u32 index) {
     // TODO: reset other values (interrupts?)
     ch.control.start_busy = false;
     ch.control.start_trigger = false;
+
+    Scheduler::AddCycles(CyclesForTransfer(index, total_transfer_count));
 }
 
 void DMA::UpdateMasterFlag() {

@@ -51,6 +51,10 @@ private:
     void StepTmp(u32 cycles);
     u32 CyclesUntilNextEvent();
 
+    float DotsPerVideoCycle();
+    float DotsPerScanline();
+    float VideoCyclesPerScanline();
+
     void DrawQuadMono();
     void DrawQuadShaded();
     void DrawQuadTextured();
@@ -79,7 +83,7 @@ private:
     };
 
     // TODO: more enums for types
-    union {
+    union GpuStatus {
         u32 value = 0;
 
         BitField<u32, u32, 0, 4> tex_page_x_base;

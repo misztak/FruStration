@@ -38,7 +38,7 @@ void GPU::StepTmp(u32 cycles) {
 
     accumulated_dots += dots;
 
-    const float dots_per_scanline = static_cast<float>(CyclesPerScanline()) / static_cast<float>(DotClock());
+    const float dots_per_scanline = DotsPerScanline();
     while (accumulated_dots >= dots_per_scanline) {
         accumulated_dots -= dots_per_scanline;
         scanline = (scanline + 1) % Scanlines();
@@ -77,6 +77,7 @@ void GPU::StepTmp(u32 cycles) {
         interrupt_controller->Request(IRQ::VBLANK);
 
         draw_frame = true;
+        //LOG_DEBUG << "VBLANK";
 
         // TODO: interlaced even/odd stuff
     }
@@ -84,7 +85,7 @@ void GPU::StepTmp(u32 cycles) {
     was_in_vblank = currently_in_vblank;
 }
 
-constexpr static float VideoCyclesPerScanline() {
+float GPU::VideoCyclesPerScanline() {
     // GetVideoCyclesPerFrame() / GetScanlines()
     constexpr float VideoClockSpeed = (44100 * 0x300) * 11 / 7;
     constexpr float RefreshRateNTSC = 60;
@@ -92,11 +93,19 @@ constexpr static float VideoCyclesPerScanline() {
     return (VideoClockSpeed / RefreshRateNTSC) / ScanlinesNTSC;
 }
 
+float GPU::DotsPerVideoCycle() {
+    return static_cast<float>(HorizontalRes()) / 2560.f;
+}
+
+float GPU::DotsPerScanline() {
+    return DotsPerVideoCycle() * VideoCyclesPerScanline();
+}
+
 u32 GPU::CyclesUntilNextEvent() {
     float gpu_cycles_until_next_event = std::numeric_limits<float>::max();
 
-    const float dots_per_cycle = 1.0f / static_cast<float>(DotClock());
-    const float dots_per_scanline = static_cast<float>(CyclesPerScanline()) / static_cast<float>(DotClock());
+    const float dots_per_cycle = DotsPerVideoCycle();
+    const float dots_per_scanline = DotsPerScanline();
 
     const float horizontal_res = static_cast<float>(HorizontalRes());
 
@@ -306,15 +315,26 @@ void GPU::SendGP1Cmd(u32 cmd) {
             display_line_start = cmd & 0x3FF;
             display_line_end = (cmd >> 10) & 0x3FF;
             break;
-        case Gp1Command::display_mode:
-            status.horizontal_res_1 = cmd & 0x3;
-            status.vertical_res = (cmd >> 2) & 0x1;
-            status.video_mode = static_cast<VideoMode>((cmd >> 3) & 0x1);
-            status.display_area_color_depth = (cmd >> 4) & 0x1;
-            status.vertical_interlace = (cmd >> 5) & 0x1;
-            status.horizontal_res_2 = (cmd >> 6) & 0x1;
+        case Gp1Command::display_mode: {
+            GpuStatus new_status;
+            new_status.value = status.value;
+
+            new_status.horizontal_res_1 = cmd & 0x3;
+            new_status.vertical_res = (cmd >> 2) & 0x1;
+            new_status.video_mode = static_cast<VideoMode>((cmd >> 3) & 0x1);
+            new_status.display_area_color_depth = (cmd >> 4) & 0x1;
+            new_status.vertical_interlace = (cmd >> 5) & 0x1;
+            new_status.horizontal_res_2 = (cmd >> 6) & 0x1;
             if ((cmd >> 7) & 0x1) Panic("Tried to set GPUSTAT.14!");
+
+            if (new_status.value != status.value) {
+                Scheduler::ForceUpdate();
+                status.value = new_status.value;
+                Scheduler::RecalculateNextEvent();
+            }
+
             break;
+        }
         case Gp1Command::gpu_info:
             // we pretend to have the older 160pin GPU
             // TODO: differences between old and new GPU?

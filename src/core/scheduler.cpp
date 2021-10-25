@@ -3,18 +3,19 @@
 #include <limits>
 
 #include "macros.h"
+#include "fmt/format.h"
 
 LOG_CHANNEL(SCHEDULER);
 
 namespace Scheduler {
-namespace {
+//namespace {
 
 std::vector<Component> components;
 
 u32 cycles = 0;
 u32 cycles_until_next_event = 0;
 
-}
+//}
 
 void Reset() {
     cycles = 0;
@@ -27,10 +28,13 @@ void AddComponent(Component::Type type, UpdateFunc&& update_func, CyclesUntilNex
 
 static void FlushCycles() {
     while (cycles >= cycles_until_next_event) {
-        cycles -= cycles_until_next_event;
 
-        // let the components reach the next event
-        UpdateComponents(cycles_until_next_event);
+        if (cycles_until_next_event > 0) {
+            // let the components reach the next event
+            UpdateComponents(cycles_until_next_event);
+
+            cycles -= cycles_until_next_event;
+        }
 
         // update pending event value
         RecalculateNextEvent();
@@ -59,8 +63,20 @@ void UpdateComponents(u32 cycles_to_update) {
 void RecalculateNextEvent() {
     cycles_until_next_event = std::numeric_limits<u32>::max();
 
+#if 0
+    LOG_DEBUG << "Recalculating component timing...";
+    LOG_DEBUG << "Current cycles: " << cycles;
+#endif
+
     for (auto& component : components) {
-        cycles_until_next_event = std::min(cycles_until_next_event, component.CyclesUntilNextEvent());
+        const u32 comp_cycles = component.CyclesUntilNextEvent();
+
+#if 0
+        static const constexpr char* const names[3] = {"CDROM", "GPU", "TIMER"};
+        LOG_DEBUG << fmt::format("{}: {} cycles until next event", names[component.type], comp_cycles);
+#endif
+
+        cycles_until_next_event = std::min(cycles_until_next_event, comp_cycles);
     }
 }
 

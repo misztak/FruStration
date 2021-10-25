@@ -103,16 +103,7 @@ void CDROM::SendInterrupt() {
 }
 
 void CDROM::Step() {
-    status.busy = false;
-
-    if (!interrupt_fifo.empty()) {
-        // don't pop the interrupt until it gets acknowledged
-        u8 type = interrupt_fifo.front();
-
-        if (type & interrupt_enable) {
-            interrupt_controller->Request(IRQ::CDROM);
-        }
-    }
+    Panic("FUCK");
 }
 
 void CDROM::ExecCommand(Command command) {
@@ -239,8 +230,12 @@ void CDROM::Store(u32 address, u8 value) {
             // command 255 is used internally for Command::None
             DebugAssert(value != 255);
 
+            Scheduler::ForceUpdate();
+
             pending_command = static_cast<Command>(value);
             ScheduleFirstResponse();
+
+            Scheduler::RecalculateNextEvent();
         }
         if (index == 1 || index == 2 || index == 3) Panic("Unimplemented");
         return;
@@ -249,10 +244,14 @@ void CDROM::Store(u32 address, u8 value) {
     if (address == 0x2) {
         if (index == 0) parameter_fifo.push_back(value);
         if (index == 1) {
+            Scheduler::ForceUpdate();
+
             // set interrupt enable
             interrupt_enable = value;
             // if an interrupt was waiting it can be sent now
             SendInterrupt();
+
+            Scheduler::RecalculateNextEvent();
         }
         if (index == 2 || index == 3) Panic("Unimplemented");
         return;
@@ -261,6 +260,8 @@ void CDROM::Store(u32 address, u8 value) {
     if (address == 0x3) {
         if (index == 0) request = value;
         if (index == 1) {
+            Scheduler::ForceUpdate();
+
             if (value & 0x40) {
                 // reset parameter fifo
                 parameter_fifo.clear();
@@ -287,6 +288,8 @@ void CDROM::Store(u32 address, u8 value) {
                     ScheduleFirstResponse();
                 }
             }
+
+            Scheduler::RecalculateNextEvent();
         }
         if (index == 2 || index == 3) Panic("Unimplemented");
         return;

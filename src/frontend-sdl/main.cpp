@@ -8,6 +8,7 @@
 #include "imgui_impl_sdl.h"
 #include "system.h"
 #include "macros.h"
+#include "scheduler.h"
 
 LOG_CHANNEL(MAIN);
 
@@ -91,11 +92,18 @@ int main(int, char**) {
         return 1;
     };
 
-    system.VBlankCallback(std::bind(&Display::Update, &display));
+    Scheduler::RecalculateNextEvent();
 
     while (!system.done) {
         if (!system.IsHalted()) {
-            system.Step();
+
+            while (!system.DrawNextFrame()) {
+                system.Tick();
+            }
+
+            system.ResetDrawFrame();
+            display.Update();
+
         } else {
             display.Update();
             // if the GDB server is disabled this will do nothing

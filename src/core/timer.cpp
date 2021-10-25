@@ -2,6 +2,7 @@
 
 #include "gpu.h"
 #include "interrupt.h"
+#include "scheduler.h"
 #include "imgui.h"
 #include "macros.h"
 #include "fmt/format.h"
@@ -123,7 +124,12 @@ bool TimerController::Timer::Increment(u32 cycles) {
     return false;
 }
 
-TimerController::TimerController() {}
+TimerController::TimerController() {
+    Scheduler::AddComponent(
+        Component::TIMER,
+        [this](u32 cycles) { StepTmp(cycles); },
+        [this] { return CyclesUntilNextEvent(); });
+}
 
 void TimerController::Init(GPU* g, InterruptController* icontroller) {
     gpu = g;
@@ -131,90 +137,7 @@ void TimerController::Init(GPU* g, InterruptController* icontroller) {
 }
 
 void TimerController::Step(u32 steps, u32 timer_index) {
-    auto& timer = timers[timer_index];
-
-    bool sync = timer.mode.sync_enabled;
-
-    if (sync && timer_index == TMR0) {
-        switch (timer.mode.sync_mode) {
-            case 0:
-                timer.paused = gpu->in_hblank;
-                break;
-            case 1:
-                if (gpu->in_hblank) timer.counter = 0;
-                break;
-            case 2:
-                if (gpu->in_hblank) timer.counter = 0;
-                timer.paused = !gpu->in_hblank;
-                break;
-            case 3:
-                if (timer.paused && gpu->in_hblank) {
-                    timer.paused = false;
-                    timer.mode.sync_enabled = false;
-                }
-                break;
-        }
-    } else if (sync && timer_index == TMR1) {
-        switch (timer.mode.sync_mode) {
-            case 0:
-                timer.paused = gpu->in_vblank;
-                break;
-            case 1:
-                if (gpu->in_vblank) timer.counter = 0;
-                break;
-            case 2:
-                if (gpu->in_vblank) timer.counter = 0;
-                timer.paused = !gpu->in_vblank;
-                break;
-            case 3:
-                if (timer.paused && gpu->in_vblank) {
-                    timer.paused = false;
-                    timer.mode.sync_enabled = false;
-                }
-                break;
-        }
-    } else if (sync && timer_index == TMR2) {
-        switch (timer.mode.sync_mode) {
-            case 0:
-            case 3:
-                timer.paused = true;
-                break;
-            case 1:
-            case 2:
-                break;
-        }
-    }
-
-    if (timer.paused) return;
-
-    Increment(timer_index, steps);
-    bool send_irq = false;
-
-    if (timer.mode.reset_mode == ResetMode::AfterTarget && (timer.counter >= (timer.target & 0xFFFF))) {
-        timer.counter = 0;
-        timer.mode.reached_target = true;
-        if (timer.mode.irq_on_target) send_irq = true;
-    }
-
-    if (timer.mode.reset_mode == ResetMode::AfterMaxValue && (timer.counter >= 0xFFFF)) {
-        timer.counter = 0;
-        timer.mode.reached_max_value = true;
-        if (timer.mode.irq_on_max_value) send_irq = true;
-    }
-
-    if (send_irq && timer.mode.allow_irq) {
-        // one-shot mode
-        if (!timer.mode.irq_repeat_mode)
-            timer.mode.allow_irq = false;
-
-        // TODO: in pulse mode Bit10 is zero for a couple of clock cycles while an interrupt occurs
-
-        SendIRQ(timer_index);
-    }
-
-    if (send_irq && timer.mode.irq_toggle_mode && timer.mode.irq_repeat_mode)
-        timer.mode.allow_irq = !timer.mode.allow_irq;
-
+    Panic("Fuck");
 }
 
 void TimerController::StepTmp(u32 cycles) {
@@ -287,28 +210,36 @@ u32 TimerController::Load(u32 address) {
     LOG_DEBUG << fmt::format("Load call to Timers [@ 0x{:02X}]", address);
 #endif
 
+    Scheduler::ForceUpdate();
+
     const u32 timer_index = (address & 0xF0) >> 4;
     const u32 timer_address = address & 0xF;
     DebugAssert(timer_index <= 2);
 
+    u32 value;
+
     if (timer_address == 0x0) {
-        return timers[timer_index].counter;
+        value = timers[timer_index].counter;
     }
 
-    if (timer_address == 0x4) {
+    else if (timer_address == 0x4) {
         // reached flags get reset after read
-        u32 value = timers[timer_index].mode.value;
+        value = timers[timer_index].mode.value;
         timers[timer_index].mode.reached_target = false;
         timers[timer_index].mode.reached_max_value = false;
-        return value;
     }
 
-    if (timer_address == 0x8) {
-        return timers[timer_index].target;
+    else if (timer_address == 0x8) {
+        value = timers[timer_index].target;
     }
 
-    Panic("Invalid timer register");
-    return 0;
+    else {
+        Panic("Invalid timer register");
+    }
+
+    Scheduler::RecalculateNextEvent();
+
+    return value;
 }
 
 void TimerController::Store(u32 address, u32 value) {
@@ -318,18 +249,30 @@ void TimerController::Store(u32 address, u32 value) {
     const u32 timer_address = address & 0xF;
     DebugAssert(timer_index <= 2);
 
+    Scheduler::ForceUpdate();
+
     auto& timer = timers[timer_index];
 
     if (timer_address == 0x0) {
         timer.counter = value;
-        return;
     }
 
-    if (timer_address == 0x4) {
+    else if (timer_address == 0x4) {
+        // reset IRQ
+        timer.pending_irq = false;
+
         // reset counter value
         timer.counter = 0;
 
-        timer.mode.value = value;
+        timer.mode.value = (timer.mode.value & ~0b1110001111111111) | (value & 0b1110001111111111);
+
+        if (timer.mode.irq_toggle_mode) {
+            timer.mode.allow_irq = true;
+        }
+
+        timer.UpdatePaused(timer_index);
+
+        /*
         timer.mode.allow_irq = true;
 
         if (timer_index == 0 || timer_index == 1) {
@@ -337,16 +280,18 @@ void TimerController::Store(u32 address, u32 value) {
         } else {
             if (timer.mode.sync_mode == 0 || timer.mode.sync_mode == 3) timer.paused = true;
         }
-
-        return;
+        */
     }
 
-    if (timer_address == 0x8) {
+    else if (timer_address == 0x8) {
         timer.target = value;
-        return;
     }
 
-    Panic("Invalid timer register");
+    else {
+        Panic("Invalid timer register");
+    }
+
+    Scheduler::RecalculateNextEvent();
 }
 
 void TimerController::SendIRQ(u32 index) {

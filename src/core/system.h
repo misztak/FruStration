@@ -24,6 +24,11 @@ public:
     ~System();
     void Init();
     bool LoadBIOS(const std::string& bios_path);
+
+    void Tick();
+    bool DrawNextFrame();
+    void ResetDrawFrame();
+
     void Step();
     void SingleStep();
 

@@ -46,7 +46,21 @@ bool System::LoadBIOS(const std::string& bios_path) {
     return bus->LoadBIOS(bios_path);
 }
 
+void System::Tick() {
+    cpu->Step();
+}
+
+bool System::DrawNextFrame() {
+    return gpu->draw_frame;
+}
+
+void System::ResetDrawFrame() {
+    gpu->draw_frame = false;
+}
+
 void System::Step() {
+    Panic("Fuck");
+
     // the step counter is static to prevent going out of sync with
     // the other components in case a breakpoint is hit and Step() exits early
     static u32 step = 0;
@@ -72,6 +86,8 @@ void System::Step() {
 }
 
 void System::SingleStep() {
+    Panic("Fuck");
+
     cpu->Step();
 
     // dma step
@@ -85,7 +101,7 @@ void System::SingleStep() {
 }
 
 void System::VBlankCallback(std::function<void()> callback) {
-    gpu->vblank_cb = callback;
+    gpu->vblank_cb = nullptr;
 }
 
 void System::Reset() {
