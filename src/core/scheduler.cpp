@@ -5,7 +5,7 @@
 #include "macros.h"
 #include "fmt/format.h"
 
-LOG_CHANNEL(SCHEDULER);
+LOG_CHANNEL(Scheduler);
 
 namespace Scheduler {
 //namespace {
@@ -26,7 +26,9 @@ void AddComponent(Component::Type type, UpdateFunc&& update_func, CyclesUntilNex
     components.push_back({type, update_func, cycles_until_next_event_func});
 }
 
-static void FlushCycles() {
+void AddCycles(u32 added_cycles) {
+    cycles += added_cycles;
+
     while (cycles >= cycles_until_next_event) {
 
         if (cycles_until_next_event > 0) {
@@ -39,11 +41,6 @@ static void FlushCycles() {
         // update pending event value
         RecalculateNextEvent();
     }
-}
-
-void AddCycles(u32 added_cycles) {
-    cycles += added_cycles;
-    FlushCycles();
 }
 
 void ForceUpdate() {

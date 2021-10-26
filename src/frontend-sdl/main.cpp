@@ -21,7 +21,9 @@ int RunCore() {
     system.Init();
     if (!system.LoadBIOS(bios_path)) return 1;
 
-    while (true) system.Step();
+    Scheduler::RecalculateNextEvent();
+
+    while (true) system.Tick();
     return 0;
 }
 
@@ -99,11 +101,16 @@ int main(int, char**) {
 
             while (!system.DrawNextFrame()) {
                 system.Tick();
+                // cpu reached a breakpoint
+                if (unlikely(system.IsHalted())) break;
             }
 
-            system.ResetDrawFrame();
-            display.Update();
-
+            // check if ready to draw next frame again because the cpu could have hit a breakpoint
+            // before reaching the next vblank
+            if (system.DrawNextFrame()) {
+                system.ResetDrawFrame();
+                display.Update();
+            }
         } else {
             display.Update();
             // if the GDB server is disabled this will do nothing

@@ -58,6 +58,12 @@ void CPU::Step() {
     in_delay_slot = false;
     branch_taken = false;
 
+    // handle interrupts
+    if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
+        current_pc = sp.pc;
+        Exception(ExceptionCode::Interrupt);
+    }
+
     instr.value = Load32(sp.pc);
 
     halt = debugger->single_step;
@@ -68,12 +74,6 @@ void CPU::Step() {
     if (DISASM_INSTRUCTION) LOG_DEBUG << disassembler.InstructionAt(sp.pc, instr.value);
     static u64 instr_counter = 0; instr_counter++;
 #endif
-
-    // handle interrupts
-    if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
-        current_pc = sp.pc;
-        Exception(ExceptionCode::Interrupt);
-    }
 
     // special actions for specific memory locations
     //
@@ -359,11 +359,20 @@ void CPU::Step() {
                     break;
                 }
                 default:
-                    Panic("Invalid coprocessor opcode 0x%02X!", (u32)instr.cop.cop_op.GetValue());
+                    Panic("Invalid coprocessor opcode 0x%02X!", (u32) instr.cop.cop_op.GetValue());
             }
             break;
         case PrimaryOpcode::cop2:
-            LOG_DEBUG << fmt::format("Unimplemented GTE instruction 0x{:08X}", instr.value);
+            switch (instr.cop.cop_op) {
+                case CoprocessorOpcode::mcf:
+                    LOG_DEBUG << "GTE: MCFC [Unimplemented]";
+                    break;
+                case CoprocessorOpcode::mct:
+                    LOG_DEBUG << "GTE: MCTC [Unimplemented]";
+                    break;
+                default:
+                    Panic("Invalid GTE coprocessor opcode 0x%02X!", (u32) instr.cop.cop_op.GetValue());
+            }
             break;
         case PrimaryOpcode::cop1:
         case PrimaryOpcode::cop3:

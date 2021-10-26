@@ -13,13 +13,23 @@ public:
     CDROM();
     void Init(InterruptController* icontroller);
     void Reset();
-    void Step();
 
     u8 Load(u32 address);
     u8 Peek(u32 address);
     void Store(u32 address, u8 value);
 
 private:
+    static constexpr u32 FIRST_RESPONSE_DELAY = 25000;
+
+    static constexpr u32 FIFO_MAX_SIZE = 16;
+
+    static constexpr u8 INT0 = 0;
+    static constexpr u8 INT1 = 1;
+    static constexpr u8 INT2 = 2;
+    static constexpr u8 INT3 = 3;
+    static constexpr u8 INT4 = 4;
+    static constexpr u8 INT5 = 5;
+
     enum class Command : u8 {
         Sync,
         GetStat,
@@ -62,17 +72,6 @@ private:
         ExecutingSecondResponse,
     };
 
-    State state = State::Idle;
-
-    static constexpr u32 FIFO_MAX_SIZE = 16;
-
-    static constexpr u8 INT0 = 0;
-    static constexpr u8 INT1 = 1;
-    static constexpr u8 INT2 = 2;
-    static constexpr u8 INT3 = 3;
-    static constexpr u8 INT4 = 4;
-    static constexpr u8 INT5 = 5;
-
     void ExecCommand(Command command);
     void ExecSubCommand();
     void PushResponse(u8 type, std::initializer_list<u8> response_values);
@@ -90,6 +89,8 @@ private:
 
     u32 cycles_until_first_response = 0;
     u32 cycles_until_second_response = 0;
+
+    State state = State::Idle;
 
     Command pending_command = Command::None;
     Command pending_second_response_command = Command::None;

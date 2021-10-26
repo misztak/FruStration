@@ -114,6 +114,7 @@ void DMA::StartTransfer(u32 index) {
 }
 
 static u32 CyclesForTransfer(u32 channel_index, u32 count) {
+    // https://psx-spx.consoledev.net/dmachannels/#dma-transfer-rates
     switch (channel_index) {
         case 3: return (count * 0x2800) / 0x100;
         case 4: return (count * 0x0420) / 0x100;

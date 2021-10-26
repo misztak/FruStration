@@ -58,52 +58,6 @@ void System::ResetDrawFrame() {
     gpu->draw_frame = false;
 }
 
-void System::Step() {
-    Panic("Fuck");
-
-    // the step counter is static to prevent going out of sync with
-    // the other components in case a breakpoint is hit and Step() exits early
-    static u32 step = 0;
-
-    // 100 cpu instructions - 2 cycles per instruction
-    while (step < 100) {
-        cpu->Step();
-        step++;
-        if (unlikely(cpu->halt)) return;
-    }
-    step = 0;
-
-    // dma step
-    cdrom->Step();
-
-    timers->Step(300, TMR0);
-    timers->Step(300, TMR1);
-    timers->Step(300, TMR2);
-
-    // video clock is cpu clock multiplied by (11 / 7)
-    // also account for the cpu needing 2 cycles to finish one instruction
-    gpu->Step(300);
-}
-
-void System::SingleStep() {
-    Panic("Fuck");
-
-    cpu->Step();
-
-    // dma step
-    cdrom->Step();
-
-    timers->Step(3, TMR0);
-    timers->Step(3, TMR1);
-    timers->Step(3, TMR2);
-
-    gpu->Step(3);
-}
-
-void System::VBlankCallback(std::function<void()> callback) {
-    gpu->vblank_cb = nullptr;
-}
-
 void System::Reset() {
     cpu->Reset();
     bus->Reset();
@@ -113,7 +67,10 @@ void System::Reset() {
     interrupt->Reset();
     timers->Reset();
     debugger->Reset();
+
     Scheduler::Reset();
+    Scheduler::RecalculateNextEvent();
+
     LOG_INFO << "System reset";
 }
 

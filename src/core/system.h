@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <string>
-#include <functional>
 
 #include "types.h"
 
@@ -28,11 +27,6 @@ public:
     void Tick();
     bool DrawNextFrame();
     void ResetDrawFrame();
-
-    void Step();
-    void SingleStep();
-
-    void VBlankCallback(std::function<void()> callback);
 
     bool IsHalted();
     void SetHalt(bool halt);

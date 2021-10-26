@@ -17,7 +17,6 @@ public:
     TimerController();
     void Init(GPU* gpu, InterruptController* icontroller);
     void Reset();
-    void Step(u32 steps, u32 timer_index);
 
     u32 Load(u32 address);
     u32 Peek(u32 address);
@@ -63,9 +62,11 @@ public:
         bool paused = false;
         bool pending_irq = false;
 
-        u32 acc_steps = 0;
-
         bool gpu_currently_in_blank = false;
+
+        bool IsUsingSystemClock() const {
+            return mode.clock_source % 2 == 0;
+        }
 
         bool Increment(u32 cycles);
 
@@ -76,10 +77,6 @@ public:
 
     Timer timers[3] = {};
 private:
-    ClockSource GetClockSource(u32 index);
-    void Increment(u32 index, u32 steps);
-    void SendIRQ(u32 index);
-
     u32 div_8_remainder = 0;
 
     GPU* gpu = nullptr;

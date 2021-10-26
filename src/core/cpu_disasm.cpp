@@ -176,6 +176,8 @@ void Disassembler::Disassemble(u32 address, u32 value) {
                 case CoprocessorOpcode::rfe:
                     result.append("rfe");
                     break;
+                default:
+                    break;
             }
             break;
         case PrimaryOpcode::cop2:

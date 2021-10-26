@@ -345,8 +345,8 @@ void HandleClientRequest() {
             }
 
             // 32-bit sw/hw breakpoint
-            DebugAssert(params.size() - 4 == 8);
-            std::string_view bp_address_str = params.substr(2, 8);
+            DebugAssert(params.size() >= 5);
+            std::string_view bp_address_str = params.substr(2, params.size() - 4);
 
             auto bp_address = FromHexChars(bp_address_str);
             if (bp_address) {

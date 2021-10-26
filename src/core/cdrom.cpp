@@ -13,8 +13,8 @@ CDROM::CDROM() {
     status.par_fifo_empty = true;
     status.par_fifo_not_full = true;
 
-    cycles_until_first_response = Invalid;
-    cycles_until_second_response = Invalid;
+    cycles_until_first_response = MaxCycles;
+    cycles_until_second_response = MaxCycles;
 
     Scheduler::AddComponent(
         Component::Type::CDROM,
@@ -39,7 +39,7 @@ void CDROM::StepTmp(u32 cycles) {
                 ExecCommand(pending_command);
 
                 pending_command = Command::None;
-                cycles_until_first_response = Invalid;
+                cycles_until_first_response = MaxCycles;
                 state = State::ExecutingSecondResponse;
             }
             break;
@@ -60,7 +60,7 @@ void CDROM::StepTmp(u32 cycles) {
 
                 pending_second_response_command = Command::None;
                 second_response_command = nullptr;
-                cycles_until_second_response = Invalid;
+                cycles_until_second_response = MaxCycles;
                 state = State::Idle;
             }
             break;
@@ -78,13 +78,13 @@ void CDROM::ScheduleFirstResponse() {
 
     // only start once last interrupt is acknowledged
     if (interrupt_fifo.empty()) {
-        cycles_until_first_response = 25000;
+        cycles_until_first_response = FIRST_RESPONSE_DELAY;
         state = State::ExecutingFirstResponse;
     }
 }
 
 void CDROM::ScheduleSecondResponse(std::function<void ()> command, s32 cycles = 0x0004a00) {
-    DebugAssert(cycles_until_second_response == Invalid);
+    //DebugAssert(cycles_until_second_response == MaxCycles);
 
     cycles_until_second_response = cycles;
 
@@ -102,10 +102,6 @@ void CDROM::SendInterrupt() {
     }
 }
 
-void CDROM::Step() {
-    Panic("FUCK");
-}
-
 void CDROM::ExecCommand(Command command) {
     LOG_DEBUG << fmt::format("Received command 0x{:02X}", command);
 
@@ -117,18 +113,21 @@ void CDROM::ExecCommand(Command command) {
 
     switch (command) {
         case Command::GetStat:
-            PushResponse(INT3, {stat.value});
+            PushResponse(INT3, stat.value);
             stat.shell_opened = false;
             break;
         case Command::Test:
             ExecSubCommand();
             break;
         case Command::GetID:
-            PushResponse(INT3, {stat.value});
+            PushResponse(INT3, stat.value);
             // no disc
-            //PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+            //ScheduleSecondResponse(
+            //    [this] { PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});});
+
             // licensed disc (NTSC)
-            ScheduleSecondResponse([this]{ PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'}); });
+            ScheduleSecondResponse(
+                [this] { PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});});
             break;
         default:
             Panic("Unimplemented CDROM command 0x%02X", static_cast<u8>(command));
@@ -312,11 +311,21 @@ u8 CDROM::Peek(u32 address) {
 }
 
 void CDROM::Reset() {
+    state = State::Idle;
+
     stat.value = 0;
     stat.motor_on = true;
 
     status.value = 0;
     request = 0;
+
+    second_response_command = nullptr;
+
+    cycles_until_first_response = MaxCycles;
+    cycles_until_second_response = MaxCycles;
+
+    pending_command = Command::None;
+    pending_second_response_command = Command::None;
 
     parameter_fifo.clear();
     response_fifo.clear();

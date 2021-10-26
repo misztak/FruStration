@@ -30,11 +30,10 @@ void GPU::Init(TimerController* tmr, InterruptController* icontroller) {
     renderer.Init(this);
 }
 
-void GPU::StepTmp(u32 cycles) {
-    DebugAssert(cycles <= cycles_until_next_event);
+void GPU::StepTmp(u32 cpu_cycles) {
+    DebugAssert(cpu_cycles <= cycles_until_next_event);
 
-    const float gpu_cycles = static_cast<float>(cycles) * (11.0 / 7.0);
-    const float dots = gpu_cycles / static_cast<float>(DotClock());
+    auto [gpu_cycles, dots] = GpuCyclesAndDots(cpu_cycles);
 
     accumulated_dots += dots;
 
@@ -46,28 +45,28 @@ void GPU::StepTmp(u32 cycles) {
     }
 
     auto& dot_timer = timer_controller->timers[0];
-    if (dot_timer.mode.clock_source % 2) {
+    if (!dot_timer.IsUsingSystemClock()) {
         static float dotclock_dots = 0;
         dotclock_dots += dots;
         dot_timer.Increment(static_cast<u32>(dotclock_dots));
         dotclock_dots = std::fmod(dotclock_dots, 1.0f);
     }
 
-    const bool currently_in_hblank = accumulated_dots >= static_cast<float>(HorizontalRes());
+    const bool currently_in_hblank = IsGpuInHblank();
 
     if (dot_timer.mode.sync_enabled) {
         dot_timer.UpdateOnBlankFlip(TMR0, currently_in_hblank);
     }
 
     auto& hblank_timer = timer_controller->timers[1];
-    if (hblank_timer.mode.clock_source % 2) {
+    if (!hblank_timer.IsUsingSystemClock()) {
         const u32 lines = static_cast<u32>(dots / dots_per_scanline);
         hblank_timer.Increment(static_cast<u32>(currently_in_hblank && !was_in_vblank) + lines);
     }
 
     was_in_hblank = currently_in_hblank;
 
-    const bool currently_in_vblank = scanline >= 240;
+    const bool currently_in_vblank = IsGpuInVblank();
 
     if (hblank_timer.mode.sync_enabled) {
         hblank_timer.UpdateOnBlankFlip(TMR1, currently_in_vblank);
@@ -85,26 +84,14 @@ void GPU::StepTmp(u32 cycles) {
     was_in_vblank = currently_in_vblank;
 }
 
-float GPU::VideoCyclesPerScanline() {
-    // GetVideoCyclesPerFrame() / GetScanlines()
-    constexpr float VideoClockSpeed = (44100 * 0x300) * 11 / 7;
-    constexpr float RefreshRateNTSC = 60;
-    constexpr float ScanlinesNTSC = 263;
-    return (VideoClockSpeed / RefreshRateNTSC) / ScanlinesNTSC;
-}
-
-float GPU::DotsPerVideoCycle() {
-    return static_cast<float>(HorizontalRes()) / 2560.f;
-}
-
-float GPU::DotsPerScanline() {
-    return DotsPerVideoCycle() * VideoCyclesPerScanline();
-}
-
 u32 GPU::CyclesUntilNextEvent() {
     float gpu_cycles_until_next_event = std::numeric_limits<float>::max();
 
-    const float dots_per_cycle = DotsPerVideoCycle();
+    auto MinCycles = [&](float new_cycles) {
+        gpu_cycles_until_next_event = std::min(gpu_cycles_until_next_event, new_cycles);
+    };
+
+    const float dots_per_cycle = DotsPerGpuCycle();
     const float dots_per_scanline = DotsPerScanline();
 
     const float horizontal_res = static_cast<float>(HorizontalRes());
@@ -115,55 +102,28 @@ u32 GPU::CyclesUntilNextEvent() {
         const float cycles_until_hblank_flip =
             ((accumulated_dots < horizontal_res ? horizontal_res : dots_per_scanline) - accumulated_dots) /
             dots_per_cycle;
-        gpu_cycles_until_next_event = std::min(gpu_cycles_until_next_event, cycles_until_hblank_flip);
+        MinCycles(cycles_until_hblank_flip);
     }
 
-    if (!dot_timer.paused && dot_timer.mode.clock_source % 2) {
+    if (!dot_timer.paused && !dot_timer.IsUsingSystemClock()) {
         const float cycles_until_irq = dot_timer.CyclesUntilNextIRQ() / dots_per_cycle;
-        gpu_cycles_until_next_event = std::min(gpu_cycles_until_next_event, cycles_until_irq);
+        MinCycles(cycles_until_irq);
     }
 
     const u32 lines_until_vblank_flip = (scanline < 240 ? 240 : Scanlines()) - scanline;
-    const float cycles_until_vblank_flip = lines_until_vblank_flip * VideoCyclesPerScanline() - accumulated_dots / dots_per_cycle;
-    gpu_cycles_until_next_event = std::min(gpu_cycles_until_next_event, cycles_until_vblank_flip);
+    const float cycles_until_vblank_flip = lines_until_vblank_flip * GpuCyclesPerScanline() - accumulated_dots / dots_per_cycle;
+    MinCycles(cycles_until_vblank_flip);
 
     auto& hblank_timer = timer_controller->timers[1];
-    if (!hblank_timer.paused && hblank_timer.mode.clock_source % 2) {
+    if (!hblank_timer.paused && !hblank_timer.IsUsingSystemClock()) {
         const float cycles_until_hblank = ((accumulated_dots < horizontal_res ? horizontal_res : dots_per_scanline + horizontal_res) - accumulated_dots) / dots_per_cycle;
-        const float cycles_until_irq = hblank_timer.CyclesUntilNextIRQ() * VideoCyclesPerScanline() - cycles_until_hblank;
-        gpu_cycles_until_next_event = std::min(gpu_cycles_until_next_event, cycles_until_irq);
+        const float cycles_until_irq = hblank_timer.CyclesUntilNextIRQ() * GpuCyclesPerScanline() - cycles_until_hblank;
+        MinCycles(cycles_until_irq);
     }
 
     cycles_until_next_event = static_cast<u32>(std::ceil(gpu_cycles_until_next_event / (11.0 / 7.0)));
 
     return cycles_until_next_event;
-}
-
-void GPU::Step(u32 steps) {
-    // video clock
-    gpu_clock += steps;
-
-    in_hblank = false;
-    in_vblank = false;
-
-    // finished one scanline
-    if (gpu_clock >= CyclesPerScanline()) {
-        gpu_clock -= CyclesPerScanline();
-
-        scanline++;
-        in_hblank = true;
-
-        if (scanline == Scanlines()) {
-            scanline = 0;
-            in_vblank = true;
-
-            // VBlank
-            // update display
-            vblank_cb();
-
-            interrupt_controller->Request(IRQ::VBLANK);
-        }
-    }
 }
 
 void GPU::SendGP0Cmd(u32 cmd) {
@@ -521,39 +481,6 @@ void GPU::CopyRectVramToCpu() {
     }
 }
 
-u32 GPU::HorizontalRes() {
-    if (status.horizontal_res_2) return 368;
-
-    switch (status.horizontal_res_1) {
-        case 0: return 256;
-        case 1: return 320;
-        case 2: return 512;
-        case 3: return 640;
-        default: Panic("Invalid horizontal resolution");
-    }
-}
-
-u32 GPU::VerticalRes() {
-    return status.vertical_res ? 480 : 240;
-}
-
-u32 GPU::Scanlines() {
-    return status.video_mode == VideoMode::NTSC ? 263 : 314;
-}
-
-u32 GPU::CyclesPerScanline() {
-    return status.video_mode == VideoMode::NTSC ? 3413 : 3406;
-}
-
-u32 GPU::DotClock() {
-    constexpr static u32 dotclocks[5] = {
-        10, 8, 5, 4, 7
-    };
-
-    DebugAssert(((status.horizontal_res_2 << 2) | status.horizontal_res_1) < 5);
-    return dotclocks[(status.horizontal_res_2 << 2) | status.horizontal_res_1];
-}
-
 void GPU::ResetCommand() {
     // TODO: FIFO and texture cache
     // TODO: just set status.value to zero?
@@ -623,6 +550,8 @@ u8* GPU::GetVideoOutput() {
 }
 
 void GPU::Reset() {
+    draw_frame = false;
+
     gpu_read = 0;
     status.value = 0;
 
@@ -648,7 +577,11 @@ void GPU::Reset() {
 
     gpu_clock = 0;
     scanline = 0;
-    in_hblank = in_vblank = false;
+
+    cycles_until_next_event = 0;
+    accumulated_dots = 0.0f;
+
+    was_in_hblank = was_in_vblank = false;
 
     std::fill(vram.begin(), vram.end(), 0);
     std::fill(output.begin(), output.end(), 0);

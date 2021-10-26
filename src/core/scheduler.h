@@ -6,7 +6,7 @@
 
 #include "types.h"
 
-static constexpr u32 Invalid = std::numeric_limits<u32>::max();
+static constexpr u32 MaxCycles = std::numeric_limits<u32>::max();
 
 using UpdateFunc = std::function<void (u32)>;
 using CyclesUntilNextEventFunc = std::function<u32 ()>;

@@ -136,10 +136,6 @@ void TimerController::Init(GPU* g, InterruptController* icontroller) {
     interrupt_controller = icontroller;
 }
 
-void TimerController::Step(u32 steps, u32 timer_index) {
-    Panic("Fuck");
-}
-
 void TimerController::StepTmp(u32 cycles) {
     // timer 0
     auto& dot_timer = timers[0];
@@ -271,16 +267,6 @@ void TimerController::Store(u32 address, u32 value) {
         }
 
         timer.UpdatePaused(timer_index);
-
-        /*
-        timer.mode.allow_irq = true;
-
-        if (timer_index == 0 || timer_index == 1) {
-            if (timer.mode.sync_mode == 3) timer.paused = true;
-        } else {
-            if (timer.mode.sync_mode == 0 || timer.mode.sync_mode == 3) timer.paused = true;
-        }
-        */
     }
 
     else if (timer_address == 0x8) {
@@ -292,69 +278,6 @@ void TimerController::Store(u32 address, u32 value) {
     }
 
     Scheduler::RecalculateNextEvent();
-}
-
-void TimerController::SendIRQ(u32 index) {
-    static constexpr IRQ timer_irq[3] = {
-        IRQ::TIMER0,
-        IRQ::TIMER1,
-        IRQ::TIMER2,
-    };
-
-    DebugAssert(index < 3);
-    interrupt_controller->Request(timer_irq[index]);
-}
-
-TimerController::ClockSource TimerController::GetClockSource(u32 index) {
-    auto& timer = timers[index];
-
-    switch (index) {
-        case 0:
-            if (timer.mode.clock_source == 0 || timer.mode.clock_source == 2)
-                return ClockSource::SysClock;
-            else
-                return ClockSource::DotClock;
-        case 1:
-            if (timer.mode.clock_source == 0 || timer.mode.clock_source == 2)
-                return ClockSource::SysClock;
-            else
-                return ClockSource::HBlank;
-        case 2:
-            if (timer.mode.clock_source == 0 || timer.mode.clock_source == 1)
-                return ClockSource::SysClock;
-            else
-                return ClockSource::SysClockEighth;
-        default:
-            Panic("Invalid timer index");
-    }
-}
-
-void TimerController::Increment(u32 index, u32 steps) {
-    constexpr double CPU_CLOCK_RATE = 11.0 / 7.0;
-    auto& timer = timers[index];
-
-    timer.acc_steps += steps;
-
-    ClockSource clock_source = GetClockSource(index);
-
-    switch (clock_source) {
-        case ClockSource::SysClock:
-            timer.counter += static_cast<u32>(timer.acc_steps / CPU_CLOCK_RATE);
-            timer.acc_steps = 0;
-            break;
-        case ClockSource::SysClockEighth:
-            timer.counter += static_cast<u32>(timer.acc_steps / 8 / CPU_CLOCK_RATE);
-            timer.acc_steps %= static_cast<u32>(8 * CPU_CLOCK_RATE);
-            break;
-        case ClockSource::HBlank:
-            timer.counter += static_cast<u32>(timer.acc_steps / gpu->CyclesPerScanline());
-            timer.acc_steps %= gpu->CyclesPerScanline();
-            break;
-        case ClockSource::DotClock:
-            timer.counter += static_cast<u32>(timer.acc_steps / gpu->DotClock());
-            timer.acc_steps %= gpu->DotClock();
-            break;
-    }
 }
 
 u32 TimerController::Peek(u32 address) {
@@ -380,8 +303,11 @@ void TimerController::Reset() {
         timer.mode.value = 0;
         timer.target = 0;
         timer.paused = false;
-        timer.acc_steps = 0;
+        timer.pending_irq = false;
+        timer.gpu_currently_in_blank = false;
     }
+
+    div_8_remainder = 0;
 }
 
 void TimerController::DrawTimerState(bool* open) {
@@ -390,8 +316,15 @@ void TimerController::DrawTimerState(bool* open) {
 
     const ImVec4 white(1.0, 1.0, 1.0, 1.0);
     const ImVec4 grey(0.5, 0.5, 0.5, 1.0);
-    const char* const clock_source[4] = {
-        "System Clock", "System Clock / 8", "DotClock", "HBlank"
+
+    const auto ClockSourceName = [](u32 timer_index, u32 source) {
+        if (source % 2 == 0) return "System Clock";
+        switch (timer_index) {
+            case 0: return "DotClock";
+            case 1: return "HBlank";
+            case 2: return "System Clock / 8";
+            default: return "XXX";
+        }
     };
 
     ImGui::Text("Status");
@@ -426,7 +359,7 @@ void TimerController::DrawTimerState(bool* open) {
         ImGui::Text("%s", timer.mode.irq_on_max_value ? "yes" : "no");
         ImGui::Text("%s", timer.mode.irq_repeat_mode ? "Repeat" : "One-Shot");
         ImGui::Text("%s", timer.mode.irq_toggle_mode ? "Toggle" : "Pulse");
-        ImGui::Text("%s", clock_source[static_cast<u32>(GetClockSource(i))]);
+        ImGui::Text("%s", ClockSourceName(i, timer.mode.clock_source));
         ImGui::Text("%s", timer.mode.allow_irq ? "yes" : "no");
         ImGui::Text("%s", timer.mode.reached_target ? "true" : "false");
         ImGui::Text("%s", timer.mode.reached_max_value ? "true" : "false");

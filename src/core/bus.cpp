@@ -137,7 +137,13 @@ ValueType BUS::Load(u32 address) {
 
 
         if (InArea(0x1F801C00, 644, masked_addr)) return 0; // SPU
-        if (InArea(0x1F801040, 16, masked_addr)) return 0;  // Joypad
+
+        // Joypad
+        if (InArea(0x1F801040, 16, masked_addr)) {
+            //LOG_DEBUG << "Load from Joypad [Unimplemented]";
+            return 0;
+        }
+
         Panic("Tried to load from IO Ports [0x%08X]", address);
     }
     // BIOS
