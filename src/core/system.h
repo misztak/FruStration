@@ -20,8 +20,19 @@ class Debugger;
 class System {
 public:
     System();
-    ~System();
-    void Init();
+
+    std::unique_ptr<CPU::CPU> cpu;
+    std::unique_ptr<BUS> bus;
+    std::unique_ptr<DMA> dma;
+    std::unique_ptr<GPU> gpu;
+    std::unique_ptr<CDROM> cdrom;
+    std::unique_ptr<InterruptController> interrupt;
+    std::unique_ptr<TimerController> timers;
+    std::unique_ptr<Debugger> debugger;
+};
+
+class Emulator {
+public:
     bool LoadBIOS(const std::string& bios_path);
 
     void Tick();
@@ -55,12 +66,5 @@ public:
 
     u16* GetVRAM();
 private:
-    std::unique_ptr<CPU::CPU> cpu;
-    std::unique_ptr<BUS> bus;
-    std::unique_ptr<DMA> dma;
-    std::unique_ptr<GPU> gpu;
-    std::unique_ptr<CDROM> cdrom;
-    std::unique_ptr<InterruptController> interrupt;
-    std::unique_ptr<TimerController> timers;
-    std::unique_ptr<Debugger> debugger;
+    System sys;
 };

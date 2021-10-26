@@ -12,15 +12,9 @@
 #include "gdb_stub.h"
 #include "macros.h"
 
-LOG_CHANNEL(System);
+LOG_CHANNEL(Emulator);
 
-System::System() = default;
-
-System::~System() {
-    GDB::Shutdown();
-}
-
-void System::Init() {
+System::System() {
     cpu = std::make_unique<CPU::CPU>();
     bus = std::make_unique<BUS>();
     dma = std::make_unique<DMA>();
@@ -30,43 +24,34 @@ void System::Init() {
     timers = std::make_unique<TimerController>();
     debugger = std::make_unique<Debugger>();
 
-    cpu->Init(bus.get(), debugger.get());
-    bus->Init(dma.get(), gpu.get(), cpu.get(), cdrom.get(), interrupt.get(), timers.get(), debugger.get());
-    dma->Init(bus.get(), gpu.get(), interrupt.get());
-    gpu->Init(timers.get(), interrupt.get());
-    timers->Init(gpu.get(), interrupt.get());
-    interrupt->Init(cpu.get());
-    cdrom->Init(interrupt.get());
-    debugger->Init(cpu.get(), bus.get());
-
     LOG_INFO << "Initialized PSX core";
 }
 
-bool System::LoadBIOS(const std::string& bios_path) {
-    return bus->LoadBIOS(bios_path);
+bool Emulator::LoadBIOS(const std::string& bios_path) {
+    return sys.bus->LoadBIOS(bios_path);
 }
 
-void System::Tick() {
-    cpu->Step();
+void Emulator::Tick() {
+    sys.cpu->Step();
 }
 
-bool System::DrawNextFrame() {
-    return gpu->draw_frame;
+bool Emulator::DrawNextFrame() {
+    return sys.gpu->draw_frame;
 }
 
-void System::ResetDrawFrame() {
-    gpu->draw_frame = false;
+void Emulator::ResetDrawFrame() {
+    sys.gpu->draw_frame = false;
 }
 
-void System::Reset() {
-    cpu->Reset();
-    bus->Reset();
-    dma->Reset();
-    gpu->Reset();
-    cdrom->Reset();
-    interrupt->Reset();
-    timers->Reset();
-    debugger->Reset();
+void Emulator::Reset() {
+    sys.cpu->Reset();
+    sys.bus->Reset();
+    sys.dma->Reset();
+    sys.gpu->Reset();
+    sys.cdrom->Reset();
+    sys.interrupt->Reset();
+    sys.timers->Reset();
+    sys.debugger->Reset();
 
     Scheduler::Reset();
     Scheduler::RecalculateNextEvent();
@@ -74,46 +59,46 @@ void System::Reset() {
     LOG_INFO << "System reset";
 }
 
-bool System::In24BPPMode() {
-    return (gpu->ReadStat() & (1u << 21)) != 0;
+bool Emulator::In24BPPMode() {
+    return (sys.gpu->ReadStat() & (1u << 21)) != 0;
 }
 
-bool System::IsHalted() {
-    return cpu->halt;
+bool Emulator::IsHalted() {
+    return sys.cpu->halt;
 }
 
-void System::SetHalt(bool halt) {
-    cpu->halt = halt;
+void Emulator::SetHalt(bool halt) {
+    sys.cpu->halt = halt;
     LOG_INFO << "System " << (halt ? "paused" : "resumed");
 }
 
-u8* System::GetVideoOutput() {
-    return gpu->GetVideoOutput();
+u8* Emulator::GetVideoOutput() {
+    return sys.gpu->GetVideoOutput();
 }
 
-u16* System::GetVRAM() {
-    return gpu->GetVRAM();
+u16* Emulator::GetVRAM() {
+    return sys.gpu->GetVRAM();
 }
 
-void System::StartGDBServer() {
+void Emulator::StartGDBServer() {
     if (!cfg_gdb_server_enabled) return;
 
     SetHalt(true);
 
-    Assert(debugger.get());
-    GDB::Init(42069, debugger.get());
+    Assert(sys.debugger.get());
+    GDB::Init(42069, sys.debugger.get());
 }
 
-void System::HandleGDBClientRequest() {
+void Emulator::HandleGDBClientRequest() {
     if (!cfg_gdb_server_enabled) return;
 
     GDB::HandleClientRequest();
 }
 
-void System::DrawDebugWindows() {
-    if (draw_mem_viewer) bus->DrawMemEditor(&draw_mem_viewer);
-    if (draw_cpu_state) cpu->DrawCpuState(&draw_cpu_state);
-    if (draw_gpu_state) gpu->DrawGpuState(&draw_gpu_state);
-    if (draw_debugger) debugger->DrawDebugger(&draw_debugger);
-    if (draw_timer_state) timers->DrawTimerState(&draw_timer_state);
+void Emulator::DrawDebugWindows() {
+    if (draw_mem_viewer) sys.bus->DrawMemEditor(&draw_mem_viewer);
+    if (draw_cpu_state) sys.cpu->DrawCpuState(&draw_cpu_state);
+    if (draw_gpu_state) sys.gpu->DrawGpuState(&draw_gpu_state);
+    if (draw_debugger) sys.debugger->DrawDebugger(&draw_debugger);
+    if (draw_timer_state) sys.timers->DrawTimerState(&draw_timer_state);
 }

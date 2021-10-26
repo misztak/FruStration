@@ -17,7 +17,7 @@ LOG_CHANNEL(Display);
 
 Display::Display() {}
 
-bool Display::Init(System* system, SDL_Window* win, SDL_GLContext context, const char* glsl_version) {
+bool Display::Init(Emulator* system, SDL_Window* win, SDL_GLContext context, const char* glsl_version) {
     emu = system;
     window = win;
     gl_context = context;

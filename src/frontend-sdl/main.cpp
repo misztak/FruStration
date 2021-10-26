@@ -17,7 +17,7 @@ constexpr bool RUN_HEADLESS = false;
 int RunCore() {
     const std::string bios_path = "SCPH1001.BIN";
 
-    System system;
+    Emulator system;
     system.Init();
     if (!system.LoadBIOS(bios_path)) return 1;
 
@@ -81,7 +81,7 @@ int main(int, char**) {
         return 1;
     }
 
-    System system;
+    Emulator system;
     system.Init();
     if (!system.LoadBIOS("SCPH1001.BIN")) return 1;
     //if (!system.LoadBIOS("SCPH7002.BIN")) return 1;

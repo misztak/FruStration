@@ -44,7 +44,7 @@ void CDROM::StepTmp(u32 cycles) {
             }
             break;
         case State::ExecutingSecondResponse:
-            DebugAssert(pending_command == Command::None);
+            //DebugAssert(pending_command == Command::None);
             DebugAssert(cycles_until_second_response >= cycles);
 
             cycles_until_second_response -= cycles;
@@ -116,6 +116,14 @@ void CDROM::ExecCommand(Command command) {
             PushResponse(INT3, stat.value);
             stat.shell_opened = false;
             break;
+        case Command::Setloc:
+            PushResponse(INT3, stat.value);
+            // TODO: set seek target
+            break;
+        case Command::SeekL:
+            PushResponse(INT3, stat.value);
+            Panic("SeekL: Unimplemented");
+            break;
         case Command::Test:
             ExecSubCommand();
             break;
@@ -126,8 +134,9 @@ void CDROM::ExecCommand(Command command) {
             //    [this] { PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});});
 
             // licensed disc (NTSC)
-            ScheduleSecondResponse(
-                [this] { PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});});
+            ScheduleSecondResponse([this] {
+                PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
+            });
             break;
         default:
             Panic("Unimplemented CDROM command 0x%02X", static_cast<u8>(command));

@@ -7,12 +7,12 @@
 
 #include "types.h"
 
-class System;
+class Emulator;
 
 class Display {
 public:
     Display();
-    bool Init(System* system, SDL_Window* window, SDL_GLContext context, const char* glsl_version);
+    bool Init(Emulator* system, SDL_Window* window, SDL_GLContext context, const char* glsl_version);
     void Draw();
     void Render();
     void Update();
@@ -33,7 +33,7 @@ private:
     SDL_Window* window = nullptr;
     SDL_GLContext gl_context = nullptr;
 
-    System* emu = nullptr;
+    Emulator* emu = nullptr;
 
     std::chrono::system_clock::time_point start;
     std::chrono::system_clock::time_point end;
