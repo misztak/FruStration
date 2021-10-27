@@ -29,10 +29,10 @@ public:
     // TODO: actual config system
     // bootleg config
     bool draw_mem_viewer = false;
-    bool draw_cpu_state = false;
-    bool draw_gpu_state = false;
+    bool draw_cpu_state = true;
+    bool draw_gpu_state = true;
     bool draw_debugger = false;
-    bool draw_timer_state = false;
+    bool draw_timer_state = true;
 
     bool cfg_gdb_server_enabled = false;
 

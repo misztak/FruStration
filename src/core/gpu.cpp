@@ -145,12 +145,12 @@ void GPU::SendGP0Cmd(u32 cmd) {
     };
 
     switch (command.gp0_op) {
-        case Gp0Command::nop:
+        case 0x00: // nop
             break;
-        case Gp0Command::clear_cache:
+        case 0x01: // clear cache
             // TODO: implement me
             break;
-        case Gp0Command::fill_vram:
+        case 0x02: // fill vram
             CommandAfterCount(2, [&]{
                 Rectangle r;
                 r.c.SetColor(command_buffer[0]);
@@ -163,31 +163,61 @@ void GPU::SendGP0Cmd(u32 cmd) {
                 }
             });
             break;
-        case Gp0Command::quad_mono:
+        case 0x1F: // interrupt request
+            LOG_WARN << "Interrupt request [Unimplemented]";
+            break;
+        case 0x20: case 0x22: // mono triangle
+            CommandAfterCount(3, std::bind(&GPU::DrawTriangleMono, this));
+            break;
+        case 0x28: case 0x2A: // mono quad
             CommandAfterCount(4, std::bind(&GPU::DrawQuadMono, this));
             break;
-        case Gp0Command::quad_textured:
+        case 0x24: case 0x25: case 0x26: case 0x27:  // textured triangle
+            CommandAfterCount(6, std::bind(&GPU::DrawTriangleTextured, this));
+            break;
+        case 0x2C: case 0x2D: case 0x2E: case 0x2F: // textured quad
             CommandAfterCount(8, std::bind(&GPU::DrawQuadTextured, this));
             break;
-        case Gp0Command::triangle_shaded:
+        case 0x30: case 0x32: // shaded triangle
             CommandAfterCount(5, std::bind(&GPU::DrawTriangleShaded, this));
             break;
-        case Gp0Command::quad_shaded:
+        case 0x38: case 0x3A: // shaded quad
             CommandAfterCount(7, std::bind(&GPU::DrawQuadShaded, this));
             break;
-        case Gp0Command::rectangle_textured:
-            CommandAfterCount(3, std::bind(&GPU::DrawRectangleTexture, this));
+        case 0x34: case 0x36: // textured and shaded triangle
+            CommandAfterCount(8, std::bind(&GPU::DrawTriangleTexturedShaded, this));
             break;
-        case Gp0Command::rectangle_mono:
+        case 0x3C: case 0x3E: // textured and shaded quad
+            CommandAfterCount(11, std::bind(&GPU::DrawQuadTexturedShaded, this));
+            break;
+        case 0x40: case 0x42: case 0x48: case 0x4A:
+        case 0x50: case 0x52: case 0x58: case 0x5A:
+            Panic("Received render line command 0x%2X [Unimplemented]", command.gp0_op.GetValue());
+            break;
+        case 0x60: case 0x62: // mono rectangle with variable size
+            CommandAfterCount(2, std::bind(&GPU::DrawRectangleMono, this));
+            break;
+        case 0x68: case 0x6A: case 0x70: case 0x72: // mono rectangle with fixed size
+        case 0x78: case 0x7A:
             CommandAfterCount(1, std::bind(&GPU::DrawRectangleMono, this));
             break;
-        case Gp0Command::copy_rectangle_cpu_to_vram:
+        case 0x64: case 0x65: case 0x66: case 0x67: // textured rectangle with variable size
+            CommandAfterCount(3, std::bind(&GPU::DrawRectangleTexture, this));
+            break;
+        case 0x74: case 0x75: case 0x76: case 0x77: // textured rectangle with fixed size
+        case 0x7C: case 0x7D: case 0x7E: case 0x7F:
+            CommandAfterCount(2, std::bind(&GPU::DrawRectangleTexture, this));
+            break;
+        case 0x80: // copy rectangle from vram to vram
+            Panic("Copy rectangle from VRAM to VRAM [Unimplemented]");
+            break;
+        case 0xA0: // copy rectangle from ram to vram
             CommandAfterCount(2, std::bind(&GPU::CopyRectCpuToVram, this, 0));
             break;
-        case Gp0Command::copy_rectangle_vram_to_cpu:
+        case 0xC0: // copy rectangle from vram to ram
             CommandAfterCount(2, std::bind(&GPU::CopyRectVramToCpu, this));
             break;
-        case Gp0Command::draw_mode:
+        case 0xE1: // draw mode setting
             // TODO: use status.value for this and similar commands
             status.tex_page_x_base = cmd & 0xF;
             status.tex_page_y_base = (cmd >> 4) & 0x1;
@@ -199,35 +229,36 @@ void GPU::SendGP0Cmd(u32 cmd) {
             tex_rectangle_xflip = (cmd >> 12) & 0x1;
             tex_rectangle_yflip = (cmd >> 13) & 0x1;
             break;
-        case Gp0Command::texture_window:
+        case 0xE2: // texture window setting
             tex_window_x_mask = cmd & 0x1F;
             tex_window_y_mask = (cmd >> 5) & 0x1F;
             tex_window_x_offset = (cmd >> 10) & 0x1F;
             tex_window_y_offset = (cmd >> 15) & 0x1F;
             break;
-        case Gp0Command::draw_area_top_left:
+        case 0xE3: // drawing area top left
             drawing_area_top = static_cast<u16>((cmd >> 10) & 0x1FF);
             drawing_area_left = static_cast<u16>(cmd & 0x3FF);
             //LOG_DEBUG << "Set draw area top=" << drawing_area_top << ", left=" << drawing_area_left;
             break;
-        case Gp0Command::draw_area_bottom_right:
+        case 0xE4: // drawing area bottom right
             drawing_area_bottom = static_cast<u16>((cmd >> 10) & 0x1FF);
             drawing_area_right = static_cast<u16>(cmd & 0x3FF);
             //LOG_DEBUG << "Set draw area bottom=" << drawing_area_bottom << ", right=" << drawing_area_right;
             break;
-        case Gp0Command::draw_offset: {
+        case 0xE5: // drawing offset
+        {
             const u16 x = static_cast<u16>(cmd & 0x7FF);
             const u16 y = static_cast<u16>((cmd >> 11) & 0x7FF);
             drawing_x_offset = static_cast<s16>(x << 5) >> 5;
             drawing_y_offset = static_cast<s16>(y << 5) >> 5;
             break;
         }
-        case Gp0Command::mask_setting:
+        case 0xE6: // mask bit setting
             status.mask_enable = cmd & 0x1;
             status.draw_pixels = (cmd >> 1) & 0x1;
             break;
         default:
-            Panic("Unimplemented GP0 command 0x%08X", cmd);
+            Panic("Invalid GP0 command 0x%08X", cmd);
     }
 }
 
@@ -297,6 +328,39 @@ void GPU::SendGP1Cmd(u32 cmd) {
     }
 }
 
+
+//              //
+//  TRIANGLES   //
+//              //
+
+void GPU::DrawTriangleMono() {
+    Panic("Unimplemented");
+}
+
+void GPU::DrawTriangleShaded() {
+    //LOG_DEBUG << "DrawTriangleShadedOpaque";
+
+    for (u8 i = 0; i < 3; i++) {
+        vertices[i].SetPoint(command_buffer[(i * 2) + 1]);
+        vertices[i].c.SetColor(command_buffer[(i * 2)]);
+        vertices[i].SetTextPoint(0);
+    }
+    renderer.Draw(command_buffer[0]);
+}
+
+void GPU::DrawTriangleTextured() {
+    Panic("Unimplemented");
+}
+
+void GPU::DrawTriangleTexturedShaded() {
+    Panic("Unimplemented");
+}
+
+
+//              //
+//    QUADS     //
+//              //
+
 void GPU::DrawQuadMono() {
     //LOG_DEBUG << "DrawQuadMonoOpaque";
     for (u8 i = 0; i < 4; i++) {
@@ -339,16 +403,14 @@ void GPU::DrawQuadTextured() {
     renderer.Draw(command_buffer[0]);
 }
 
-void GPU::DrawTriangleShaded() {
-    //LOG_DEBUG << "DrawTriangleShadedOpaque";
-
-    for (u8 i = 0; i < 3; i++) {
-        vertices[i].SetPoint(command_buffer[(i * 2) + 1]);
-        vertices[i].c.SetColor(command_buffer[(i * 2)]);
-        vertices[i].SetTextPoint(0);
-    }
-    renderer.Draw(command_buffer[0]);
+void GPU::DrawQuadTexturedShaded() {
+    Panic("Unimplemented");
 }
+
+
+//              //
+//  RECTANGLES  //
+//              //
 
 void GPU::DrawRectangleMono() {
     //LOG_DEBUG << "DrawRectangleMono";
@@ -373,6 +435,8 @@ void GPU::DrawRectangleTexture() {
 
     renderer.Draw(command_buffer[0]);
 }
+
+
 
 void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
     static u32 x_pos_max = 0;

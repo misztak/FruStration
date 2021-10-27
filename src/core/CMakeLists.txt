@@ -3,6 +3,7 @@ add_library(core
         system.cpp
         cpu/cpu.cpp
         cpu/cpu_disasm.cpp
+        cpu/gte.cpp
         bus.cpp
         dma.cpp
         gpu.cpp

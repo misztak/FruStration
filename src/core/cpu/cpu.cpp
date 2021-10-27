@@ -35,6 +35,8 @@ void CPU::Reset() {
     was_branch_taken = false, branch_taken = false;
     pending_delay_entry = {0, 0}, new_delay_entry = {0, 0};
     instr.value = 0;
+
+    gte.Reset();
 }
 
 void CPU::Step() {
@@ -361,11 +363,17 @@ void CPU::Step() {
             break;
         case PrimaryOpcode::cop2:
             switch (instr.cop.cop_op) {
+                case CoprocessorOpcode::mf:
+                    LOG_DEBUG << "GTE: MFC [Unimplemented]";
+                    break;
                 case CoprocessorOpcode::mcf:
                     LOG_DEBUG << "GTE: MCFC [Unimplemented]";
                     break;
+                case CoprocessorOpcode::mt:
+                    gte.SetReg(instr.cop.rd, Get(instr.cop.rt));
+                    break;
                 case CoprocessorOpcode::mct:
-                    LOG_DEBUG << "GTE: MCTC [Unimplemented]";
+                    gte.SetReg(instr.cop.rd + 32, Get(instr.cop.rt));
                     break;
                 default:
                     Panic("Invalid GTE coprocessor opcode 0x%02X!", (u32) instr.cop.cop_op.GetValue());
@@ -525,8 +533,8 @@ void CPU::Step() {
     // first register always contains 0
     gp.zero = 0;
 
-    // tick the components
-    sys->AddCycles(1);
+    // tick the components (2 is a bad approximation but seems to be better than 1 for now)
+    sys->AddCycles(2);
 }
 
 void CPU::Exception(ExceptionCode cause) {

@@ -98,10 +98,12 @@ private:
     void DrawQuadMono();
     void DrawQuadShaded();
     void DrawQuadTextured();
+    void DrawQuadTexturedShaded();
 
     void DrawTriangleMono();
     void DrawTriangleShaded();
     void DrawTriangleTextured();
+    void DrawTriangleTexturedShaded();
 
     void DrawRectangleMono();
     void DrawRectangleTexture();
@@ -182,26 +184,6 @@ private:
         DataToCPU,
     };
 
-    enum class Gp0Command : u32 {
-        nop = 0x00,
-        clear_cache = 0x01,
-        fill_vram = 0x02,
-        quad_mono = 0x28,
-        quad_textured = 0x2c,
-        triangle_shaded = 0x30,
-        quad_shaded = 0x38,
-        rectangle_textured = 0x64,
-        rectangle_mono = 0x68,
-        copy_rectangle_cpu_to_vram = 0xa0,
-        copy_rectangle_vram_to_cpu = 0xc0,
-        draw_mode = 0xe1,
-        texture_window = 0xe2,
-        draw_area_top_left = 0xe3,
-        draw_area_bottom_right = 0xe4,
-        draw_offset = 0xe5,
-        mask_setting = 0xe6,
-    };
-
     enum class Gp1Command : u32 {
         reset = 0x00,
         cmd_buf_reset = 0x01,
@@ -233,7 +215,7 @@ private:
     union {
         u32 value = 0;
 
-        BitField<u32, Gp0Command, 24, 8> gp0_op;
+        BitField<u32, u32, 24, 8> gp0_op;
         BitField<u32, Gp1Command, 24, 8> gp1_op;
     } command;
 

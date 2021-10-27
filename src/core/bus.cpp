@@ -134,7 +134,7 @@ ValueType BUS::Load(u32 address) {
         // Joypad
         if (InArea(0x1F801040, 16, masked_addr)) {
             //LOG_DEBUG << "Load from Joypad [Unimplemented]";
-            return 0;
+            return 0b11;
         }
 
         Panic("Tried to load from IO Ports [0x%08X]", address);

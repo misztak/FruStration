@@ -3,6 +3,7 @@
 #include "cpu_common.h"
 #include "cpu_disasm.h"
 #include "debugger.h"
+#include "gte.h"
 
 #include "bios.h"
 
@@ -55,6 +56,8 @@ private:
     Instruction instr;
 
     System* sys = nullptr;
+
+    GTE gte;
 
     BIOS bios;
     Disassembler disassembler;
