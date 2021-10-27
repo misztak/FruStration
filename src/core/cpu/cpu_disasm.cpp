@@ -23,6 +23,7 @@ void Disassembler::Disassemble(u32 address, u32 value) {
     Instruction i{value};
 
     result.append(fmt::format("{:08x}: {:08x} ", address, value));
+    address += 4;
 
     switch (i.n.op) {
         case PrimaryOpcode::special:
@@ -122,25 +123,25 @@ void Disassembler::Disassemble(u32 address, u32 value) {
                 case 0x11: name = "bgezal"; break;
                 default: Panic("Invalid bxxx opcode");
             }
-            PrintInstructionWithConstant(name, cpu->sp.pc + (i.imm_se() << 2), i.n.rs);
+            PrintInstructionWithConstant(name, address + (i.imm_se() << 2), i.n.rs);
             break;
         case PrimaryOpcode::jmp:
-            PrintInstructionWithConstant("jmp", (cpu->next_pc & 0xF0000000) | (i.jump_target << 2));
+            PrintInstructionWithConstant("jmp", (address & 0xF0000000) | (i.jump_target << 2));
             break;
         case PrimaryOpcode::jal:
-            PrintInstructionWithConstant("jal", (cpu->next_pc & 0xF0000000) | (i.jump_target << 2));
+            PrintInstructionWithConstant("jal", (address & 0xF0000000) | (i.jump_target << 2));
             break;
         case PrimaryOpcode::beq:
-            PrintInstructionWithConstant("beq", cpu->sp.pc + (i.imm_se() << 2), i.n.rs, i.n.rt);
+            PrintInstructionWithConstant("beq", address + (i.imm_se() << 2), i.n.rs, i.n.rt);
             break;
         case PrimaryOpcode::bne:
-            PrintInstructionWithConstant("bne", cpu->sp.pc + (i.imm_se() << 2), i.n.rs, i.n.rt);
+            PrintInstructionWithConstant("bne", address + (i.imm_se() << 2), i.n.rs, i.n.rt);
             break;
         case PrimaryOpcode::blez:
-            PrintInstructionWithConstant("blez", cpu->sp.pc + (i.imm_se() << 2), i.n.rs);
+            PrintInstructionWithConstant("blez", address + (i.imm_se() << 2), i.n.rs);
             break;
         case PrimaryOpcode::bgtz:
-            PrintInstructionWithConstant("bgtz", cpu->sp.pc + (i.imm_se() << 2), i.n.rs);
+            PrintInstructionWithConstant("bgtz", address + (i.imm_se() << 2), i.n.rs);
             break;
         case PrimaryOpcode::addi:
             PrintInstructionWithConstant("addi", i.imm_se(), i.n.rt, i.n.rs);
