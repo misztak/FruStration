@@ -7,7 +7,7 @@ SystemTimer::SystemTimer(u32 index, System *system) : Timer(index, system) {}
 
 void SystemTimer::Step(u32 cycles) {
     u32 ticks;
-    if (IsUsingSysClockEighth()) {
+    if (!IsUsingSystemClock()) {
         ticks = (cycles + div_8_remainder) / 8;
         div_8_remainder = (cycles + div_8_remainder) % 8;
     } else {
@@ -29,7 +29,7 @@ void SystemTimer::Step(u32 cycles) {
 u32 SystemTimer::CyclesUntilNextEvent() {
     const u32 remaining_cycles = CyclesUntilNextIRQ();
 
-    if (IsUsingSysClockEighth() && remaining_cycles != MaxCycles) {
+    if (!IsUsingSystemClock() && remaining_cycles != MaxCycles) {
         return remaining_cycles * 8 - div_8_remainder;
     } else {
         return remaining_cycles;
@@ -47,8 +47,8 @@ void SystemTimer::UpdatePaused() {
     }
 }
 
-bool SystemTimer::IsUsingSysClockEighth() const {
-    return (mode.clock_source & 0x2) != 0;
+bool SystemTimer::IsUsingSystemClock() const {
+    return (mode.clock_source & 0x2) == 0;
 }
 
 bool SystemTimer::StopAtCurrentValue() const {

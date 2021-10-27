@@ -41,3 +41,7 @@ void BlankTimer::UpdatePaused() {
         paused = false;
     }
 }
+
+bool BlankTimer::IsUsingSystemClock() const {
+    return mode.clock_source % 2 == 0;
+}

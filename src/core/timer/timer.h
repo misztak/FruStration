@@ -48,10 +48,6 @@ struct Timer {
     Timer() = delete;
     Timer(u32 index, System* system);
 
-    bool IsUsingSystemClock() const {
-        return mode.clock_source % 2 == 0;
-    }
-
     bool Increment(u32 cycles);
 
     u32 CyclesUntilNextIRQ();
@@ -61,6 +57,8 @@ struct Timer {
     virtual void Step(u32 cycles) = 0;
     virtual u32 CyclesUntilNextEvent() = 0;
     virtual void UpdatePaused() = 0;
+
+    virtual bool IsUsingSystemClock() const = 0;
 };
 
 // timer_blank.cpp
@@ -69,11 +67,11 @@ struct BlankTimer : public Timer {
     void Step(u32 cycles) override;
     u32 CyclesUntilNextEvent() override;
     void UpdatePaused() override;
+    bool IsUsingSystemClock() const override;
 };
 
 // timer_system.cpp
 struct SystemTimer : public Timer {
-    bool IsUsingSysClockEighth() const;
     bool StopAtCurrentValue() const;
     u32 div_8_remainder = 0;
 
@@ -81,4 +79,5 @@ struct SystemTimer : public Timer {
     void Step(u32 cycles) override;
     u32 CyclesUntilNextEvent() override;
     void UpdatePaused() override;
+    bool IsUsingSystemClock() const override;
 };

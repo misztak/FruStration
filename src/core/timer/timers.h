@@ -27,5 +27,7 @@ public:
 
     Timer* timers[3] = {};
 private:
+    static constexpr u32 MODE_WRITE_MASK = 0b1110001111111111;
+
     System* sys = nullptr;
 };

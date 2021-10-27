@@ -121,14 +121,14 @@ void CDROM::ExecCommand(Command command) {
         case Command::GetID:
             PushResponse(INT3, stat.value);
             // no disc
-            //ScheduleSecondResponse([this] {
-            //    PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
-            //});
+            ScheduleSecondResponse([this] {
+                PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+            });
 
             // licensed disc (NTSC)
-            ScheduleSecondResponse([this] {
-                PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
-            });
+            //ScheduleSecondResponse([this] {
+            //    PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
+            //});
             break;
         default:
             Panic("Unimplemented CDROM command 0x%02X", static_cast<u8>(command));

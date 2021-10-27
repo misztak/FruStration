@@ -94,7 +94,7 @@ void TimerController::Store(u32 address, u32 value) {
         // reset counter value
         timer->counter = 0;
 
-        timer->mode.value = (timer->mode.value & ~0b1110001111111111) | (value & 0b1110001111111111);
+        timer->mode.value = (timer->mode.value & ~MODE_WRITE_MASK) | (value & MODE_WRITE_MASK);
 
         if (timer->mode.irq_toggle_mode) {
             timer->mode.allow_irq = true;
@@ -151,14 +151,14 @@ void TimerController::DrawTimerState(bool* open) {
     const ImVec4 white(1.0, 1.0, 1.0, 1.0);
     const ImVec4 grey(0.5, 0.5, 0.5, 1.0);
 
-    const auto ClockSourceName = [](u32 timer_index, u32 source) {
-        if (source % 2 == 0) return "System Clock";
-        switch (timer_index) {
-            case 0: return "DotClock";
-            case 1: return "HBlank";
-            case 2: return "System Clock / 8";
-            default: return "XXX";
+    const auto ClockSourceName = [](Timer* timer) {
+        if (timer->IsUsingSystemClock()) return "System Clock";
+        switch (timer->index) {
+            case TMR0: return "Dotclock";
+            case TMR1: return "HBlank";
+            case TMR2: return "System Clock / 8";
         }
+        return "XXX";
     };
 
     ImGui::Text("Status");
@@ -193,7 +193,7 @@ void TimerController::DrawTimerState(bool* open) {
         ImGui::Text("%s", timer->mode.irq_on_max_value ? "yes" : "no");
         ImGui::Text("%s", timer->mode.irq_repeat_mode ? "Repeat" : "One-Shot");
         ImGui::Text("%s", timer->mode.irq_toggle_mode ? "Toggle" : "Pulse");
-        ImGui::Text("%s", ClockSourceName(i, timer->mode.clock_source));
+        ImGui::Text("%s", ClockSourceName(timer));
         ImGui::Text("%s", timer->mode.allow_irq ? "yes" : "no");
         ImGui::Text("%s", timer->mode.reached_target ? "true" : "false");
         ImGui::Text("%s", timer->mode.reached_max_value ? "true" : "false");
