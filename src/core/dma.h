@@ -3,14 +3,11 @@
 #include "bitfield.h"
 #include "types.h"
 
-class BUS;
-class GPU;
-class InterruptController;
+class System;
 
 class DMA {
 public:
-    DMA();
-    void Init(BUS* bus, GPU* gpu, InterruptController* controller);
+    DMA(System* system);
     void Reset();
 
     u32 Load(u32 address);
@@ -119,7 +116,5 @@ private:
         BitField<u32, bool, 31, 1> irq_master_flag;
     } interrupt;
 
-    BUS* bus = nullptr;
-    GPU* gpu = nullptr;
-    InterruptController* interrupt_controller = nullptr;
+    System* sys = nullptr;
 };

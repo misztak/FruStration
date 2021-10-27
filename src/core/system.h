@@ -1,9 +1,12 @@
 #pragma once
 
+#include <array>
 #include <memory>
 #include <string>
+#include <limits>
 
 #include "types.h"
+#include "timed_component.h"
 
 namespace CPU {
 class CPU;
@@ -17,9 +20,17 @@ class InterruptController;
 class TimerController;
 class Debugger;
 
+constexpr u32 MaxCycles = std::numeric_limits<u32>::max();
+
 class System {
 public:
     System();
+    ~System();
+    void Reset();
+
+    void AddCycles(u32 cycles);
+    void ForceUpdateComponents();
+    void RecalculateCyclesUntilNextEvent();
 
     std::unique_ptr<CPU::CPU> cpu;
     std::unique_ptr<BUS> bus;
@@ -29,42 +40,14 @@ public:
     std::unique_ptr<InterruptController> interrupt;
     std::unique_ptr<TimerController> timers;
     std::unique_ptr<Debugger> debugger;
-};
 
-class Emulator {
-public:
-    bool LoadBIOS(const std::string& bios_path);
-
-    void Tick();
-    bool DrawNextFrame();
-    void ResetDrawFrame();
-
-    bool IsHalted();
-    void SetHalt(bool halt);
-    void Reset();
-
-    bool In24BPPMode();
-    u8* GetVideoOutput();
-
-    bool done = false;
-
-    void DrawDebugWindows();
-    void StartGDBServer();
-    void HandleGDBClientRequest();
-
-    // TODO: actual config system
-    // bootleg config
-    bool draw_mem_viewer = false;
-    bool draw_cpu_state = true;
-    bool draw_gpu_state = true;
-    bool draw_debugger = true;
-    bool draw_timer_state = true;
-
-    bool cfg_gdb_server_enabled = false;
-
-    // end of config
-
-    u16* GetVRAM();
 private:
-    System sys;
+    static constexpr u32 TIMED_COMPONENT_COUNT = 3;
+
+    void UpdateComponents(u32 cycles);
+
+    u32 accumulated_cycles = 0;
+    u32 cycles_until_next_event = 0;
+
+    std::array<TimedComponent*, TIMED_COMPONENT_COUNT> timed_components = {};
 };

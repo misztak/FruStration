@@ -2,9 +2,9 @@
 
 #include "types.h"
 #include "bitfield.h"
+#include "timed_component.h"
 
-class GPU;
-class InterruptController;
+class System;
 
 constexpr u32 MAX_COUNTER = 0xFFFF;
 
@@ -12,18 +12,17 @@ constexpr static u32 TMR0 = 0;
 constexpr static u32 TMR1 = 1;
 constexpr static u32 TMR2 = 2;
 
-class TimerController {
+class TimerController : public TimedComponent {
 public:
-    TimerController();
-    void Init(GPU* gpu, InterruptController* icontroller);
+    TimerController(System* system);
     void Reset();
 
     u32 Load(u32 address);
     u32 Peek(u32 address);
     void Store(u32 address, u32 value);
 
-    void StepTmp(u32 cycles);
-    u32 CyclesUntilNextEvent();
+    void Step(u32 cycles) override;
+    u32 CyclesUntilNextEvent() override;
 
     void DrawTimerState(bool* open);
 
@@ -79,6 +78,5 @@ public:
 private:
     u32 div_8_remainder = 0;
 
-    GPU* gpu = nullptr;
-    InterruptController* interrupt_controller = nullptr;
+    System* sys = nullptr;
 };

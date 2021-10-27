@@ -1,21 +1,16 @@
 #include "dma.h"
 
+#include "fmt/format.h"
+
 #include "bus.h"
+#include "debug_utils.h"
 #include "gpu.h"
 #include "interrupt.h"
-#include "scheduler.h"
-#include "macros.h"
-#include "fmt/format.h"
+#include "system.h"
 
 LOG_CHANNEL(DMA);
 
-DMA::DMA() {}
-
-void DMA::Init(BUS* b, GPU* g, InterruptController* controller) {
-    bus = b;
-    gpu = g;
-    interrupt_controller = controller;
-}
+DMA::DMA(System* system) : sys(system) {}
 
 u32 DMA::Load(u32 address) {
 #if 0
@@ -109,7 +104,7 @@ void DMA::StartTransfer(u32 index) {
     UpdateMasterFlag();
     if (interrupt.irq_master_flag && !previous_state) {
         // TODO: don't do this immediately?
-        interrupt_controller->Request(IRQ::DMA);
+        sys->interrupt->Request(IRQ::DMA);
     }
 }
 
@@ -164,21 +159,21 @@ void DMA::TransferBlock(u32 index) {
                         break;
                     case DMA_Channel::GPU:
                         // invalid command value, only used to update GPUREAD
-                        gpu->SendGP0Cmd(0xFF);
+                        sys->gpu->SendGP0Cmd(0xFF);
                         // read next 32-bit packet
-                        data = gpu->gpu_read;
+                        data = sys->gpu->gpu_read;
                         break;
                     case DMA_Channel::OTC:
                         data = (transfer_count == 1) ? 0xFFFFFF : ((addr - 4) & 0x1FFFFF);
                         break;
                 }
-                bus->Store<u32>(curr_addr, data);
+                sys->bus->Store<u32>(curr_addr, data);
                 break;
             case Direction::ToDevice:
-                data = bus->Load<u32>(curr_addr);
+                data = sys->bus->Load<u32>(curr_addr);
                 switch (channel_type) {
                     case DMA_Channel::GPU:
-                        gpu->SendGP0Cmd(data);
+                        sys->gpu->SendGP0Cmd(data);
                         break;
                     case DMA_Channel::CDROM:
                     case DMA_Channel::SPU:
@@ -198,7 +193,7 @@ void DMA::TransferBlock(u32 index) {
     ch.control.start_busy = false;
     ch.control.start_trigger = false;
 
-    Scheduler::AddCycles(CyclesForTransfer(index, total_word_count));
+    sys->AddCycles(CyclesForTransfer(index, total_word_count));
 }
 
 void DMA::TransferLinkedList(u32 index) {
@@ -214,13 +209,13 @@ void DMA::TransferLinkedList(u32 index) {
     u32 total_transfer_count = 0;
 
     for (;;) {
-        u32 header = bus->Load<u32>(addr);
+        u32 header = sys->bus->Load<u32>(addr);
         u32 transfer_size = header >> 24;
 
         while (transfer_size > 0) {
             addr = (addr + 4) & ADDR_MASK;
-            u32 cmd = bus->Load<u32>(addr);
-            gpu->SendGP0Cmd(cmd);
+            u32 cmd = sys->bus->Load<u32>(addr);
+            sys->gpu->SendGP0Cmd(cmd);
             transfer_size--;
         }
 
@@ -235,7 +230,7 @@ void DMA::TransferLinkedList(u32 index) {
     ch.control.start_busy = false;
     ch.control.start_trigger = false;
 
-    Scheduler::AddCycles(CyclesForTransfer(index, total_transfer_count));
+    sys->AddCycles(CyclesForTransfer(index, total_transfer_count));
 }
 
 void DMA::UpdateMasterFlag() {

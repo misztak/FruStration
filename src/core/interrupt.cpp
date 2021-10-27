@@ -1,14 +1,14 @@
 #include "interrupt.h"
 
-#include "cpu.h"
 #include "fmt/format.h"
-#include "macros.h"
+
+#include "cpu.h"
+#include "debug_utils.h"
+#include "system.h"
 
 LOG_CHANNEL(IRQ);
 
-void InterruptController::Init(CPU::CPU* c) {
-    cpu = c;
-}
+InterruptController::InterruptController(System* system): sys(system) {}
 
 void InterruptController::Reset() {
     stat.value = 0;
@@ -50,8 +50,8 @@ void InterruptController::UpdateCP0Interrupt() {
     constexpr u8 BIT_10 = static_cast<u8>(1u << 2);
 
     if (stat.value & mask.value)
-        cpu->cp.cause.IP |= BIT_10;
+        sys->cpu->cp.cause.IP |= BIT_10;
     else
-        cpu->cp.cause.IP &= ~BIT_10;
+        sys->cpu->cp.cause.IP &= ~BIT_10;
 }
 

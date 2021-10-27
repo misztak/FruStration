@@ -1,104 +1,97 @@
 #include "system.h"
 
 #include "bus.h"
-#include "cpu.h"
-#include "dma.h"
-#include "gpu.h"
 #include "cdrom.h"
+#include "cpu.h"
+#include "debug_utils.h"
+#include "debugger.h"
+#include "dma.h"
+#include "gdb_stub.h"
+#include "gpu.h"
 #include "interrupt.h"
 #include "timer.h"
-#include "scheduler.h"
-#include "debugger.h"
-#include "gdb_stub.h"
-#include "macros.h"
 
-LOG_CHANNEL(Emulator);
+LOG_CHANNEL(System);
 
 System::System() {
-    cpu = std::make_unique<CPU::CPU>();
-    bus = std::make_unique<BUS>();
-    dma = std::make_unique<DMA>();
-    gpu = std::make_unique<GPU>();
-    cdrom = std::make_unique<CDROM>();
-    interrupt = std::make_unique<InterruptController>();
-    timers = std::make_unique<TimerController>();
-    debugger = std::make_unique<Debugger>();
+    cpu = std::make_unique<CPU::CPU>(this);
+    bus = std::make_unique<BUS>(this);
+    dma = std::make_unique<DMA>(this);
+    gpu = std::make_unique<GPU>(this);
+    cdrom = std::make_unique<CDROM>(this);
+    interrupt = std::make_unique<InterruptController>(this);
+    timers = std::make_unique<TimerController>(this);
+    debugger = std::make_unique<Debugger>(this);
+
+    timed_components[0] = timers.get();
+    timed_components[1] = gpu.get();
+    timed_components[2] = cdrom.get();
+
+    RecalculateCyclesUntilNextEvent();
 
     LOG_INFO << "Initialized PSX core";
 }
 
-bool Emulator::LoadBIOS(const std::string& bios_path) {
-    return sys.bus->LoadBIOS(bios_path);
-}
+// required to allow forward declaration with unique_ptr
+System::~System() = default;
 
-void Emulator::Tick() {
-    sys.cpu->Step();
-}
+void System::Reset() {
+    cpu->Reset();
+    bus->Reset();
+    dma->Reset();
+    gpu->Reset();
+    cdrom->Reset();
+    interrupt->Reset();
+    timers->Reset();
+    debugger->Reset();
 
-bool Emulator::DrawNextFrame() {
-    return sys.gpu->draw_frame;
-}
+    accumulated_cycles = 0;
+    cycles_until_next_event = 0;
 
-void Emulator::ResetDrawFrame() {
-    sys.gpu->draw_frame = false;
-}
-
-void Emulator::Reset() {
-    sys.cpu->Reset();
-    sys.bus->Reset();
-    sys.dma->Reset();
-    sys.gpu->Reset();
-    sys.cdrom->Reset();
-    sys.interrupt->Reset();
-    sys.timers->Reset();
-    sys.debugger->Reset();
-
-    Scheduler::Reset();
-    Scheduler::RecalculateNextEvent();
+    RecalculateCyclesUntilNextEvent();
 
     LOG_INFO << "System reset";
 }
 
-bool Emulator::In24BPPMode() {
-    return (sys.gpu->ReadStat() & (1u << 21)) != 0;
+void System::AddCycles(u32 cycles) {
+    accumulated_cycles += cycles;
+
+    // update all components that reached an event
+    while (accumulated_cycles >= cycles_until_next_event) {
+
+        if (cycles_until_next_event > 0) {
+            // let all the components tick up to the next event
+            UpdateComponents(cycles_until_next_event);
+
+            accumulated_cycles -= cycles_until_next_event;
+        }
+
+        // recalculate pending event timings
+        RecalculateCyclesUntilNextEvent();
+    }
 }
 
-bool Emulator::IsHalted() {
-    return sys.cpu->halt;
+void System::ForceUpdateComponents() {
+    if (accumulated_cycles > 0) {
+        // update all components to the current state
+        UpdateComponents(accumulated_cycles);
+
+        accumulated_cycles = 0;
+    }
 }
 
-void Emulator::SetHalt(bool halt) {
-    sys.cpu->halt = halt;
-    LOG_INFO << "System " << (halt ? "paused" : "resumed");
+void System::RecalculateCyclesUntilNextEvent() {
+    cycles_until_next_event = MaxCycles;
+
+    for (auto* component : timed_components) {
+        const u32 component_cycles = component->CyclesUntilNextEvent();
+
+        cycles_until_next_event = std::min(cycles_until_next_event, component_cycles);
+    }
 }
 
-u8* Emulator::GetVideoOutput() {
-    return sys.gpu->GetVideoOutput();
-}
-
-u16* Emulator::GetVRAM() {
-    return sys.gpu->GetVRAM();
-}
-
-void Emulator::StartGDBServer() {
-    if (!cfg_gdb_server_enabled) return;
-
-    SetHalt(true);
-
-    Assert(sys.debugger.get());
-    GDB::Init(42069, sys.debugger.get());
-}
-
-void Emulator::HandleGDBClientRequest() {
-    if (!cfg_gdb_server_enabled) return;
-
-    GDB::HandleClientRequest();
-}
-
-void Emulator::DrawDebugWindows() {
-    if (draw_mem_viewer) sys.bus->DrawMemEditor(&draw_mem_viewer);
-    if (draw_cpu_state) sys.cpu->DrawCpuState(&draw_cpu_state);
-    if (draw_gpu_state) sys.gpu->DrawGpuState(&draw_gpu_state);
-    if (draw_debugger) sys.debugger->DrawDebugger(&draw_debugger);
-    if (draw_timer_state) sys.timers->DrawTimerState(&draw_timer_state);
+void System::UpdateComponents(u32 cycles) {
+    for (auto* component: timed_components) {
+        component->Step(cycles);
+    }
 }

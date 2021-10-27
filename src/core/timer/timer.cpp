@@ -1,11 +1,12 @@
 #include "timer.h"
 
+#include "imgui.h"
+#include "fmt/format.h"
+
+#include "debug_utils.h"
 #include "gpu.h"
 #include "interrupt.h"
-#include "scheduler.h"
-#include "imgui.h"
-#include "macros.h"
-#include "fmt/format.h"
+#include "system.h"
 
 LOG_CHANNEL(Timer);
 
@@ -124,24 +125,14 @@ bool TimerController::Timer::Increment(u32 cycles) {
     return false;
 }
 
-TimerController::TimerController() {
-    Scheduler::AddComponent(
-        Component::TIMER,
-        [this](u32 cycles) { StepTmp(cycles); },
-        [this] { return CyclesUntilNextEvent(); });
-}
+TimerController::TimerController(System* system) : sys(system) {}
 
-void TimerController::Init(GPU* g, InterruptController* icontroller) {
-    gpu = g;
-    interrupt_controller = icontroller;
-}
-
-void TimerController::StepTmp(u32 cycles) {
+void TimerController::Step(u32 cycles) {
     // timer 0
     auto& dot_timer = timers[0];
     if (dot_timer.mode.clock_source % 2 == 0) {
         if (dot_timer.Increment(cycles)) {
-            interrupt_controller->Request(IRQ::TIMER0);
+            sys->interrupt->Request(IRQ::TIMER0);
         }
     }
 
@@ -149,7 +140,7 @@ void TimerController::StepTmp(u32 cycles) {
     auto& hblank_timer = timers[1];
     if (hblank_timer.mode.clock_source % 2 == 0) {
         if (hblank_timer.Increment(cycles)) {
-            interrupt_controller->Request(IRQ::TIMER1);
+            sys->interrupt->Request(IRQ::TIMER1);
         }
     }
 
@@ -165,7 +156,7 @@ void TimerController::StepTmp(u32 cycles) {
     }
 
     if (cpu_timer.Increment(ticks)) {
-        interrupt_controller->Request(IRQ::TIMER2);
+        sys->interrupt->Request(IRQ::TIMER2);
         if (cpu_timer.mode.sync_enabled && cpu_timer.mode.sync_mode % 3 == 0) {
             // stop permanently
             cpu_timer.counter =
@@ -206,7 +197,7 @@ u32 TimerController::Load(u32 address) {
     LOG_DEBUG << fmt::format("Load call to Timers [@ 0x{:02X}]", address);
 #endif
 
-    Scheduler::ForceUpdate();
+    sys->ForceUpdateComponents();
 
     const u32 timer_index = (address & 0xF0) >> 4;
     const u32 timer_address = address & 0xF;
@@ -233,7 +224,7 @@ u32 TimerController::Load(u32 address) {
         Panic("Invalid timer register");
     }
 
-    Scheduler::RecalculateNextEvent();
+    sys->RecalculateCyclesUntilNextEvent();
 
     return value;
 }
@@ -245,7 +236,7 @@ void TimerController::Store(u32 address, u32 value) {
     const u32 timer_address = address & 0xF;
     DebugAssert(timer_index <= 2);
 
-    Scheduler::ForceUpdate();
+    sys->ForceUpdateComponents();
 
     auto& timer = timers[timer_index];
 
@@ -277,7 +268,7 @@ void TimerController::Store(u32 address, u32 value) {
         Panic("Invalid timer register");
     }
 
-    Scheduler::RecalculateNextEvent();
+    sys->RecalculateCyclesUntilNextEvent();
 }
 
 u32 TimerController::Peek(u32 address) {

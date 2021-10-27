@@ -1,4 +1,4 @@
-// copied from the Duckstation PSX emulator made by stenzek
+// sourced from Duckstation, the PSX emulator made by stenzek
 // https://github.com/stenzek/duckstation/blob/master/src/common/bitfield.h
 
 #pragma once

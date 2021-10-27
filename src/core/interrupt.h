@@ -17,13 +17,11 @@ enum class IRQ : u32 {
     CONTROLLER  = (1 << 10),
 };
 
-namespace CPU {
-class CPU;
-}
+class System;
 
 class InterruptController {
 public:
-    void Init(CPU::CPU* cpu);
+    InterruptController(System* system);
     void Reset();
     void Request(IRQ irq);
 
@@ -56,5 +54,5 @@ private:
     Register stat;
     Register mask;
 
-    CPU::CPU* cpu = nullptr;
+    System* sys = nullptr;
 };

@@ -9,9 +9,9 @@
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
 #include "nfd.h"
-#include "system.h"
-#include "types.h"
-#include "macros.h"
+
+#include "debug_utils.h"
+#include "emulator.h"
 
 LOG_CHANNEL(Display);
 

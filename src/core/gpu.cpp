@@ -1,36 +1,24 @@
 #include "gpu.h"
 
-#include "fmt/format.h"
 #include "imgui.h"
-#include "macros.h"
+#include "fmt/format.h"
+
+#include "debug_utils.h"
 #include "interrupt.h"
-#include "scheduler.h"
+#include "system.h"
 #include "timer.h"
 
 LOG_CHANNEL(GPU);
 
-GPU::GPU(): vram(VRAM_SIZE, 0), output(VRAM_SIZE * 2, 0) {
+GPU::GPU(System* system): sys(system), renderer(this), vram(VRAM_SIZE, 0), output(VRAM_SIZE * 2, 0) {
     status.display_disabled = true;
     // pretend that everything is ok
     status.can_receive_cmd_word = true;
     status.can_send_vram_to_cpu = true;
     status.can_receive_dma_block = true;
-
-    Scheduler::AddComponent(
-        Component::Type::GPU,
-        [this](u32 cycles) { StepTmp(cycles); },
-        [this] { return CyclesUntilNextEvent(); }
-    );
 }
 
-void GPU::Init(TimerController* tmr, InterruptController* icontroller) {
-    timer_controller = tmr;
-    interrupt_controller = icontroller;
-
-    renderer.Init(this);
-}
-
-void GPU::StepTmp(u32 cpu_cycles) {
+void GPU::Step(u32 cpu_cycles) {
     DebugAssert(cpu_cycles <= cycles_until_next_event);
 
     auto [gpu_cycles, dots] = GpuCyclesAndDots(cpu_cycles);
@@ -44,7 +32,7 @@ void GPU::StepTmp(u32 cpu_cycles) {
         // TODO: even/odd bit
     }
 
-    auto& dot_timer = timer_controller->timers[0];
+    auto& dot_timer = sys->timers->timers[0];
     if (!dot_timer.IsUsingSystemClock()) {
         static float dotclock_dots = 0;
         dotclock_dots += dots;
@@ -58,7 +46,7 @@ void GPU::StepTmp(u32 cpu_cycles) {
         dot_timer.UpdateOnBlankFlip(TMR0, currently_in_hblank);
     }
 
-    auto& hblank_timer = timer_controller->timers[1];
+    auto& hblank_timer = sys->timers->timers[1];
     if (!hblank_timer.IsUsingSystemClock()) {
         const u32 lines = static_cast<u32>(dots / dots_per_scanline);
         hblank_timer.Increment(static_cast<u32>(currently_in_hblank && !was_in_vblank) + lines);
@@ -73,7 +61,7 @@ void GPU::StepTmp(u32 cpu_cycles) {
     }
 
     if (!was_in_vblank && currently_in_vblank) {
-        interrupt_controller->Request(IRQ::VBLANK);
+        sys->interrupt->Request(IRQ::VBLANK);
 
         draw_frame = true;
         //LOG_DEBUG << "VBLANK";
@@ -96,7 +84,7 @@ u32 GPU::CyclesUntilNextEvent() {
 
     const float horizontal_res = static_cast<float>(HorizontalRes());
 
-    auto& dot_timer = timer_controller->timers[0];
+    auto& dot_timer = sys->timers->timers[0];
     if (dot_timer.mode.sync_enabled) {
         // synced with hblank
         const float cycles_until_hblank_flip =
@@ -114,7 +102,7 @@ u32 GPU::CyclesUntilNextEvent() {
     const float cycles_until_vblank_flip = lines_until_vblank_flip * GpuCyclesPerScanline() - accumulated_dots / dots_per_cycle;
     MinCycles(cycles_until_vblank_flip);
 
-    auto& hblank_timer = timer_controller->timers[1];
+    auto& hblank_timer = sys->timers->timers[1];
     if (!hblank_timer.paused && !hblank_timer.IsUsingSystemClock()) {
         const float cycles_until_hblank = ((accumulated_dots < horizontal_res ? horizontal_res : dots_per_scanline + horizontal_res) - accumulated_dots) / dots_per_cycle;
         const float cycles_until_irq = hblank_timer.CyclesUntilNextIRQ() * GpuCyclesPerScanline() - cycles_until_hblank;
@@ -288,9 +276,9 @@ void GPU::SendGP1Cmd(u32 cmd) {
             if ((cmd >> 7) & 0x1) Panic("Tried to set GPUSTAT.14!");
 
             if (new_status.value != status.value) {
-                Scheduler::ForceUpdate();
+                sys->ForceUpdateComponents();
                 status.value = new_status.value;
-                Scheduler::RecalculateNextEvent();
+                sys->RecalculateCyclesUntilNextEvent();
             }
 
             break;

@@ -5,10 +5,7 @@
 
 #include "types.h"
 
-namespace CPU {
-class CPU;
-}
-class BUS;
+class System;
 
 class Debugger {
 public:
@@ -36,7 +33,7 @@ public:
         ring_ptr = (ring_ptr + 1) & 127;
     }
 
-    void Init(CPU::CPU* cpu, BUS* bus);
+    Debugger(System* system);
     void DrawDebugger(bool* open);
     void Reset();
 
@@ -46,8 +43,7 @@ public:
 
     void SetPausedState(bool paused, bool single_step);
 
-    CPU::CPU* GetCPU();
-    BUS* GetBUS();
+    System* GetContext();
 
     bool single_step = false;
 
@@ -79,6 +75,6 @@ private:
     static constexpr u32 BUFFER_MASK = BUFFER_SIZE - 1;
     u32 ring_ptr = 0;
     std::array<std::pair<u32, u32>, BUFFER_SIZE> last_instructions;
-    CPU::CPU* cpu = nullptr;
-    BUS* bus = nullptr;
+
+    System* sys = nullptr;
 };

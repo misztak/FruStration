@@ -5,14 +5,17 @@
 
 #include "types.h"
 #include "bitfield.h"
+#include "timed_component.h"
 
-class InterruptController;
+class System;
 
-class CDROM {
+class CDROM : public TimedComponent {
 public:
-    CDROM();
-    void Init(InterruptController* icontroller);
+    CDROM(System* system);
     void Reset();
+
+    void Step(u32 cycles) override;
+    u32 CyclesUntilNextEvent() override;
 
     u8 Load(u32 address);
     u8 Peek(u32 address);
@@ -79,9 +82,6 @@ private:
 
     void SendInterrupt();
 
-    void StepTmp(u32 cycles);
-    u32 CyclesUntilNextEvent();
-
     void ScheduleFirstResponse();
     void ScheduleSecondResponse(std::function<void ()> command, s32 cycles);
 
@@ -127,5 +127,5 @@ private:
     u8 interrupt_enable = 0;
     std::deque<u8> interrupt_fifo;
 
-    InterruptController* interrupt_controller = nullptr;
+    System* sys = nullptr;
 };

@@ -1,14 +1,15 @@
 #include <GL/gl3w.h>
 #include <SDL.h>
+
 #include <iostream>
 
-#include "display.h"
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
-#include "system.h"
-#include "macros.h"
-#include "scheduler.h"
+
+#include "display.h"
+#include "debug_utils.h"
+#include "emulator.h"
 
 LOG_CHANNEL(MAIN);
 
@@ -17,13 +18,10 @@ constexpr bool RUN_HEADLESS = false;
 int RunCore() {
     const std::string bios_path = "SCPH1001.BIN";
 
-    Emulator system;
-    system.Init();
-    if (!system.LoadBIOS(bios_path)) return 1;
+    Emulator emulator;
+    if (!emulator.LoadBIOS(bios_path)) return 1;
 
-    Scheduler::RecalculateNextEvent();
-
-    while (true) system.Tick();
+    while (true) emulator.Tick();
     return 0;
 }
 
@@ -65,7 +63,7 @@ int main(int, char**) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags =
         (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow("FruStration", 3840, 0,
+    SDL_Window* window = SDL_CreateWindow("FruStration", 0, 0,
                                           Display::WIDTH, Display::HEIGHT, window_flags);
     if (!window) {
         LOG_CRIT << "Failed to create SDL_Window";
@@ -73,7 +71,6 @@ int main(int, char**) {
     }
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1);
 
     bool err = gl3wInit() != 0;
     if (err) {
@@ -81,40 +78,43 @@ int main(int, char**) {
         return 1;
     }
 
-    Emulator system;
-    system.Init();
-    if (!system.LoadBIOS("SCPH1001.BIN")) return 1;
-    //if (!system.LoadBIOS("SCPH7002.BIN")) return 1;
+    Emulator emulator;
+    if (!emulator.LoadBIOS("SCPH1001.BIN")) return 1;
+    //if (!emulator.LoadBIOS("SCPH7002.BIN")) return 1;
 
-    system.StartGDBServer();
+    emulator.StartGDBServer();
 
     Display display;
-    if (!display.Init(&system, window, gl_context, glsl_version)) {
+    if (!display.Init(&emulator, window, gl_context, glsl_version)) {
         LOG_CRIT << "Failed to initialize imgui display";
         return 1;
-    };
+    }
 
-    Scheduler::RecalculateNextEvent();
+    // vsync
+    SDL_GL_SetSwapInterval(static_cast<s32>(display.vsync_enabled));
 
-    while (!system.done) {
-        if (!system.IsHalted()) {
+    while (!emulator.done) {
+        if (!emulator.IsHalted()) {
 
-            while (!system.DrawNextFrame()) {
-                system.Tick();
+            while (!emulator.DrawNextFrame()) {
+                emulator.Tick();
                 // cpu reached a breakpoint
-                if (unlikely(system.IsHalted())) break;
+                if (unlikely(emulator.IsHalted())) break;
             }
 
             // check if ready to draw next frame again because the cpu could have hit a breakpoint
             // before reaching the next vblank
-            if (system.DrawNextFrame()) {
-                system.ResetDrawFrame();
+            if (emulator.DrawNextFrame()) {
+                emulator.ResetDrawFrame();
                 display.Update();
             }
+
+            //display.Throttle(60);
+
         } else {
             display.Update();
             // if the GDB server is disabled this will do nothing
-            system.HandleGDBClientRequest();
+            emulator.HandleGDBClientRequest();
         }
     }
 

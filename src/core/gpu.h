@@ -5,19 +5,18 @@
 #include "types.h"
 #include "bitfield.h"
 #include "sw_renderer.h"
+#include "timed_component.h"
 
-class TimerController;
-class InterruptController;
+class System;
 
-class GPU {
+class GPU : public TimedComponent {
 friend class Renderer;
 public:
     static constexpr u32 VRAM_WIDTH = 1024;
     static constexpr u32 VRAM_HEIGHT = 512;
     static constexpr u32 VRAM_SIZE = 1024 * 512;
 
-    GPU();
-    void Init(TimerController* timer, InterruptController* icontroller);
+    GPU(System* system);
     void Reset();
 
     u32 ReadStat();
@@ -93,8 +92,8 @@ private:
         return std::make_pair(gpu_cycles, dots);
     }
 
-    void StepTmp(u32 cycles);
-    u32 CyclesUntilNextEvent();
+    void Step(u32 cycles) override;
+    u32 CyclesUntilNextEvent() override;
 
     void DrawQuadMono();
     void DrawQuadShaded();
@@ -238,16 +237,16 @@ private:
         BitField<u32, Gp1Command, 24, 8> gp1_op;
     } command;
 
+    std::array<Vertex, 4> vertices;
+    Rectangle rectangle = {};
+
+    System* sys = nullptr;
+
+    Renderer renderer;
+
     // TODO: is VRAM filled with garbage at boot?
     std::vector<u16> vram;
 
     // the actual output that gets displayed on the TV
     std::vector<u8> output;
-
-    std::array<Vertex, 4> vertices;
-    Rectangle rectangle = {};
-    Renderer renderer;
-
-    TimerController* timer_controller = nullptr;
-    InterruptController* interrupt_controller = nullptr;
 };

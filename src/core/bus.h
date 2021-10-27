@@ -5,12 +5,7 @@
 
 #include "types.h"
 
-class DMA;
-class GPU;
-class CDROM;
-class InterruptController;
-class TimerController;
-class Debugger;
+class System;
 
 namespace CPU {
 class CPU;
@@ -18,8 +13,7 @@ class CPU;
 
 class BUS {
 public:
-    BUS();
-    void Init(DMA* dma, GPU* gpu, CPU::CPU* cpu, CDROM* cdrom, InterruptController* interrupt, TimerController* timers, Debugger* debugger);
+    BUS(System* system);
     void Reset();
     bool LoadBIOS(const std::string& path);
     bool LoadPsExe(const std::string& path);
@@ -64,13 +58,7 @@ private:
         0xFFFFFFFF, 0xFFFFFFFF,
     };
 
-    DMA* dma = nullptr;
-    GPU* gpu = nullptr;
-    CPU::CPU* cpu = nullptr;
-    CDROM* cdrom = nullptr;
-    InterruptController* interrupt = nullptr;
-    TimerController* timers = nullptr;
-    Debugger* debugger = nullptr;
+    System* sys = nullptr;
 
     std::vector<u8> bios;
     std::vector<u8> ram;

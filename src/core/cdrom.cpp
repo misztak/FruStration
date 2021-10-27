@@ -1,13 +1,14 @@
 #include "cdrom.h"
 
-#include "interrupt.h"
-#include "scheduler.h"
-#include "macros.h"
 #include "fmt/format.h"
+
+#include "debug_utils.h"
+#include "interrupt.h"
+#include "system.h"
 
 LOG_CHANNEL(CDROM);
 
-CDROM::CDROM() {
+CDROM::CDROM(System* system): sys(system) {
     stat.motor_on = true;
 
     status.par_fifo_empty = true;
@@ -15,19 +16,9 @@ CDROM::CDROM() {
 
     cycles_until_first_response = MaxCycles;
     cycles_until_second_response = MaxCycles;
-
-    Scheduler::AddComponent(
-        Component::Type::CDROM,
-        [this](u32 cycles){ StepTmp(cycles); },
-        [this]{ return CyclesUntilNextEvent(); }
-    );
 }
 
-void CDROM::Init(InterruptController* icontroller) {
-    interrupt_controller = icontroller;
-}
-
-void CDROM::StepTmp(u32 cycles) {
+void CDROM::Step(u32 cycles) {
     switch (state) {
         case State::ExecutingFirstResponse:
             DebugAssert(pending_command != Command::None);
@@ -97,7 +88,7 @@ void CDROM::SendInterrupt() {
         u8 type = interrupt_fifo.front();
 
         if (type & interrupt_enable) {
-            interrupt_controller->Request(IRQ::CDROM);
+            sys->interrupt->Request(IRQ::CDROM);
         }
     }
 }
@@ -238,12 +229,12 @@ void CDROM::Store(u32 address, u8 value) {
             // command 255 is used internally for Command::None
             DebugAssert(value != 255);
 
-            Scheduler::ForceUpdate();
+            sys->ForceUpdateComponents();
 
             pending_command = static_cast<Command>(value);
             ScheduleFirstResponse();
 
-            Scheduler::RecalculateNextEvent();
+            sys->RecalculateCyclesUntilNextEvent();
         }
         if (index == 1 || index == 2 || index == 3) Panic("Unimplemented");
         return;
@@ -252,14 +243,14 @@ void CDROM::Store(u32 address, u8 value) {
     if (address == 0x2) {
         if (index == 0) parameter_fifo.push_back(value);
         if (index == 1) {
-            Scheduler::ForceUpdate();
+            sys->ForceUpdateComponents();
 
             // set interrupt enable
             interrupt_enable = value;
             // if an interrupt was waiting it can be sent now
             SendInterrupt();
 
-            Scheduler::RecalculateNextEvent();
+            sys->RecalculateCyclesUntilNextEvent();
         }
         if (index == 2 || index == 3) Panic("Unimplemented");
         return;
@@ -268,7 +259,7 @@ void CDROM::Store(u32 address, u8 value) {
     if (address == 0x3) {
         if (index == 0) request = value;
         if (index == 1) {
-            Scheduler::ForceUpdate();
+            sys->ForceUpdateComponents();
 
             if (value & 0x40) {
                 // reset parameter fifo
@@ -297,7 +288,7 @@ void CDROM::Store(u32 address, u8 value) {
                 }
             }
 
-            Scheduler::RecalculateNextEvent();
+            sys->RecalculateCyclesUntilNextEvent();
         }
         if (index == 2 || index == 3) Panic("Unimplemented");
         return;

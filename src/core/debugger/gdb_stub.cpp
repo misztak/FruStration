@@ -15,17 +15,19 @@ using ssize_t = long long;
 #endif
 
 #include <array>
+#include <charconv>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
-#include <charconv>
-#include <optional>
 
-#include "macros.h"
 #include "fmt/format.h"
+
 #include "bus.h"
 #include "cpu.h"
+#include "debug_utils.h"
 #include "debugger.h"
+#include "system.h"
 
 LOG_CHANNEL(GDB);
 
@@ -96,7 +98,7 @@ static std::string ReadRegisters() {
     // little endian
     std::stringstream ss;
 
-    CPU::CPU* cpu = debugger->GetCPU();
+    auto& cpu = debugger->GetContext()->cpu;
 
     ss << ValuesToHex((u8*) cpu->gp.r, GP_REGISTER_COUNT * sizeof(u32));
     ss << ValuesToHex((u8*) &cpu->cp.sr, sizeof(u32));
@@ -119,7 +121,7 @@ static std::string ReadRegister(u32 index) {
         LOG_WARN << fmt::format("Invalid register index {}", index);
     }
 
-    CPU::CPU* cpu = debugger->GetCPU();
+    auto& cpu = debugger->GetContext()->cpu;
     std::stringstream ss;
 
     if (index >= GDB_USED_REGISTERS) {
@@ -149,7 +151,7 @@ static std::string ReadRegister(u32 index) {
 }
 
 static std::string ReadMemory(u32 start, u32 length) {
-    BUS* bus = debugger->GetBUS();
+    auto& bus = debugger->GetContext()->bus;
     std::stringstream ss;
 
     for (u32 i = 0; i < length; i++) {
@@ -203,7 +205,7 @@ void HandleClientRequest() {
     // respond to finished continue or step command
     if (received_step_or_continue_cmd) {
         // make sure we aren't responding before the emulator stopped (should never happen)
-        DebugAssert(debugger->GetCPU()->halt);
+        DebugAssert(debugger->GetContext()->cpu->halt);
 
         // reset to normal command mode
         received_step_or_continue_cmd = false;

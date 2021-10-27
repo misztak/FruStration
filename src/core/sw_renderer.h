@@ -53,8 +53,7 @@ enum class RectSize : u32 {
 
 class Renderer {
 public:
-    Renderer();
-    void Init(GPU* gpu);
+    Renderer(GPU* gpu);
 
     void Draw(u32 cmd);
 
