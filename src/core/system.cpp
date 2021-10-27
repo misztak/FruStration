@@ -1,91 +1,39 @@
 #include "system.h"
 
 #include "bus.h"
-#include "cpu.h"
-#include "dma.h"
-#include "gpu.h"
 #include "cdrom.h"
-#include "interrupt.h"
-#include "timer.h"
+#include "cpu.h"
+#include "debug_utils.h"
 #include "debugger.h"
+#include "dma.h"
 #include "gdb_stub.h"
-#include "macros.h"
+#include "gpu.h"
+#include "interrupt.h"
+#include "timers.h"
 
 LOG_CHANNEL(System);
 
-System::System() = default;
+System::System() {
+    cpu = std::make_unique<CPU::CPU>(this);
+    bus = std::make_unique<BUS>(this);
+    dma = std::make_unique<DMA>(this);
+    gpu = std::make_unique<GPU>(this);
+    cdrom = std::make_unique<CDROM>(this);
+    interrupt = std::make_unique<InterruptController>(this);
+    timers = std::make_unique<TimerController>(this);
+    debugger = std::make_unique<Debugger>(this);
 
-System::~System() {
-    GDB::Shutdown();
-}
+    timed_components[0] = timers.get();
+    timed_components[1] = gpu.get();
+    timed_components[2] = cdrom.get();
 
-void System::Init() {
-    cpu = std::make_unique<CPU::CPU>();
-    bus = std::make_unique<BUS>();
-    dma = std::make_unique<DMA>();
-    gpu = std::make_unique<GPU>();
-    cdrom = std::make_unique<CDROM>();
-    interrupt = std::make_unique<InterruptController>();
-    timers = std::make_unique<TimerController>();
-    debugger = std::make_unique<Debugger>();
-
-    cpu->Init(bus.get(), debugger.get());
-    bus->Init(dma.get(), gpu.get(), cpu.get(), cdrom.get(), interrupt.get(), timers.get(), debugger.get());
-    dma->Init(bus.get(), gpu.get(), interrupt.get());
-    gpu->Init(interrupt.get());
-    timers->Init(gpu.get(), interrupt.get());
-    interrupt->Init(cpu.get());
-    cdrom->Init(interrupt.get());
-    debugger->Init(cpu.get(), bus.get());
+    RecalculateCyclesUntilNextEvent();
 
     LOG_INFO << "Initialized PSX core";
 }
 
-bool System::LoadBIOS(const std::string& bios_path) {
-    return bus->LoadBIOS(bios_path);
-}
-
-void System::Step() {
-    // the step counter is static to prevent going out of sync with
-    // the other components in case a breakpoint is hit and Step() exits early
-    static u32 step = 0;
-
-    // 100 cpu instructions - 2 cycles per instruction
-    while (step < 100) {
-        cpu->Step();
-        step++;
-        if (unlikely(cpu->halt)) return;
-    }
-    step = 0;
-
-    // dma step
-    cdrom->Step();
-
-    timers->Step(300, TMR0);
-    timers->Step(300, TMR1);
-    timers->Step(300, TMR2);
-
-    // video clock is cpu clock multiplied by (11 / 7)
-    // also account for the cpu needing 2 cycles to finish one instruction
-    gpu->Step(300);
-}
-
-void System::SingleStep() {
-    cpu->Step();
-
-    // dma step
-    cdrom->Step();
-
-    timers->Step(3, TMR0);
-    timers->Step(3, TMR1);
-    timers->Step(3, TMR2);
-
-    gpu->Step(3);
-}
-
-void System::VBlankCallback(std::function<void()> callback) {
-    gpu->vblank_cb = callback;
-}
+// required to allow forward declaration with unique_ptr
+System::~System() = default;
 
 void System::Reset() {
     cpu->Reset();
@@ -96,49 +44,54 @@ void System::Reset() {
     interrupt->Reset();
     timers->Reset();
     debugger->Reset();
+
+    accumulated_cycles = 0;
+    cycles_until_next_event = 0;
+
+    RecalculateCyclesUntilNextEvent();
+
     LOG_INFO << "System reset";
 }
 
-bool System::In24BPPMode() {
-    return (gpu->ReadStat() & (1u << 21)) != 0;
+void System::AddCycles(u32 cycles) {
+    accumulated_cycles += cycles;
+
+    // update all components that reached an event
+    while (accumulated_cycles >= cycles_until_next_event) {
+
+        if (cycles_until_next_event > 0) {
+            // let all the components tick up to the next event
+            UpdateComponents(cycles_until_next_event);
+
+            accumulated_cycles -= cycles_until_next_event;
+        }
+
+        // recalculate pending event timings
+        RecalculateCyclesUntilNextEvent();
+    }
 }
 
-bool System::IsHalted() {
-    return cpu->halt;
+void System::ForceUpdateComponents() {
+    if (accumulated_cycles > 0) {
+        // update all components to the current state
+        UpdateComponents(accumulated_cycles);
+
+        accumulated_cycles = 0;
+    }
 }
 
-void System::SetHalt(bool halt) {
-    cpu->halt = halt;
-    LOG_INFO << "System " << (halt ? "paused" : "resumed");
+void System::RecalculateCyclesUntilNextEvent() {
+    cycles_until_next_event = MaxCycles;
+
+    for (auto* component : timed_components) {
+        const u32 component_cycles = component->CyclesUntilNextEvent();
+
+        cycles_until_next_event = std::min(cycles_until_next_event, component_cycles);
+    }
 }
 
-u8* System::GetVideoOutput() {
-    return gpu->GetVideoOutput();
-}
-
-u16* System::GetVRAM() {
-    return gpu->GetVRAM();
-}
-
-void System::StartGDBServer() {
-    if (!cfg_gdb_server_enabled) return;
-
-    SetHalt(true);
-
-    Assert(debugger.get());
-    GDB::Init(42069, debugger.get());
-}
-
-void System::HandleGDBClientRequest() {
-    if (!cfg_gdb_server_enabled) return;
-
-    GDB::HandleClientRequest();
-}
-
-void System::DrawDebugWindows() {
-    if (draw_mem_viewer) bus->DrawMemEditor(&draw_mem_viewer);
-    if (draw_cpu_state) cpu->DrawCpuState(&draw_cpu_state);
-    if (draw_gpu_state) gpu->DrawGpuState(&draw_gpu_state);
-    if (draw_debugger) debugger->DrawDebugger(&draw_debugger);
-    if (draw_timer_state) timers->DrawTimerState(&draw_timer_state);
+void System::UpdateComponents(u32 cycles) {
+    for (auto* component: timed_components) {
+        component->Step(cycles);
+    }
 }

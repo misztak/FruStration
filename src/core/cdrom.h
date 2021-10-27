@@ -1,24 +1,38 @@
 #pragma once
 
 #include <deque>
+#include <functional>
 
 #include "types.h"
 #include "bitfield.h"
+#include "timed_component.h"
 
-class InterruptController;
+class System;
 
-class CDROM {
+class CDROM : public TimedComponent {
 public:
-    CDROM();
-    void Init(InterruptController* icontroller);
+    CDROM(System* system);
     void Reset();
-    void Step();
+
+    void Step(u32 cycles) override;
+    u32 CyclesUntilNextEvent() override;
 
     u8 Load(u32 address);
     u8 Peek(u32 address);
     void Store(u32 address, u8 value);
 
 private:
+    static constexpr u32 FIRST_RESPONSE_DELAY = 25000;
+
+    static constexpr u32 FIFO_MAX_SIZE = 16;
+
+    static constexpr u8 INT0 = 0;
+    static constexpr u8 INT1 = 1;
+    static constexpr u8 INT2 = 2;
+    static constexpr u8 INT3 = 3;
+    static constexpr u8 INT4 = 4;
+    static constexpr u8 INT5 = 5;
+
     enum class Command : u8 {
         Sync,
         GetStat,
@@ -52,20 +66,34 @@ private:
         GetQ,
         ReadTOC,
         VideoCD,
+        None = 255,
     };
 
-    static constexpr u32 FIFO_MAX_SIZE = 16;
-
-    static constexpr u8 INT0 = 0;
-    static constexpr u8 INT1 = 1;
-    static constexpr u8 INT2 = 2;
-    static constexpr u8 INT3 = 3;
-    static constexpr u8 INT4 = 4;
-    static constexpr u8 INT5 = 5;
+    enum class State : u32 {
+        Idle,
+        ExecutingFirstResponse,
+        ExecutingSecondResponse,
+    };
 
     void ExecCommand(Command command);
     void ExecSubCommand();
-    void PushResponse(u8 type, std::initializer_list<u8> value);
+    void PushResponse(u8 type, std::initializer_list<u8> response_values);
+    void PushResponse(u8 type, u8 response_value);
+
+    void SendInterrupt();
+
+    void ScheduleFirstResponse();
+    void ScheduleSecondResponse(std::function<void ()> command, s32 cycles);
+
+    std::function<void ()> second_response_command = nullptr;
+
+    u32 cycles_until_first_response = 0;
+    u32 cycles_until_second_response = 0;
+
+    State state = State::Idle;
+
+    Command pending_command = Command::None;
+    Command pending_second_response_command = Command::None;
 
     union {
         BitField<u8, bool, 0, 1> error;
@@ -99,5 +127,5 @@ private:
     u8 interrupt_enable = 0;
     std::deque<u8> interrupt_fifo;
 
-    InterruptController* interrupt_controller = nullptr;
+    System* sys = nullptr;
 };

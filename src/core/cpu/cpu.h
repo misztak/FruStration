@@ -7,6 +7,7 @@
 #include "bios.h"
 
 class BUS;
+class System;
 class Debugger;
 
 // TODO: remove CPU namespace
@@ -17,8 +18,7 @@ friend class Disassembler;
 friend class ::Debugger;
 friend class ::BUS;
 public:
-    CPU();
-    void Init(BUS* bus, Debugger* debugger);
+    CPU(System* system);
     void Reset();
 
     void Step();
@@ -54,8 +54,7 @@ private:
     LoadDelayEntry pending_delay_entry = {}, new_delay_entry = {};
     Instruction instr;
 
-    BUS* bus = nullptr;
-    Debugger* debugger = nullptr;
+    System* sys = nullptr;
 
     BIOS bios;
     Disassembler disassembler;

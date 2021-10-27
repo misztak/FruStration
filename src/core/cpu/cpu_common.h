@@ -80,7 +80,9 @@ enum class SecondaryOpcode : u32 {
 
 enum class CoprocessorOpcode : u32 {
     mf = 0x00,
+    mcf = 0x02,
     mt = 0x04,
+    mct = 0x06,
     rfe = 0x10,
 };
 

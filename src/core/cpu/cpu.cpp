@@ -1,10 +1,12 @@
 #include "cpu.h"
 
+#include "imgui.h"
+#include "fmt/format.h"
+
 #include "bus.h"
 #include "cpu_common.h"
-#include "imgui.h"
-#include "macros.h"
-#include "fmt/format.h"
+#include "debug_utils.h"
+#include "system.h"
 
 LOG_CHANNEL(CPU);
 
@@ -13,11 +15,7 @@ namespace CPU {
 bool DISASM_INSTRUCTION = false;
 bool TRACE_BIOS_CALLS = false;
 
-CPU::CPU() : disassembler(this) {}
-
-void CPU::Init(BUS* b, Debugger* d) {
-    bus = b;
-    debugger = d;
+CPU::CPU(System* system) : sys(system), disassembler(this) {
     cp.prid = 0x2;
     UpdatePC(0xBFC00000);
 }
@@ -40,9 +38,9 @@ void CPU::Reset() {
 }
 
 void CPU::Step() {
-    if (debugger->IsBreakpoint(sp.pc)) {
-        bool enabled = debugger->IsBreakpointEnabled(sp.pc);
-        debugger->ToggleBreakpoint(sp.pc);
+    if (sys->debugger->IsBreakpoint(sp.pc)) {
+        bool enabled = sys->debugger->IsBreakpointEnabled(sp.pc);
+        sys->debugger->ToggleBreakpoint(sp.pc);
 
         if (enabled) {
             LOG_DEBUG << "Hit breakpoint";
@@ -57,21 +55,22 @@ void CPU::Step() {
     in_delay_slot = false;
     branch_taken = false;
 
+    // handle interrupts
+    if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
+        current_pc = sp.pc;
+        Exception(ExceptionCode::Interrupt);
+    }
+
     instr.value = Load32(sp.pc);
 
-    halt = debugger->single_step;
-    debugger->StoreLastInstruction(sp.pc, instr.value);
+    halt = sys->debugger->single_step;
+    sys->debugger->StoreLastInstruction(sp.pc, instr.value);
 
 #ifdef DEBUG
     if (TRACE_BIOS_CALLS && sp.pc <= 0xC0) bios.TraceFunction(sp.pc, Get(9));
     if (DISASM_INSTRUCTION) LOG_DEBUG << disassembler.InstructionAt(sp.pc, instr.value);
     static u64 instr_counter = 0; instr_counter++;
 #endif
-
-    // handle interrupts
-    if ((cp.cause.IP & cp.sr.IM) && cp.sr.interrupt_enable) {
-        Exception(ExceptionCode::Interrupt);
-    }
 
     // special actions for specific memory locations
     //
@@ -357,11 +356,20 @@ void CPU::Step() {
                     break;
                 }
                 default:
-                    Panic("Invalid coprocessor opcode 0x%02X!", (u32)instr.cop.cop_op.GetValue());
+                    Panic("Invalid coprocessor opcode 0x%02X!", (u32) instr.cop.cop_op.GetValue());
             }
             break;
         case PrimaryOpcode::cop2:
-            LOG_DEBUG << fmt::format("Unimplemented GTE instruction 0x{:08X}", instr.value);
+            switch (instr.cop.cop_op) {
+                case CoprocessorOpcode::mcf:
+                    LOG_DEBUG << "GTE: MCFC [Unimplemented]";
+                    break;
+                case CoprocessorOpcode::mct:
+                    LOG_DEBUG << "GTE: MCTC [Unimplemented]";
+                    break;
+                default:
+                    Panic("Invalid GTE coprocessor opcode 0x%02X!", (u32) instr.cop.cop_op.GetValue());
+            }
             break;
         case PrimaryOpcode::cop1:
         case PrimaryOpcode::cop3:
@@ -516,6 +524,9 @@ void CPU::Step() {
 
     // first register always contains 0
     gp.zero = 0;
+
+    // tick the components
+    sys->AddCycles(1);
 }
 
 void CPU::Exception(ExceptionCode cause) {
@@ -558,31 +569,31 @@ void CPU::Exception(ExceptionCode cause) {
     LOG_DEBUG << fmt::format("CPU Exception {:#04x}", (u32)cause);
 }
 
-u32 CPU::Load32(u32 address) { return bus->Load<u32>(address); }
+u32 CPU::Load32(u32 address) { return sys->bus->Load<u32>(address); }
 
 void CPU::Store32(u32 address, u32 value) {
     if (cp.sr.isolate_cache) return;
-    bus->Store(address, value);
+    sys->bus->Store(address, value);
 }
 
 u16 CPU::Load16(u32 address) {
     if (cp.sr.isolate_cache) Panic("Load with isolated cache");
-    return bus->Load<u16>(address);
+    return sys->bus->Load<u16>(address);
 }
 
 void CPU::Store16(u32 address, u16 value) {
     if (cp.sr.isolate_cache) return;
-    bus->Store(address, value);
+    sys->bus->Store(address, value);
 }
 
 u8 CPU::Load8(u32 address) {
     if (cp.sr.isolate_cache) Panic("Load with isolated cache");
-    return bus->Load<u8>(address);
+    return sys->bus->Load<u8>(address);
 }
 
 void CPU::Store8(u32 address, u8 value) {
     if (cp.sr.isolate_cache) return;
-    bus->Store(address, value);
+    sys->bus->Store(address, value);
 }
 
 void CPU::Set(u32 index, u32 value) {

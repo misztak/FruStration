@@ -4,14 +4,13 @@
 #include <tuple>
 
 #include "fmt/format.h"
+
+#include "debug_utils.h"
 #include "gpu.h"
-#include "macros.h"
 
 LOG_CHANNEL(Renderer);
 
-Renderer::Renderer() {}
-
-void Renderer::Init(GPU* g) { gpu = g; }
+Renderer::Renderer(GPU* gpu): gpu(gpu) {}
 
 static constexpr s32 EdgeFunction(Vertex* v0, Vertex* v1, Vertex* v2) {
     return (s32) ((v1->x - v0->x) * (v2->y - v0->y) - (v1->y - v0->y) * (v2->x - v0->x));
@@ -21,10 +20,10 @@ static constexpr s32 EdgeFunction(Vertex* v0, Vertex* v1, s16 px, s16 py) {
     return (s32) ((v1->x - v0->x) * (py - v0->y) - (v1->y - v0->y) * (px - v0->x));
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc++11-narrowing"
 template <u32 draw_flags>
 void Renderer::DrawTriangle() {
+#define DRAW_FLAGS_SET(flags) ((draw_flags & (flags)) != 0)
+
     if ((draw_flags & (TEXTURED | SHADED)) == (TEXTURED | SHADED)) Panic("Unimplemented");
     // made possible by Fabian Giesen's great series of articles about software rasterizers
     // starting with:
@@ -32,7 +31,7 @@ void Renderer::DrawTriangle() {
 
     // fetch the vertices
     Vertex *v0, *v1, *v2;
-    if constexpr (draw_flags & SECOND_TRIANGLE) {
+    if constexpr (DRAW_FLAGS_SET(SECOND_TRIANGLE)) {
         v0 = &gpu->vertices[1], v1 = &gpu->vertices[2], v2 = &gpu->vertices[3];
     } else {
         v0 = &gpu->vertices[0], v1 = &gpu->vertices[1], v2 = &gpu->vertices[2];
@@ -83,11 +82,12 @@ void Renderer::DrawTriangle() {
             // just use the sign bits
             if ((w01 | w12 | w20) >= 0) {
                 // draw the pixel
-                if constexpr (!(draw_flags & (TEXTURED | SHADED))) {
+                if constexpr (!DRAW_FLAGS_SET(TEXTURED | SHADED)) {
+                    // mono triangle
                     // all vertices store the same color value
                     gpu->vram[px + GPU::VRAM_WIDTH * py] = v0->c.To5551();
                 }
-                if constexpr (draw_flags & SHADED) {
+                if constexpr (DRAW_FLAGS_SET(SHADED)) {
                     Color color;
                     // shading
                     color.r = (s32(v0->c.r) * w12 + s32(v1->c.r) * w20 + s32(v2->c.r) * w01) / area;
@@ -95,7 +95,7 @@ void Renderer::DrawTriangle() {
                     color.b = (s32(v0->c.b) * w12 + s32(v1->c.b) * w20 + s32(v2->c.b) * w01) / area;
                     gpu->vram[px + GPU::VRAM_WIDTH * py] = color.To5551();
                 }
-                if constexpr (draw_flags & TEXTURED) {
+                if constexpr (DRAW_FLAGS_SET(TEXTURED)) {
                     u8 tex_x = std::clamp((v0->tex_x * w12 + v1->tex_x * w20 + v2->tex_x * w01) / area, 0, 255);
                     u8 tex_y = std::clamp((v0->tex_y * w12 + v1->tex_y * w20 + v2->tex_y * w01) / area, 0, 255);
 
@@ -137,8 +137,9 @@ void Renderer::DrawTriangle() {
         w12_row += B12;
         w20_row += B20;
     }
+
+#undef DRAW_FLAGS_SET
 }
-#pragma clang diagnostic pop
 
 template <u32 draw_flags>
 void Renderer::Draw4PointPolygon() {
@@ -161,10 +162,10 @@ static constexpr std::tuple<u16, u16> GetSize(Rectangle& rect) {
 #undef MAKE
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc++11-narrowing"
 template <RectSize size, u32 draw_flags>
 void Renderer::DrawRectangle() {
+#define DRAW_FLAGS_SET(flags) ((draw_flags & (flags)) != 0)
+
     auto& rect = gpu->rectangle;
 
     auto [size_x, size_y] = GetSize<size>(rect);
@@ -176,7 +177,7 @@ void Renderer::DrawRectangle() {
 
     for (u16 y = rect.start_y; y < end_y; y++) {
         for (u16 x = rect.start_x; x < end_x; x++) {
-            if constexpr (draw_flags & TEXTURED) {
+            if constexpr (DRAW_FLAGS_SET(TEXTURED)) {
                 // textured
                 gpu->vram[x + GPU::VRAM_WIDTH * y] = 0xFF;
             } else {
@@ -185,8 +186,9 @@ void Renderer::DrawRectangle() {
             }
         }
     }
+
+#undef DRAW_FLAGS_SET
 }
-#pragma clang diagnostic pop
 
 void Renderer::Draw(u32 cmd) {
     switch ((cmd >> 24)) {

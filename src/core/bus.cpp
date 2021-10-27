@@ -2,32 +2,23 @@
 
 #include <fstream>
 
-#include "dma.h"
-#include "gpu.h"
-#include "cpu.h"
-#include "cdrom.h"
-#include "interrupt.h"
-#include "timer.h"
-#include "debugger.h"
 #include "imgui.h"
 #include "imgui_memory_editor.h"
-#include "macros.h"
 #include "fmt/format.h"
+
+#include "cdrom.h"
+#include "cpu.h"
+#include "debug_utils.h"
+#include "debugger.h"
+#include "dma.h"
+#include "gpu.h"
+#include "interrupt.h"
+#include "system.h"
+#include "timers.h"
 
 LOG_CHANNEL(BUS);
 
-BUS::BUS() : bios(BIOS_SIZE), ram(RAM_SIZE, 0xCA), scratchpad(SCRATCH_SIZE) {}
-
-void BUS::Init(DMA* d, GPU* g, CPU::CPU* c, CDROM* cd, InterruptController* i, TimerController* t, Debugger* debug) {
-    // TODO: refactor this
-    dma = d;
-    gpu = g;
-    cpu = c;
-    cdrom = cd;
-    interrupt = i;
-    timers = t;
-    debugger = debug;
-}
+BUS::BUS(System* system) : sys(system), bios(BIOS_SIZE), ram(RAM_SIZE, 0xCA), scratchpad(SCRATCH_SIZE) {}
 
 bool BUS::LoadBIOS(const std::string& path) {
     LOG_INFO << "Loading BIOS from file " << path;
@@ -86,9 +77,9 @@ bool BUS::LoadPsExe(const std::string& path) {
         exec_data++;
     }
 
-    cpu->sp.pc = text_start;
-    cpu->next_pc = text_start;
-    cpu->instr.value = Load<u32>(text_start);
+    sys->cpu->sp.pc = text_start;
+    sys->cpu->next_pc = text_start;
+    sys->cpu->instr.value = Load<u32>(text_start);
 
     return true;
 }
@@ -102,10 +93,12 @@ ValueType BUS::Load(u32 address) {
     static_assert(std::is_same<ValueType, u32>::value || std::is_same<ValueType, u16>::value ||
                   std::is_same<ValueType, u8>::value);
 
-    if (debugger->IsWatchpoint(address) && debugger->WatchpointEnabledOnLoad(address)) {
+#ifdef USE_WATCHPOINTS
+    if (sys->debugger->IsWatchpoint(address) && sys->debugger->WatchpointEnabledOnLoad(address)) {
         LOG_DEBUG << "Hit load watchpoint";
-        cpu->halt = true;
+        sys->cpu->halt = true;
     }
+#endif
 
     const u32 masked_addr = MaskRegion(address);
 
@@ -117,27 +110,33 @@ ValueType BUS::Load(u32 address) {
     // IO Ports
     if (InArea(IO_PORTS_START, IO_PORTS_SIZE, masked_addr)) {
         switch (masked_addr) {
-            case(0x1F801070): return interrupt->LoadStat();
-            case(0x1F801074): return interrupt->LoadMask();
-            case(0x1F801810): return gpu->gpu_read; // GPUREAD
-            case(0x1F801814): return (ValueType) gpu->ReadStat(); // GPUSTAT
+            case(0x1F801070): return sys->interrupt->LoadStat();
+            case(0x1F801074): return sys->interrupt->LoadMask();
+            case(0x1F801810): return sys->gpu->gpu_read; // GPUREAD
+            case(0x1F801814): return (ValueType) sys->gpu->ReadStat(); // GPUSTAT
         }
 
         // DMA
         if (InArea(0x1F801080, 120, masked_addr))
-            return (ValueType) dma->Load(masked_addr - 0x1F801080);
+            return (ValueType) sys->dma->Load(masked_addr - 0x1F801080);
 
         // Timer
         if (InArea(0x1F801100, 48, masked_addr))
-            return (ValueType) timers->Load(masked_addr - 0x1F801100);
+            return (ValueType) sys->timers->Load(masked_addr - 0x1F801100);
 
         // CDROM
         if (InArea(0x1F801800, 4, masked_addr))
-            return (ValueType) cdrom->Load(masked_addr - 0x1F801800);
+            return (ValueType) sys->cdrom->Load(masked_addr - 0x1F801800);
 
 
         if (InArea(0x1F801C00, 644, masked_addr)) return 0; // SPU
-        if (InArea(0x1F801040, 16, masked_addr)) return 0;  // Joypad
+
+        // Joypad
+        if (InArea(0x1F801040, 16, masked_addr)) {
+            //LOG_DEBUG << "Load from Joypad [Unimplemented]";
+            return 0;
+        }
+
         Panic("Tried to load from IO Ports [0x%08X]", address);
     }
     // BIOS
@@ -168,10 +167,12 @@ void BUS::Store(u32 address, Value value) {
     static_assert(std::is_same<decltype(value), u32>::value || std::is_same<decltype(value), u16>::value ||
                   std::is_same<decltype(value), u8>::value);
 
-    if (debugger->IsWatchpoint(address) && debugger->WatchpointEnabledOnStore(address)) {
+#ifdef USE_WATCHPOINTS
+    if (sys->debugger->IsWatchpoint(address) && sys->debugger->WatchpointEnabledOnStore(address)) {
         LOG_DEBUG << "Hit store watchpoint";
-        cpu->halt = true;
+        sys->cpu->halt = true;
     }
+#endif
 
     const u32 masked_addr = MaskRegion(address);
 
@@ -190,21 +191,21 @@ void BUS::Store(u32 address, Value value) {
     // IO Ports
     if (InArea(IO_PORTS_START, IO_PORTS_SIZE, masked_addr)) {
         switch (masked_addr) {
-            case(0x1F801070): interrupt->StoreStat(value); return;
-            case(0x1F801074): interrupt->StoreMask(value); return;
-            case(0x1F801810): gpu->SendGP0Cmd(value); return;
-            case(0x1F801814): gpu->SendGP1Cmd(value); return;
+            case(0x1F801070): sys->interrupt->StoreStat(value); return;
+            case(0x1F801074): sys->interrupt->StoreMask(value); return;
+            case(0x1F801810): sys->gpu->SendGP0Cmd(value); return;
+            case(0x1F801814): sys->gpu->SendGP1Cmd(value); return;
         }
 
         // DMA
         if (InArea(0x1F801080, 120, masked_addr)) {
-            dma->Store(masked_addr - 0x1F801080, value);
+            sys->dma->Store(masked_addr - 0x1F801080, value);
             return;
         }
 
         // Timer
         if (InArea(0x1F801100, 48, masked_addr)) {
-            timers->Store(masked_addr - 0x1F801100, value);
+            sys->timers->Store(masked_addr - 0x1F801100, value);
             return;
         }
 
@@ -212,7 +213,7 @@ void BUS::Store(u32 address, Value value) {
 
         // CDROM
         if (InArea(0x1F801800, 4, masked_addr)) {
-            cdrom->Store(masked_addr - 0x1F801800, value);
+            sys->cdrom->Store(masked_addr - 0x1F801800, value);
             return;
         }
 
@@ -261,22 +262,22 @@ u8 BUS::Peek(u32 address) {
         return *(scratchpad.data() + (physical_addr - SCRATCH_START));
     // MMIO
     if (InArea(IO_PORTS_START, IO_PORTS_SIZE, physical_addr)) {
-        if (InArea(0x1F801070, 4, physical_addr)) return ToU8(interrupt->LoadStat());
-        if (InArea(0x1F801074, 4, physical_addr)) return ToU8(interrupt->LoadMask());
-        if (InArea(0x1F801810, 4, physical_addr)) return ToU8(gpu->gpu_read);
-        if (InArea(0x1F801814, 4, physical_addr)) return ToU8(gpu->ReadStat());
+        if (InArea(0x1F801070, 4, physical_addr)) return ToU8(sys->interrupt->LoadStat());
+        if (InArea(0x1F801074, 4, physical_addr)) return ToU8(sys->interrupt->LoadMask());
+        if (InArea(0x1F801810, 4, physical_addr)) return ToU8(sys->gpu->gpu_read);
+        if (InArea(0x1F801814, 4, physical_addr)) return ToU8(sys->gpu->ReadStat());
 
         // DMA
         if (InArea(0x1F801080, 120, physical_addr))
-            return dma->Peek(physical_addr);
+            return sys->dma->Peek(physical_addr);
 
         // Timer
         if (InArea(0x1F801100, 48, physical_addr))
-            return timers->Peek(physical_addr);
+            return sys->timers->Peek(physical_addr);
 
         // CDROM
         if (InArea(0x1F801800, 4, physical_addr))
-            return cdrom->Peek(physical_addr);
+            return sys->cdrom->Peek(physical_addr);
 
 
         if (InArea(0x1F801C00, 644, physical_addr)) return 0; // SPU
@@ -317,7 +318,7 @@ void BUS::DrawMemEditor(bool* open) {
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("VRAM")) {
-            mem_editor.DrawContents(gpu->GetVRAM(), GPU::VRAM_SIZE * 2, 0);
+            mem_editor.DrawContents(sys->gpu->GetVRAM(), GPU::VRAM_SIZE * 2, 0);
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

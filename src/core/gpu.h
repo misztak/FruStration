@@ -1,22 +1,23 @@
 #pragma once
 
-#include <array>
-#include <functional>
+#include <vector>
 
 #include "types.h"
 #include "bitfield.h"
 #include "sw_renderer.h"
+#include "timed_component.h"
 
-class InterruptController;
+class System;
 
-class GPU {
+class GPU : public TimedComponent {
 friend class Renderer;
 public:
-    GPU();
-    void Init(InterruptController* icontroller);
-    void Reset();
+    static constexpr u32 VRAM_WIDTH = 1024;
+    static constexpr u32 VRAM_HEIGHT = 512;
+    static constexpr u32 VRAM_SIZE = 1024 * 512;
 
-    void Step(u32 steps);
+    GPU(System* system);
+    void Reset();
 
     u32 ReadStat();
     void SendGP0Cmd(u32 cmd);
@@ -27,22 +28,73 @@ public:
 
     void DrawGpuState(bool* open);
 
-    u32 HorizontalRes();
-    u32 VerticalRes();
-    u32 Scanlines();
-    u32 CyclesPerScanline();
-    u32 DotClock();
-
-    std::function<void()> vblank_cb = nullptr;
-
-    bool in_hblank = false, in_vblank = false;
+    bool draw_frame = false;
 
     u32 gpu_read = 0;
 
-    static constexpr u32 VRAM_WIDTH = 1024;
-    static constexpr u32 VRAM_HEIGHT = 512;
-    static constexpr u32 VRAM_SIZE = 1024 * 512;
 private:
+    static constexpr float GPU_CLOCK_RATIO = 11.0f / 7.0f;
+    static constexpr float CPU_CLOCK_SPEED = 44100 * 0x300;
+    static constexpr float GPU_CLOCK_SPEED = CPU_CLOCK_SPEED * GPU_CLOCK_RATIO;
+
+    static constexpr float REFRESH_RATE_NTSC = 60;
+    static constexpr float REFRESH_RATE_PAL = 50;
+
+    ALWAYS_INLINE float RefreshRate() const {
+        return status.video_mode == VideoMode::NTSC ? REFRESH_RATE_NTSC : REFRESH_RATE_PAL;
+    }
+
+    ALWAYS_INLINE u32 Scanlines() const {
+        return status.video_mode == VideoMode::NTSC ? 263 : 314;
+    }
+
+    ALWAYS_INLINE u32 VerticalRes() const {
+        return status.vertical_res ? 480 : 240;
+    }
+
+    u32 HorizontalRes() const {
+        if (status.horizontal_res_2) return 368;
+
+        switch (status.horizontal_res_1) {
+            case 0: return 256;
+            case 1: return 320;
+            case 2: return 512;
+            case 3: return 640;
+        }
+
+        // unreachable
+        return 0;
+    }
+
+    float DotsPerGpuCycle() const {
+        return static_cast<float>(HorizontalRes()) / 2560.f;
+    }
+
+    float GpuCyclesPerScanline() const {
+        return (GPU_CLOCK_SPEED / RefreshRate()) / Scanlines();
+    }
+
+    float DotsPerScanline() const {
+        return DotsPerGpuCycle() * GpuCyclesPerScanline();
+    }
+
+    ALWAYS_INLINE bool IsGpuInHblank() const {
+        return accumulated_dots >= static_cast<float>(HorizontalRes());
+    }
+
+    ALWAYS_INLINE bool IsGpuInVblank() const {
+        return scanline >= 240;
+    }
+
+    std::pair<float, float> GpuCyclesAndDots(u32 cpu_cycles) const {
+        const float gpu_cycles = static_cast<float>(cpu_cycles) * GPU_CLOCK_RATIO;
+        const float dots = gpu_cycles * DotsPerGpuCycle();
+        return std::make_pair(gpu_cycles, dots);
+    }
+
+    void Step(u32 cycles) override;
+    u32 CyclesUntilNextEvent() override;
+
     void DrawQuadMono();
     void DrawQuadShaded();
     void DrawQuadTextured();
@@ -71,7 +123,7 @@ private:
     };
 
     // TODO: more enums for types
-    union {
+    union GpuStatus {
         u32 value = 0;
 
         BitField<u32, u32, 0, 4> tex_page_x_base;
@@ -163,8 +215,14 @@ private:
         gpu_info = 0x10,
     };
 
+    u32 cycles_until_next_event = 0;
+
+    float accumulated_dots = 0;
+
     u32 gpu_clock = 0;
     u32 scanline = 0;
+
+    bool was_in_hblank = false, was_in_vblank = false;
 
     u32 command_counter = 0;
     std::array<u32, 12> command_buffer;
@@ -179,15 +237,16 @@ private:
         BitField<u32, Gp1Command, 24, 8> gp1_op;
     } command;
 
+    std::array<Vertex, 4> vertices;
+    Rectangle rectangle = {};
+
+    System* sys = nullptr;
+
+    Renderer renderer;
+
     // TODO: is VRAM filled with garbage at boot?
     std::vector<u16> vram;
 
     // the actual output that gets displayed on the TV
     std::vector<u8> output;
-
-    std::array<Vertex, 4> vertices;
-    Rectangle rectangle = {};
-    Renderer renderer;
-
-    InterruptController* interrupt_controller = nullptr;
 };

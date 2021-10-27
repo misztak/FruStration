@@ -1,13 +1,12 @@
 #include "debugger.h"
 
-#include "cpu.h"
-#include "bus.h"
 #include "imgui.h"
 
-void Debugger::Init(CPU::CPU* _cpu, BUS* _bus) {
-    cpu = _cpu;
-    bus = _bus;
-}
+#include "system.h"
+#include "cpu.h"
+#include "bus.h"
+
+Debugger::Debugger(System* system): sys(system) {}
 
 void Debugger::AddBreakpoint(u32 address) {
     breakpoints.insert_or_assign(address, Breakpoint());
@@ -25,7 +24,7 @@ void Debugger::ToggleBreakpoint(u32 address) {
 }
 
 void Debugger::SetPausedState(bool paused, bool _single_step) {
-    cpu->halt = paused;
+    sys->cpu->halt = paused;
     single_step = _single_step;
 }
 
@@ -34,11 +33,11 @@ void Debugger::DrawDebugger(bool* open) {
     ImGui::Checkbox("Show instructions", &show_disasm_view); ImGui::SameLine();
     ImGui::Checkbox("Single Step", &single_step); ImGui::SameLine();
     if (ImGui::Button("Step")) {
-        cpu->halt = false;
+        sys->cpu->halt = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Continue")) {
-        cpu->halt = false;
+        sys->cpu->halt = false;
         single_step = false;
     }
     ImGui::Separator();
@@ -70,6 +69,8 @@ void Debugger::DrawDebugger(bool* open) {
     }
     ImGui::PopID();
     ImGui::Separator();
+
+#ifdef USE_WATCHPOINTS
 
     ImGui::PushID("__wp_view");
     ImGui::Text("Watchpoints");
@@ -106,6 +107,8 @@ void Debugger::DrawDebugger(bool* open) {
     ImGui::PopID();
     ImGui::Separator();
 
+#endif
+
     if (show_disasm_view) {
         static bool locked_to_bottom = true;
         const ImVec4 orange(.8f, .6f, .3f, 1.f);
@@ -123,11 +126,11 @@ void Debugger::DrawDebugger(bool* open) {
                 auto& instr = last_instructions[i & BUFFER_MASK];
                 if (instr.first == 0) continue;
                 if ((i & BUFFER_MASK) == ((ring_ptr - 1) & BUFFER_MASK)) {
-                    ImGui::TextColored(orange,"%s   <---",
-                        cpu->disassembler.InstructionAt(instr.first, instr.second, false).c_str());
+                    ImGui::TextColored(orange, "%s   <---",
+                            sys->cpu->disassembler.InstructionAt(instr.first, instr.second, false).c_str());
                 } else {
                     ImGui::TextUnformatted(
-                        cpu->disassembler.InstructionAt(instr.first, instr.second, false).c_str());
+                        sys->cpu->disassembler.InstructionAt(instr.first, instr.second, false).c_str());
                 }
                 if (locked_to_bottom) ImGui::SetScrollHere(1.f);
             }
@@ -138,13 +141,7 @@ void Debugger::DrawDebugger(bool* open) {
     ImGui::End();
 }
 
-CPU::CPU* Debugger::GetCPU() {
-    return cpu;
-}
-
-BUS* Debugger::GetBUS() {
-    return bus;
-}
+System* Debugger::GetContext() { return sys; }
 
 void Debugger::Reset() {
     // we only want to reset the instruction buffer

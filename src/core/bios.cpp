@@ -1,6 +1,6 @@
 #include "bios.h"
 
-#include "macros.h"
+#include "debug_utils.h"
 
 LOG_CHANNEL(BIOS);
 
