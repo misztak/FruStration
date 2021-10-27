@@ -6,7 +6,7 @@
 #include "debug_utils.h"
 #include "interrupt.h"
 #include "system.h"
-#include "timer.h"
+#include "timers.h"
 
 LOG_CHANNEL(GPU);
 
@@ -32,7 +32,7 @@ void GPU::Step(u32 cpu_cycles) {
         // TODO: even/odd bit
     }
 
-    auto& dot_timer = sys->timers->timers[0];
+    auto& dot_timer = sys->timers->dot_timer;
     if (!dot_timer.IsUsingSystemClock()) {
         static float dotclock_dots = 0;
         dotclock_dots += dots;
@@ -43,10 +43,10 @@ void GPU::Step(u32 cpu_cycles) {
     const bool currently_in_hblank = IsGpuInHblank();
 
     if (dot_timer.mode.sync_enabled) {
-        dot_timer.UpdateOnBlankFlip(TMR0, currently_in_hblank);
+        dot_timer.UpdateBlankState(currently_in_hblank);
     }
 
-    auto& hblank_timer = sys->timers->timers[1];
+    auto& hblank_timer = sys->timers->hblank_timer;
     if (!hblank_timer.IsUsingSystemClock()) {
         const u32 lines = static_cast<u32>(dots / dots_per_scanline);
         hblank_timer.Increment(static_cast<u32>(currently_in_hblank && !was_in_vblank) + lines);
@@ -57,7 +57,7 @@ void GPU::Step(u32 cpu_cycles) {
     const bool currently_in_vblank = IsGpuInVblank();
 
     if (hblank_timer.mode.sync_enabled) {
-        hblank_timer.UpdateOnBlankFlip(TMR1, currently_in_vblank);
+        hblank_timer.UpdateBlankState(currently_in_vblank);
     }
 
     if (!was_in_vblank && currently_in_vblank) {
@@ -84,7 +84,7 @@ u32 GPU::CyclesUntilNextEvent() {
 
     const float horizontal_res = static_cast<float>(HorizontalRes());
 
-    auto& dot_timer = sys->timers->timers[0];
+    auto& dot_timer = sys->timers->dot_timer;
     if (dot_timer.mode.sync_enabled) {
         // synced with hblank
         const float cycles_until_hblank_flip =
@@ -102,7 +102,7 @@ u32 GPU::CyclesUntilNextEvent() {
     const float cycles_until_vblank_flip = lines_until_vblank_flip * GpuCyclesPerScanline() - accumulated_dots / dots_per_cycle;
     MinCycles(cycles_until_vblank_flip);
 
-    auto& hblank_timer = sys->timers->timers[1];
+    auto& hblank_timer = sys->timers->hblank_timer;
     if (!hblank_timer.paused && !hblank_timer.IsUsingSystemClock()) {
         const float cycles_until_hblank = ((accumulated_dots < horizontal_res ? horizontal_res : dots_per_scanline + horizontal_res) - accumulated_dots) / dots_per_cycle;
         const float cycles_until_irq = hblank_timer.CyclesUntilNextIRQ() * GpuCyclesPerScanline() - cycles_until_hblank;

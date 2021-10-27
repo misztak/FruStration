@@ -10,7 +10,10 @@ add_library(core
         sw_renderer.cpp
         bios.cpp
         interrupt.cpp
+        timer/timers.cpp
         timer/timer.cpp
+        timer/timer_blank.cpp
+        timer/timer_system.cpp
         debugger/debugger.cpp
         debugger/gdb_stub.cpp)
 

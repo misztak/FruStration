@@ -14,7 +14,7 @@
 #include "gpu.h"
 #include "interrupt.h"
 #include "system.h"
-#include "timer.h"
+#include "timers.h"
 
 LOG_CHANNEL(BUS);
 

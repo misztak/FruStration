@@ -5,7 +5,7 @@
 #include "debug_utils.h"
 #include "gdb_stub.h"
 #include "gpu.h"
-#include "timer.h"
+#include "timers.h"
 
 LOG_CHANNEL(Emulator);
 

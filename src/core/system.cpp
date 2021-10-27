@@ -9,7 +9,7 @@
 #include "gdb_stub.h"
 #include "gpu.h"
 #include "interrupt.h"
-#include "timer.h"
+#include "timers.h"
 
 LOG_CHANNEL(System);
 

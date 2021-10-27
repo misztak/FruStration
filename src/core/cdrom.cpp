@@ -121,8 +121,9 @@ void CDROM::ExecCommand(Command command) {
         case Command::GetID:
             PushResponse(INT3, stat.value);
             // no disc
-            //ScheduleSecondResponse(
-            //    [this] { PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});});
+            //ScheduleSecondResponse([this] {
+            //    PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+            //});
 
             // licensed disc (NTSC)
             ScheduleSecondResponse([this] {
