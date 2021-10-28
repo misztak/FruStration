@@ -31,7 +31,7 @@ public:
     bool draw_mem_viewer = false;
     bool draw_cpu_state = true;
     bool draw_gpu_state = true;
-    bool draw_debugger = false;
+    bool draw_debugger = true;
     bool draw_timer_state = true;
 
     bool cfg_gdb_server_enabled = false;

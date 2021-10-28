@@ -2,9 +2,12 @@
 
 #include "imgui.h"
 
+#include "debug_utils.h"
 #include "system.h"
 #include "cpu.h"
 #include "bus.h"
+
+LOG_CHANNEL(Debugger);
 
 Debugger::Debugger(System* system): sys(system) {}
 
@@ -30,15 +33,34 @@ void Debugger::SetPausedState(bool paused, bool _single_step) {
 
 void Debugger::DrawDebugger(bool* open) {
     ImGui::Begin("Debugger", open);
+
+    ImGuiIO& io = ImGui::GetIO();
+    bool pressed_f6 = false, pressed_f8 = false, pressed_f9 = false;
+    for (int i = 0; i < IM_ARRAYSIZE(io.KeysDown); i++) {
+        pressed_f6 = ImGui::IsKeyReleased(63);
+        pressed_f8 = ImGui::IsKeyReleased(65);
+        pressed_f9 = ImGui::IsKeyReleased(66);
+    }
+
     ImGui::Checkbox("Show instructions", &show_disasm_view); ImGui::SameLine();
+    ImGui::Checkbox("Frame Step", &single_frame); ImGui::SameLine();
     ImGui::Checkbox("Single Step", &single_step); ImGui::SameLine();
-    if (ImGui::Button("Step")) {
-        sys->cpu->halt = false;
+
+    if (ImGui::Button("Next Frame") || pressed_f6) {
+        if (single_frame) {
+            sys->cpu->halt = false;
+            LOG_INFO << "Next Frame";
+        }
     }
     ImGui::SameLine();
-    if (ImGui::Button("Continue")) {
+    if (ImGui::Button("Step") || pressed_f8) {
+        if (single_step) sys->cpu->halt = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Continue") || pressed_f9) {
         sys->cpu->halt = false;
         single_step = false;
+        single_frame = false;
     }
     ImGui::Separator();
 

@@ -46,6 +46,7 @@ public:
     System* GetContext();
 
     bool single_step = false;
+    bool single_frame = false;
 
     bool show_disasm_view = false;
 private:

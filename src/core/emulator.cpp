@@ -23,6 +23,10 @@ bool Emulator::DrawNextFrame() {
 
 void Emulator::ResetDrawFrame() {
     sys.gpu->draw_frame = false;
+
+    // at this point the next frame has been reached
+    // stop now if single_frame stepping is enabled
+    sys.cpu->halt = sys.debugger->single_frame;
 }
 
 void Emulator::Reset() {
