@@ -42,17 +42,17 @@ void Renderer::DrawTriangle() {
     if (EdgeFunction(v0, v1, v2) < 0) std::swap(v0, v1);
 
     // bounding box
-    u16 minX = std::min({v0->x, v1->x, v2->x});
-    u16 maxX = std::max({v0->x, v1->x, v2->x});
-    u16 minY = std::min({v0->y, v1->y, v2->y});
-    u16 maxY = std::max({v0->y, v1->y, v2->y});
+    s32 minX = std::min({v0->x, v1->x, v2->x});
+    s32 maxX = std::max({v0->x, v1->x, v2->x});
+    s32 minY = std::min({v0->y, v1->y, v2->y});
+    s32 maxY = std::max({v0->y, v1->y, v2->y});
 
     // clip against drawing area
     // origin is top-left
-    minX = std::clamp(minX, gpu->drawing_area_left, gpu->drawing_area_right);
-    maxX = std::clamp(maxX, gpu->drawing_area_left, gpu->drawing_area_right);
-    minY = std::clamp(minY, gpu->drawing_area_top, gpu->drawing_area_bottom);
-    maxY = std::clamp(maxY, gpu->drawing_area_top, gpu->drawing_area_bottom);
+    minX = std::clamp<s32>(minX, gpu->drawing_area_left, gpu->drawing_area_right);
+    maxX = std::clamp<s32>(maxX, gpu->drawing_area_left, gpu->drawing_area_right);
+    minY = std::clamp<s32>(minY, gpu->drawing_area_top, gpu->drawing_area_bottom);
+    maxY = std::clamp<s32>(maxY, gpu->drawing_area_top, gpu->drawing_area_bottom);
 
     // prepare per-pixel increments
     const s32 A01 = v0->y - v1->y, B01 = v1->x - v0->x;
@@ -71,13 +71,13 @@ void Renderer::DrawTriangle() {
     s32 w20_row = EdgeFunction(v2, v0, minX, minY);
 
     // main loop
-    for (u16 py = minY; py <= maxY; py++) {
+    for (s32 py = minY; py <= maxY; py++) {
         // weights at the start of the row
         s32 w01 = w01_row;
         s32 w12 = w12_row;
         s32 w20 = w20_row;
 
-        for (u16 px = minX; px <= maxX; px++) {
+        for (s32 px = minX; px <= maxX; px++) {
             // check if point is to the left of all edges
             // just use the sign bits
             if ((w01 | w12 | w20) >= 0) {
@@ -121,7 +121,7 @@ void Renderer::DrawTriangle() {
                             gpu->vram[px + GPU::VRAM_WIDTH * py] = texel;
                         }
                     } else {
-                        Panic("Soon (TM)");
+                        gpu->vram[px + GPU::VRAM_WIDTH * py] = 0xFF;
                     }
                 }
             }
