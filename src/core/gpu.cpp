@@ -658,10 +658,31 @@ void GPU::DrawGpuState(bool* open) {
         }
     }
     ImGui::NextColumn();
-    if (ImGui::TreeNode("__gpustat_node", "GPUSTAT   %08X", status.value)) {
+    if (ImGui::TreeNode("__gpustat_node", "GPUSTAT   0x%08X", status.value)) {
+        ImGui::Text("Tex page base: x=%u, y=%u", status.tex_page_x_base * 64, status.tex_page_y_base * 256);
+        ImGui::Text("Semi transparency: %u", status.semi_transparency.GetValue());
+        static const char* const formats[4] = {"4bit", "8bit", "15bit", "Invalid"};
+        ImGui::Text("Tex page format: %s", formats[status.tex_page_colors]);
+        ImGui::Text("Dithering: %s", status.dither ? "Enabled" : "Off");
+        ImGui::Text("Draw to display area: %s", status.draw_enable ? "Allowed" : "Prohibited");
+        ImGui::Text("Mask bit enabled: %s", status.mask_enable ? "Yes" : "No");
+        ImGui::Text("Draw to masked areas: %s", status.draw_pixels ? "No" : "Yes");
+        ImGui::Text("Interlace field: %u", status.interlace_field.GetValue());
+        ImGui::Text("Reverse flag: %u", status.reverse.GetValue());
+        ImGui::Text("Textures enabled: %s", status.tex_disable ? "No" : "Yes");
+        ImGui::Text("Vertical interlace: %u", status.vertical_interlace.GetValue());
+        ImGui::Text("Display enabled: %s", status.display_disabled ? "No" : "Yes");
+        ImGui::Text("Interrupt Request: %s", status.interrupt_request ? "IRQ1" : "Off");
+        ImGui::Text("DMA / Data Request: %u", status.dma_data_stat.GetValue());
+        ImGui::Text("Ready to receive command: %u", status.can_receive_cmd_word.GetValue());
+        ImGui::Text("Ready to send VRAM: %u", status.can_send_vram_to_cpu.GetValue());
+        ImGui::Text("Ready to receive DMA block: %u", status.can_receive_dma_block.GetValue());
+        ImGui::Text("DMA direction: %u", static_cast<u32>(status.dma_direction.GetValue()));
+        ImGui::Text("Interlace line: %s", status.interlace_line_mode ? "Odd" : "Even");
+
         ImGui::TreePop();
     }
-    ImGui::Text("Transfer mode  %s", (mode == Mode::Command) ? "COMMAND" : "DATA");
+    ImGui::Text("Transfer mode  %s", (mode == Mode::Command) ? "[COMMAND]" : "[DATA]");
 
     ImGui::Text("Draw area [x,y]");
     ImGui::Text("[%3d,%3d]------+", drawing_area_left, drawing_area_top);
