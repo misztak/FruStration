@@ -99,29 +99,9 @@ void Renderer::DrawTriangle() {
                     u8 tex_x = std::clamp((v0->tex_x * w12 + v1->tex_x * w20 + v2->tex_x * w01) / area, 0, 255);
                     u8 tex_y = std::clamp((v0->tex_y * w12 + v1->tex_y * w20 + v2->tex_y * w01) / area, 0, 255);
 
-                    tex_x = (tex_x & ~(gpu->tex_window_x_mask * 8)) | ((gpu->tex_window_x_offset & gpu->tex_window_x_mask) * 8);
-                    tex_y = (tex_y & ~(gpu->tex_window_y_mask * 8)) | ((gpu->tex_window_y_offset & gpu->tex_window_y_mask) * 8);
-
-                    u16 base_x = gpu->status.tex_page_x_base * 64;
-                    u16 base_y = gpu->status.tex_page_y_base * 256;
-
-                    if (gpu->status.tex_page_colors == 0) {
-                        u32 tx = std::min<u32>(base_x + (tex_x / 4), 1023u);
-                        u32 ty = std::min<u32>(base_y + tex_y, 511u);
-
-                        u16 palette_value = gpu->vram[tx + GPU::VRAM_WIDTH * ty];
-                        u16 palette_index = (palette_value >> ((tex_x % 4) * 4)) & 0xFu;
-
-                        u16 texel_x = std::min<u32>((palette & 0x3F) * 16 + palette_index, 1023u);
-                        u16 texel_y = (palette >> 6) & 0x1FF;
-
-                        u16 texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
-                        //LOG_DEBUG << "Texel " << texel << " from location (" << texel_x << ',' << texel_y << ')';
-                        if (texel) {
-                            gpu->vram[px + GPU::VRAM_WIDTH * py] = texel;
-                        }
-                    } else {
-                        gpu->vram[px + GPU::VRAM_WIDTH * py] = 0xFF;
+                    u16 texel = GetTexel(tex_x, tex_y);
+                    if (texel & ~0x8000) {
+                        gpu->vram[px + GPU::VRAM_WIDTH * py] = texel;
                     }
                 }
             }
@@ -179,7 +159,10 @@ void Renderer::DrawRectangle() {
         for (u16 x = rect.start_x; x < end_x; x++) {
             if constexpr (DRAW_FLAGS_SET(TEXTURED)) {
                 // textured
-                gpu->vram[x + GPU::VRAM_WIDTH * y] = 0xFF;
+                u16 texel = GetTexel(rect.tex_x + (x - rect.start_x), rect.tex_y + (y - rect.start_y));
+                if (texel & ~0x8000) {
+                    gpu->vram[x + GPU::VRAM_WIDTH * y] = texel;
+                }
             } else {
                 // mono
                 gpu->vram[x + GPU::VRAM_WIDTH * y] = rect.c.To5551();
@@ -188,6 +171,58 @@ void Renderer::DrawRectangle() {
     }
 
 #undef DRAW_FLAGS_SET
+}
+
+u16 Renderer::GetTexel(u8 tex_x, u8 tex_y) {
+    tex_x = (tex_x & ~(gpu->tex_window_x_mask * 8)) | ((gpu->tex_window_x_offset & gpu->tex_window_x_mask) * 8);
+    tex_y = (tex_y & ~(gpu->tex_window_y_mask * 8)) | ((gpu->tex_window_y_offset & gpu->tex_window_y_mask) * 8);
+
+    u16 base_x = gpu->status.tex_page_x_base * 64;
+    u16 base_y = gpu->status.tex_page_y_base * 256;
+
+    u8 tex_mode = gpu->status.tex_page_colors;
+    u16 texel;
+
+    switch (tex_mode) {
+        case 0: {
+            u32 tx = std::min<u32>(base_x + (tex_x / 4), 1023u);
+            u32 ty = std::min<u32>(base_y + tex_y, 511u);
+
+            u16 palette_value = gpu->vram[tx + GPU::VRAM_WIDTH * ty];
+            u16 palette_index = (palette_value >> ((tex_x % 4) * 4)) & 0xFu;
+
+            u16 texel_x = std::min<u32>((palette & 0x3F) * 16 + palette_index, 1023u);
+            u16 texel_y = (palette >> 6) & 0x1FF;
+
+            texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
+            break;
+        }
+        case 1: {
+            u32 tx = std::min<u32>(base_x + (tex_x / 2), 1023u);
+            u32 ty = std::min<u32>(base_y + tex_y, 511u);
+
+            u16 palette_value = gpu->vram[tx + GPU::VRAM_WIDTH * ty];
+            u16 palette_index = (palette_value >> ((tex_x % 2) * 8)) & 0xFFu;
+
+            u16 texel_x = std::min<u32>((palette & 0x3F) * 16 + palette_index, 1023u);
+            u16 texel_y = (palette >> 6) & 0x1FF;
+
+            texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
+            break;
+        }
+        case 2: {
+            u32 texel_x = (base_x + tex_x) & 1023u;
+            u32 texel_y = (base_y + tex_y) & 511u;
+
+            texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
+            break;
+        }
+        default:
+            texel = 0xFF;
+            LOG_WARN << "Invalid texture color mode 3";
+    }
+
+    return texel;
 }
 
 void Renderer::Draw(u32 cmd) {

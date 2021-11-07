@@ -77,5 +77,7 @@ private:
     template <RectSize size, u32 draw_flags>
     void DrawRectangle();
 
+    u16 GetTexel(u8 tex_x, u8 tex_y);
+
     GPU* gpu = nullptr;
 };
