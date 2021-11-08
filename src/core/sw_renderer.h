@@ -68,6 +68,8 @@ private:
     // second triangle during 4-point polygon draw call
     static constexpr u32 SECOND_TRIANGLE = (1u << 4);
 
+    static constexpr u16 TEXEL_MASK = 0x7FFF;
+
     template <u32 draw_flags>
     void DrawTriangle();
 

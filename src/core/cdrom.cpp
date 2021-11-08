@@ -98,7 +98,7 @@ void CDROM::ExecCommand(Command command) {
     DebugAssert(interrupt_fifo.empty());
 
     // reset the state to Idle
-    // if the command contains a seconds response the state
+    // if this command contains a second response the value
     // will be overwritten in ScheduleSecondResponse
     state = State::Idle;
 
@@ -118,13 +118,31 @@ void CDROM::ExecCommand(Command command) {
             break;
         case Command::Setloc:
             LOG_DEBUG << "Setloc";
+            DebugAssert(parameter_fifo.size() >= 3);
+            amm = parameter_fifo[0];
+            ass = parameter_fifo[1];
+            asect = parameter_fifo[2];
             PushResponse(INT3, stat.value);
-            // TODO: set seek target
+            break;
+        case Command::ReadN:
+            LOG_DEBUG << "ReadN";
+            PushResponse(INT3, stat.value);
+            ScheduleSecondResponse([this] {
+                ReadN();
+            });
+            break;
+        case Command::Setmode:
+            LOG_DEBUG << "Setmode";
+            DebugAssert(parameter_fifo.size() >= 1 && parameter_fifo[0] == 0x80);
+            mode.value = parameter_fifo[0];
+            PushResponse(INT3, stat.value);
             break;
         case Command::SeekL:
             LOG_DEBUG << "SeekL";
             PushResponse(INT3, stat.value);
-            Panic("Unimplemented");
+            ScheduleSecondResponse([this] {
+                PushResponse(INT2, stat.value);
+            });
             break;
         case Command::Test:
             LOG_DEBUG << "Test";
@@ -134,14 +152,14 @@ void CDROM::ExecCommand(Command command) {
             LOG_DEBUG << "GetID";
             PushResponse(INT3, stat.value);
             // no disc
-            ScheduleSecondResponse([this] {
-                PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
-            });
+            //ScheduleSecondResponse([this] {
+            //    PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+            //});
 
             // licensed disc (NTSC)
-            //ScheduleSecondResponse([this] {
-            //    PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
-            //});
+            ScheduleSecondResponse([this] {
+                PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
+            });
             break;
         default:
             Panic("Unimplemented CDROM command 0x%02X", static_cast<u8>(command));
@@ -219,7 +237,7 @@ u8 CDROM::Load(u32 address) {
         switch (status.index) {
             case 0:
             case 2:
-                Panic("Sheesh");
+                Panic("Unimplemented");
                 break;
             case 1:
             case 3:
@@ -259,6 +277,7 @@ void CDROM::Store(u32 address, u8 value) {
 
             sys->ForceUpdateComponents();
 
+            LOG_DEBUG << fmt::format("Store: push new command 0x{:02X}", value);
             pending_command = static_cast<Command>(value);
             ScheduleFirstResponse();
 
@@ -333,6 +352,10 @@ void CDROM::Store(u32 address, u8 value) {
     }
 }
 
+void CDROM::ReadN() {
+
+}
+
 u8 CDROM::Peek(u32 address) {
     if (address == 0x0) {
         return status.value;
@@ -351,11 +374,15 @@ u8 CDROM::Peek(u32 address) {
 void CDROM::Reset() {
     state = State::Idle;
 
+    mode.value = 0;
+
     stat.value = 0;
     stat.motor_on = true;
 
     status.value = 0;
     request = 0;
+
+    amm = 0, ass = 0, asect = 0;
 
     second_response_command = nullptr;
 

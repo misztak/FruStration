@@ -85,6 +85,10 @@ private:
     void ScheduleFirstResponse();
     void ScheduleSecondResponse(std::function<void ()> command, s32 cycles);
 
+    void ReadN();
+
+    u8 amm = 0, ass = 0, asect = 0;
+
     std::function<void ()> second_response_command = nullptr;
 
     u32 cycles_until_first_response = 0;
@@ -94,6 +98,18 @@ private:
 
     Command pending_command = Command::None;
     Command pending_second_response_command = Command::None;
+
+    union {
+        BitField<u8, bool, 0, 1> cdda;
+        BitField<u8, bool, 1, 1> auto_pause;
+        BitField<u8, bool, 2, 1> report;
+        BitField<u8, bool, 3, 1> xa_filter;
+        BitField<u8, bool, 4, 1> ignore_bit;
+        BitField<u8, bool, 5, 1> sector_size;
+        BitField<u8, bool, 6, 1> xa_adpcm;
+        BitField<u8, bool, 7, 1> double_speed;
+        u8 value = 0;
+    } mode;
 
     union {
         BitField<u8, bool, 0, 1> error;

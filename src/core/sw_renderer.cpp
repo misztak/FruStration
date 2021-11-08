@@ -60,8 +60,9 @@ void Renderer::DrawTriangle() {
     const s32 A20 = v2->y - v0->y, B20 = v0->x - v2->x;
 
     // area of the parallelogram
+    // weights for interpolation will have to be normalized by the area
     const s32 area = EdgeFunction(v0, v1, v2);
-    // colinear
+    // colinear, nothing to draw
     if (area == 0) return;
 
     // initial weight of the first point in the bounding box
@@ -100,7 +101,7 @@ void Renderer::DrawTriangle() {
                     u8 tex_y = std::clamp((v0->tex_y * w12 + v1->tex_y * w20 + v2->tex_y * w01) / area, 0, 255);
 
                     u16 texel = GetTexel(tex_x, tex_y);
-                    if (texel & ~0x8000) {
+                    if (texel & TEXEL_MASK) {
                         gpu->vram[px + GPU::VRAM_WIDTH * py] = texel;
                     }
                 }
@@ -160,7 +161,7 @@ void Renderer::DrawRectangle() {
             if constexpr (DRAW_FLAGS_SET(TEXTURED)) {
                 // textured
                 u16 texel = GetTexel(rect.tex_x + (x - rect.start_x), rect.tex_y + (y - rect.start_y));
-                if (texel & ~0x8000) {
+                if (texel & TEXEL_MASK) {
                     gpu->vram[x + GPU::VRAM_WIDTH * y] = texel;
                 }
             } else {
