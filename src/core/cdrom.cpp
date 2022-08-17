@@ -19,8 +19,8 @@ CDROM::CDROM(System* system): sys(system) {
 
     // register timed event
     sys->timed_events[TIMED_EVENT_CDROM] = {
-        .add_cycles = [&](u32 cycles) { Step(cycles); },
-        .calc_cycles_until_next_event = [&]() { return CyclesUntilNextEvent(); }
+        .add_cycles = [this](u32 cycles) { Step(cycles); },
+        .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }
     };
 }
 
@@ -139,7 +139,7 @@ void CDROM::ExecCommand(Command command) {
             break;
         case Command::Setmode:
             LOG_DEBUG << "Setmode";
-            DebugAssert(parameter_fifo.size() >= 1 && parameter_fifo[0] == 0x80);
+            DebugAssert(!parameter_fifo.empty() && parameter_fifo[0] == 0x80);
             mode.value = parameter_fifo[0];
             PushResponse(INT3, stat.value);
             break;

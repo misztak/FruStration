@@ -23,6 +23,7 @@ class Debugger;
 constexpr u32 MaxCycles = std::numeric_limits<u32>::max();
 
 constexpr u32 TIMED_EVENT_COUNT = 3;
+
 constexpr u32 TIMED_EVENT_TIMERS = 0;
 constexpr u32 TIMED_EVENT_GPU = 1;
 constexpr u32 TIMED_EVENT_CDROM = 2;
@@ -48,10 +49,10 @@ public:
 
     struct TimedEvent {
         std::function<void(u32)> add_cycles = nullptr;
-        std::function<u32()> calc_cycles_until_next_event = nullptr;
+        std::function<u32()> cycles_until_event = nullptr;
     };
 
-    std::array<TimedEvent, (u32) TIMED_EVENT_COUNT> timed_events = {};
+    std::array<TimedEvent, TIMED_EVENT_COUNT> timed_events = {};
 private:
     void UpdateComponents(u32 cycles);
 

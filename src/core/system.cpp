@@ -80,7 +80,7 @@ void System::RecalculateCyclesUntilNextEvent() {
     cycles_until_next_event = MaxCycles;
 
     for (auto& event : timed_events) {
-        const u32 component_cycles = std::invoke(event.calc_cycles_until_next_event);
+        const u32 component_cycles = std::invoke(event.cycles_until_event);
 
         cycles_until_next_event = std::min(cycles_until_next_event, component_cycles);
     }

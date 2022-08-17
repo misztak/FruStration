@@ -22,8 +22,8 @@ TimerController::TimerController(System* system)
 
     // register timed event
     sys->timed_events[TIMED_EVENT_TIMERS] = {
-        .add_cycles = [&](u32 cycles) { Step(cycles); },
-        .calc_cycles_until_next_event = [&]() { return CyclesUntilNextEvent(); }
+        .add_cycles = [this](u32 cycles) { Step(cycles); },
+        .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }
     };
 }
 

@@ -19,8 +19,8 @@ GPU::GPU(System* system): sys(system), renderer(this), vram(VRAM_SIZE, 0), outpu
 
     // register timed event
     sys->timed_events[TIMED_EVENT_GPU] = {
-        .add_cycles = [&](u32 cycles) { Step(cycles); },
-        .calc_cycles_until_next_event = [&]() { return CyclesUntilNextEvent(); }
+        .add_cycles = [this](u32 cycles) { Step(cycles); },
+        .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }
     };
 }
 
@@ -141,7 +141,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
     DebugAssert(command_counter < 12);
     command_buffer[command_counter] = cmd;
 
-    auto CommandAfterCount = [&](u32 count, auto function) {
+    auto CommandAfterCount = [this](u32 count, auto function) {
         if (command_counter == count) {
             function();
             command_counter = 0;
@@ -157,7 +157,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
             // TODO: implement me
             break;
         case 0x02: // fill vram
-            CommandAfterCount(2, [&]{
+            CommandAfterCount(2, [this]{
                 Rectangle r;
                 r.c.SetColor(command_buffer[0]);
                 r.SetStart(command_buffer[1]);
@@ -173,55 +173,55 @@ void GPU::SendGP0Cmd(u32 cmd) {
             LOG_WARN << "Interrupt request [Unimplemented]";
             break;
         case 0x20: case 0x22: // mono triangle
-            CommandAfterCount(3, [&]() { DrawTriangleMono(); });
+            CommandAfterCount(3, [this]() { DrawTriangleMono(); });
             break;
         case 0x28: case 0x2A: // mono quad
-            CommandAfterCount(4, [&]() { DrawQuadMono(); });
+            CommandAfterCount(4, [this]() { DrawQuadMono(); });
             break;
         case 0x24: case 0x25: case 0x26: case 0x27:  // textured triangle
-            CommandAfterCount(6, [&]() { DrawTriangleTextured(); });
+            CommandAfterCount(6, [this]() { DrawTriangleTextured(); });
             break;
         case 0x2C: case 0x2D: case 0x2E: case 0x2F: // textured quad
-            CommandAfterCount(8, [&]() { DrawQuadTextured(); });
+            CommandAfterCount(8, [this]() { DrawQuadTextured(); });
             break;
         case 0x30: case 0x32: // shaded triangle
-            CommandAfterCount(5, [&]() { DrawTriangleShaded(); });
+            CommandAfterCount(5, [this]() { DrawTriangleShaded(); });
             break;
         case 0x38: case 0x3A: // shaded quad
-            CommandAfterCount(7, [&]() { DrawQuadShaded(); });
+            CommandAfterCount(7, [this]() { DrawQuadShaded(); });
             break;
         case 0x34: case 0x36: // textured and shaded triangle
-            CommandAfterCount(8, [&]() { DrawTriangleTexturedShaded(); });
+            CommandAfterCount(8, [this]() { DrawTriangleTexturedShaded(); });
             break;
         case 0x3C: case 0x3E: // textured and shaded quad
-            CommandAfterCount(11, [&]() { DrawQuadTexturedShaded(); });
+            CommandAfterCount(11, [this]() { DrawQuadTexturedShaded(); });
             break;
         case 0x40: case 0x42: case 0x48: case 0x4A:
         case 0x50: case 0x52: case 0x58: case 0x5A:
             Panic("Received render line command 0x%2X [Unimplemented]", command.gp0_op.GetValue());
             break;
         case 0x60: case 0x62: // mono rectangle with variable size
-            CommandAfterCount(2, [&]() { DrawRectangleMono(); });
+            CommandAfterCount(2, [this]() { DrawRectangleMono(); });
             break;
         case 0x68: case 0x6A: case 0x70: case 0x72: // mono rectangle with fixed size
         case 0x78: case 0x7A:
-            CommandAfterCount(1, [&]() { DrawRectangleMono(); });
+            CommandAfterCount(1, [this]() { DrawRectangleMono(); });
             break;
         case 0x64: case 0x65: case 0x66: case 0x67: // textured rectangle with variable size
-            CommandAfterCount(3, [&]() { DrawRectangleTexture(); });
+            CommandAfterCount(3, [this]() { DrawRectangleTexture(); });
             break;
         case 0x74: case 0x75: case 0x76: case 0x77: // textured rectangle with fixed size
         case 0x7C: case 0x7D: case 0x7E: case 0x7F:
-            CommandAfterCount(2, [&]() { DrawRectangleTexture(); });
+            CommandAfterCount(2, [this]() { DrawRectangleTexture(); });
             break;
         case 0x80: // copy rectangle from vram to vram
             Panic("Copy rectangle from VRAM to VRAM [Unimplemented]");
             break;
         case 0xA0: // copy rectangle from ram to vram
-            CommandAfterCount(2, [&]() { CopyRectCpuToVram(); });
+            CommandAfterCount(2, [this]() { CopyRectCpuToVram(); });
             break;
         case 0xC0: // copy rectangle from vram to ram
-            CommandAfterCount(2, [&]() { CopyRectVramToCpu(); });
+            CommandAfterCount(2, [this]() { CopyRectVramToCpu(); });
             break;
         case 0xE1: // draw mode setting
             // TODO: use status.value for this and similar commands
