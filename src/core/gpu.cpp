@@ -173,55 +173,55 @@ void GPU::SendGP0Cmd(u32 cmd) {
             LOG_WARN << "Interrupt request [Unimplemented]";
             break;
         case 0x20: case 0x22: // mono triangle
-            CommandAfterCount(3, std::bind(&GPU::DrawTriangleMono, this));
+            CommandAfterCount(3, [&]() { DrawTriangleMono(); });
             break;
         case 0x28: case 0x2A: // mono quad
-            CommandAfterCount(4, std::bind(&GPU::DrawQuadMono, this));
+            CommandAfterCount(4, [&]() { DrawQuadMono(); });
             break;
         case 0x24: case 0x25: case 0x26: case 0x27:  // textured triangle
-            CommandAfterCount(6, std::bind(&GPU::DrawTriangleTextured, this));
+            CommandAfterCount(6, [&]() { DrawTriangleTextured(); });
             break;
         case 0x2C: case 0x2D: case 0x2E: case 0x2F: // textured quad
-            CommandAfterCount(8, std::bind(&GPU::DrawQuadTextured, this));
+            CommandAfterCount(8, [&]() { DrawQuadTextured(); });
             break;
         case 0x30: case 0x32: // shaded triangle
-            CommandAfterCount(5, std::bind(&GPU::DrawTriangleShaded, this));
+            CommandAfterCount(5, [&]() { DrawTriangleShaded(); });
             break;
         case 0x38: case 0x3A: // shaded quad
-            CommandAfterCount(7, std::bind(&GPU::DrawQuadShaded, this));
+            CommandAfterCount(7, [&]() { DrawQuadShaded(); });
             break;
         case 0x34: case 0x36: // textured and shaded triangle
-            CommandAfterCount(8, std::bind(&GPU::DrawTriangleTexturedShaded, this));
+            CommandAfterCount(8, [&]() { DrawTriangleTexturedShaded(); });
             break;
         case 0x3C: case 0x3E: // textured and shaded quad
-            CommandAfterCount(11, std::bind(&GPU::DrawQuadTexturedShaded, this));
+            CommandAfterCount(11, [&]() { DrawQuadTexturedShaded(); });
             break;
         case 0x40: case 0x42: case 0x48: case 0x4A:
         case 0x50: case 0x52: case 0x58: case 0x5A:
             Panic("Received render line command 0x%2X [Unimplemented]", command.gp0_op.GetValue());
             break;
         case 0x60: case 0x62: // mono rectangle with variable size
-            CommandAfterCount(2, std::bind(&GPU::DrawRectangleMono, this));
+            CommandAfterCount(2, [&]() { DrawRectangleMono(); });
             break;
         case 0x68: case 0x6A: case 0x70: case 0x72: // mono rectangle with fixed size
         case 0x78: case 0x7A:
-            CommandAfterCount(1, std::bind(&GPU::DrawRectangleMono, this));
+            CommandAfterCount(1, [&]() { DrawRectangleMono(); });
             break;
         case 0x64: case 0x65: case 0x66: case 0x67: // textured rectangle with variable size
-            CommandAfterCount(3, std::bind(&GPU::DrawRectangleTexture, this));
+            CommandAfterCount(3, [&]() { DrawRectangleTexture(); });
             break;
         case 0x74: case 0x75: case 0x76: case 0x77: // textured rectangle with fixed size
         case 0x7C: case 0x7D: case 0x7E: case 0x7F:
-            CommandAfterCount(2, std::bind(&GPU::DrawRectangleTexture, this));
+            CommandAfterCount(2, [&]() { DrawRectangleTexture(); });
             break;
         case 0x80: // copy rectangle from vram to vram
             Panic("Copy rectangle from VRAM to VRAM [Unimplemented]");
             break;
         case 0xA0: // copy rectangle from ram to vram
-            CommandAfterCount(2, std::bind(&GPU::CopyRectCpuToVram, this, 0));
+            CommandAfterCount(2, [&]() { CopyRectCpuToVram(); });
             break;
         case 0xC0: // copy rectangle from vram to ram
-            CommandAfterCount(2, std::bind(&GPU::CopyRectVramToCpu, this));
+            CommandAfterCount(2, [&]() { CopyRectVramToCpu(); });
             break;
         case 0xE1: // draw mode setting
             // TODO: use status.value for this and similar commands

@@ -206,7 +206,7 @@ private:
     bool was_in_hblank = false, was_in_vblank = false;
 
     u32 command_counter = 0;
-    std::array<u32, 12> command_buffer;
+    std::array<u32, 12> command_buffer = {};
 
     Mode mode = Mode::Command;
     u32 words_remaining = 0;
@@ -218,7 +218,7 @@ private:
         BitField<u32, Gp1Command, 24, 8> gp1_op;
     } command;
 
-    std::array<Vertex, 4> vertices;
+    std::array<Vertex, 4> vertices = {};
     Rectangle rectangle = {};
 
     System* sys = nullptr;
