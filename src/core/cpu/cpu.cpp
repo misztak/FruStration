@@ -80,11 +80,13 @@ void CPU::Step() {
     if (sp.pc ==  0xA0 && Get(9) == 0x3C) bios.PutChar(Get(4));
     if (sp.pc ==  0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
     // psexe inject point
-    //if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/helloworld.psexe");
-    //if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpu.exe");
-    //if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/psxtest_cpx.exe");
-    //if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/HelloWorld16BPP.exe");
-    //if (sp.pc == 0x80030000) bus->LoadPsExe("../test/exe/ImageLoad.exe");
+    //const char* psexe_path = "../test/exe/helloworld.psexe";
+    //const char* psexe_path = "../test/exe/psxtest_cpu.exe";
+    //const char* psexe_path = "../test/exe/psxtest_cpx.exe";
+    //const char* psexe_path = "../test/exe/HelloWorld16BPP.exe";
+    //const char* psexe_path = "../test/exe/ImageLoad.exe";
+    const char* psexe_path = "../test/exe/n00bdemo.exe";
+    if (sp.pc == 0x80030000) Assert(sys->bus->LoadPsExe(psexe_path));
 
     UpdatePC(next_pc);
     // at this point the pc contains the address of the delay slot instruction
@@ -507,12 +509,17 @@ void CPU::Step() {
             Store32(address & ~0x3, new_value);
             break;
         }
-        case PrimaryOpcode::lwc2:
+        case PrimaryOpcode::lwc2: {
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            u32 value = Load32(address);
+            LOG_DEBUG << fmt::format("LWC2: 0x{:08X}", value);
             Panic("LWC2 (GTE) not implemented");
             break;
-        case PrimaryOpcode::swc2:
+        }
+        case PrimaryOpcode::swc2: {
             Panic("SWC2 (GTE) not implemented");
             break;
+        }
         case PrimaryOpcode::lwc0:
         case PrimaryOpcode::lwc1:
         case PrimaryOpcode::lwc3:
@@ -521,7 +528,7 @@ void CPU::Step() {
             Exception(ExceptionCode::CopError);
             break;
         default:
-            LOG_CRIT << fmt::format("Invalid opcode 0x{:02X} [0x{:08X}]\n", (u32)instr.n.op.GetValue(), instr.value);
+            LOG_CRIT << fmt::format("Invalid opcode 0x{:02X} [0x{:08X}]", (u32)instr.n.op.GetValue(), instr.value);
             Exception(ExceptionCode::ReservedInstr);
     }
 

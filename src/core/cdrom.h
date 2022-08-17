@@ -87,7 +87,7 @@ private:
 
     void ReadN();
 
-    u8 amm = 0, ass = 0, asect = 0;
+    u8 minute = 0, second = 0, sector = 0;
 
     std::function<void ()> second_response_command = nullptr;
 

@@ -1,8 +1,6 @@
 #include <GL/gl3w.h>
 #include <SDL.h>
 
-#include <iostream>
-
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
@@ -63,7 +61,7 @@ int main(int, char**) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags =
         (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow("FruStration", 0, 0,
+    SDL_Window* window = SDL_CreateWindow("FruStration", 3840, 0,
                                           Display::WIDTH, Display::HEIGHT, window_flags);
     if (!window) {
         LOG_CRIT << "Failed to create SDL_Window";

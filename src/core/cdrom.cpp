@@ -41,7 +41,7 @@ void CDROM::Step(u32 cycles) {
 
             if (cycles_until_second_response == 0) {
                 DebugAssert(second_response_command);
-                second_response_command();
+                std::invoke(second_response_command);
 
                 DebugAssert(!interrupt_fifo.empty());
                 // if the first response interrupt is already acknowledged we can
@@ -79,7 +79,7 @@ void CDROM::ScheduleSecondResponse(std::function<void ()> command, s32 cycles = 
 
     cycles_until_second_response = cycles;
 
-    second_response_command = command;
+    second_response_command = std::move(command);
 }
 
 void CDROM::SendInterrupt() {
@@ -119,9 +119,9 @@ void CDROM::ExecCommand(Command command) {
         case Command::Setloc:
             LOG_DEBUG << "Setloc";
             DebugAssert(parameter_fifo.size() >= 3);
-            amm = parameter_fifo[0];
-            ass = parameter_fifo[1];
-            asect = parameter_fifo[2];
+            minute = parameter_fifo[0];
+            second = parameter_fifo[1];
+            sector = parameter_fifo[2];
             PushResponse(INT3, stat.value);
             break;
         case Command::ReadN:
@@ -382,7 +382,7 @@ void CDROM::Reset() {
     status.value = 0;
     request = 0;
 
-    amm = 0, ass = 0, asect = 0;
+    minute = 0, second = 0, sector = 0;
 
     second_response_command = nullptr;
 
