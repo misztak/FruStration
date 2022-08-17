@@ -85,8 +85,8 @@ void CPU::Step() {
     //const char* psexe_path = "../test/exe/psxtest_cpx.exe";
     //const char* psexe_path = "../test/exe/HelloWorld16BPP.exe";
     //const char* psexe_path = "../test/exe/ImageLoad.exe";
-    const char* psexe_path = "../test/exe/n00bdemo.exe";
-    if (sp.pc == 0x80030000) Assert(sys->bus->LoadPsExe(psexe_path));
+    //const char* psexe_path = "../test/exe/n00bdemo.exe";
+    //if (sp.pc == 0x80030000) Assert(sys->bus->LoadPsExe(psexe_path));
 
     UpdatePC(next_pc);
     // at this point the pc contains the address of the delay slot instruction

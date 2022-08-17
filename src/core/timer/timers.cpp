@@ -19,6 +19,12 @@ TimerController::TimerController(System* system)
     timers[0] = &dot_timer;
     timers[1] = &hblank_timer;
     timers[2] = &system_timer;
+
+    // register timed event
+    sys->timed_events[TIMED_EVENT_TIMERS] = {
+        .add_cycles = [&](u32 cycles) { Step(cycles); },
+        .calc_cycles_until_next_event = [&]() { return CyclesUntilNextEvent(); }
+    };
 }
 
 void TimerController::Step(u32 cycles) {

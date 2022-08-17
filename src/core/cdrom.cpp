@@ -16,6 +16,12 @@ CDROM::CDROM(System* system): sys(system) {
 
     cycles_until_first_response = MaxCycles;
     cycles_until_second_response = MaxCycles;
+
+    // register timed event
+    sys->timed_events[TIMED_EVENT_CDROM] = {
+        .add_cycles = [&](u32 cycles) { Step(cycles); },
+        .calc_cycles_until_next_event = [&]() { return CyclesUntilNextEvent(); }
+    };
 }
 
 void CDROM::Step(u32 cycles) {

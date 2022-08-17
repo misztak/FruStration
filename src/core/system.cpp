@@ -23,10 +23,6 @@ System::System() {
     timers = std::make_unique<TimerController>(this);
     debugger = std::make_unique<Debugger>(this);
 
-    timed_components[0] = timers.get();
-    timed_components[1] = gpu.get();
-    timed_components[2] = cdrom.get();
-
     RecalculateCyclesUntilNextEvent();
 
     LOG_INFO << "Initialized PSX core";
@@ -83,15 +79,15 @@ void System::ForceUpdateComponents() {
 void System::RecalculateCyclesUntilNextEvent() {
     cycles_until_next_event = MaxCycles;
 
-    for (auto& component : timed_components) {
-        const u32 component_cycles = component->CyclesUntilNextEvent();
+    for (auto& event : timed_events) {
+        const u32 component_cycles = std::invoke(event.calc_cycles_until_next_event);
 
         cycles_until_next_event = std::min(cycles_until_next_event, component_cycles);
     }
 }
 
 void System::UpdateComponents(u32 cycles) {
-    for (auto& component: timed_components) {
-        component->Step(cycles);
+    for (auto& event: timed_events) {
+        std::invoke(event.add_cycles, cycles);
     }
 }

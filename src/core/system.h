@@ -4,9 +4,9 @@
 #include <memory>
 #include <string>
 #include <limits>
+#include <functional>
 
 #include "types.h"
-#include "timed_component.h"
 
 namespace CPU {
 class CPU;
@@ -21,6 +21,11 @@ class TimerController;
 class Debugger;
 
 constexpr u32 MaxCycles = std::numeric_limits<u32>::max();
+
+constexpr u32 TIMED_EVENT_COUNT = 3;
+constexpr u32 TIMED_EVENT_TIMERS = 0;
+constexpr u32 TIMED_EVENT_GPU = 1;
+constexpr u32 TIMED_EVENT_CDROM = 2;
 
 class System {
 public:
@@ -41,13 +46,15 @@ public:
     std::unique_ptr<TimerController> timers;
     std::unique_ptr<Debugger> debugger;
 
-private:
-    static constexpr u32 TIMED_COMPONENT_COUNT = 3;
+    struct TimedEvent {
+        std::function<void(u32)> add_cycles = nullptr;
+        std::function<u32()> calc_cycles_until_next_event = nullptr;
+    };
 
+    std::array<TimedEvent, (u32) TIMED_EVENT_COUNT> timed_events = {};
+private:
     void UpdateComponents(u32 cycles);
 
     u32 accumulated_cycles = 0;
     u32 cycles_until_next_event = 0;
-
-    std::array<TimedComponent*, TIMED_COMPONENT_COUNT> timed_components = {};
 };

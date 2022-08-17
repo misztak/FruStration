@@ -16,6 +16,12 @@ GPU::GPU(System* system): sys(system), renderer(this), vram(VRAM_SIZE, 0), outpu
     status.can_receive_cmd_word = true;
     status.can_send_vram_to_cpu = true;
     status.can_receive_dma_block = true;
+
+    // register timed event
+    sys->timed_events[TIMED_EVENT_GPU] = {
+        .add_cycles = [&](u32 cycles) { Step(cycles); },
+        .calc_cycles_until_next_event = [&]() { return CyclesUntilNextEvent(); }
+    };
 }
 
 void GPU::Step(u32 cpu_cycles) {

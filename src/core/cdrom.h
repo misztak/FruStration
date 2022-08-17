@@ -5,17 +5,16 @@
 
 #include "types.h"
 #include "bitfield.h"
-#include "timed_component.h"
 
 class System;
 
-class CDROM : public TimedComponent {
+class CDROM {
 public:
     CDROM(System* system);
     void Reset();
 
-    void Step(u32 cycles) override;
-    u32 CyclesUntilNextEvent() override;
+    void Step(u32 cycles);
+    u32 CyclesUntilNextEvent();
 
     u8 Load(u32 address);
     u8 Peek(u32 address);

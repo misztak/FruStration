@@ -3,11 +3,10 @@
 #include "types.h"
 #include "bitfield.h"
 #include "timer.h"
-#include "timed_component.h"
 
 class System;
 
-class TimerController : public TimedComponent {
+class TimerController {
 public:
     TimerController(System* system);
     void Reset();
@@ -16,8 +15,8 @@ public:
     u32 Peek(u32 address);
     void Store(u32 address, u32 value);
 
-    void Step(u32 cycles) override;
-    u32 CyclesUntilNextEvent() override;
+    void Step(u32 cycles);
+    u32 CyclesUntilNextEvent();
 
     void DrawTimerState(bool* open);
 

@@ -5,11 +5,10 @@
 #include "types.h"
 #include "bitfield.h"
 #include "sw_renderer.h"
-#include "timed_component.h"
 
 class System;
 
-class GPU : public TimedComponent {
+class GPU {
 friend class Renderer;
 public:
     static constexpr u32 VRAM_WIDTH = 1024;
@@ -92,8 +91,8 @@ private:
         return std::make_pair(gpu_cycles, dots);
     }
 
-    void Step(u32 cycles) override;
-    u32 CyclesUntilNextEvent() override;
+    void Step(u32 cycles);
+    u32 CyclesUntilNextEvent();
 
     void DrawQuadMono();
     void DrawQuadShaded();
