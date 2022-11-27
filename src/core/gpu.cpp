@@ -310,7 +310,9 @@ void GPU::SendGP1Cmd(u32 cmd) {
             new_status.display_area_color_depth = (cmd >> 4) & 0x1;
             new_status.vertical_interlace = (cmd >> 5) & 0x1;
             new_status.horizontal_res_2 = (cmd >> 6) & 0x1;
-            if ((cmd >> 7) & 0x1) Panic("Tried to set GPUSTAT.14!");
+            if ((cmd >> 7) & 0x1) {
+                LOG_WARN << "Unimplemented: Toggled GPUSTAT.14 (Reverse Flag)";
+            }
 
             if (new_status.value != status.value) {
                 sys->ForceUpdateComponents();
@@ -465,7 +467,12 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
 
         // determine the end of a line
         x_pos_max = x_pos + width;
-        Assert(x_pos_max < VRAM_WIDTH);
+
+        // TODO: add wrap-around positions
+        // HACK: prevents wrap-arounds by clipping the x value
+        if (x_pos_max >= VRAM_WIDTH) {
+            x_pos_max = VRAM_WIDTH - 1;
+        }
 
         mode = Mode::DataFromCPU;
         //LOG_DEBUG << fmt::format("CopyCPUtoVram: {} words from (x={}, y={}) to (x={}, y={})",

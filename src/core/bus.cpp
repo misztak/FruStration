@@ -67,21 +67,21 @@ bool BUS::LoadPsExe(const std::string& path) {
         return false;
     }
 
-    u32 exec_data = *reinterpret_cast<u32*>(buffer.data() + 0x10);
-    u32 text_start = *reinterpret_cast<u32*>(buffer.data() + 0x18);
-    // u32 text_size = *reinterpret_cast<u32*>(buffer.data() + 0x1C);
-    u32 stack_start_address = *reinterpret_cast<u32*>(buffer.data() + 0x30);
+    u32 execution_start_addr = *reinterpret_cast<u32*>(buffer.data() + 0x10);
+    u32 text_segment_start = *reinterpret_cast<u32*>(buffer.data() + 0x18);
+    // u32 text_segment_size = *reinterpret_cast<u32*>(buffer.data() + 0x1C);
+    u32 stack_start_addr = *reinterpret_cast<u32*>(buffer.data() + 0x30);
 
     for (u32 i = 0x800; i < length; i++) {
-        ram.at(exec_data & 0x1FFFFFFF) = buffer[i];
-        exec_data++;
+        ram.at(text_segment_start & 0x1FFFFFFF) = buffer[i];
+        text_segment_start++;
     }
 
-    sys->cpu->sp.pc = text_start;
-    sys->cpu->next_pc = text_start;
-    sys->cpu->instr.value = Load<u32>(text_start);
+    sys->cpu->sp.pc = execution_start_addr;
+    sys->cpu->next_pc = execution_start_addr + 4;
+    sys->cpu->instr.value = Load<u32>(execution_start_addr);
 
-    sys->cpu->gp.sp = stack_start_address;
+    sys->cpu->gp.sp = stack_start_addr;
 
     return true;
 }
