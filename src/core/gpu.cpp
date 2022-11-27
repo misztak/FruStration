@@ -465,21 +465,15 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
         // the GPU uses 16-bit pixels but receives them in 32-bit packets
         words_remaining = img_size / 2;
 
-        // determine the end of a line
+        // determine the length of a line (can overflow VRAM_WIDTH in which case x_pos must wrap around)
         x_pos_max = x_pos + width;
-
-        // TODO: add wrap-around positions
-        // HACK: prevents wrap-arounds by clipping the x value
-        if (x_pos_max >= VRAM_WIDTH) {
-            x_pos_max = VRAM_WIDTH - 1;
-        }
 
         mode = Mode::DataFromCPU;
         //LOG_DEBUG << fmt::format("CopyCPUtoVram: {} words from (x={}, y={}) to (x={}, y={})",
         //                         words_remaining, x_pos, y_pos, x_pos + width - 1, y_pos + height - 1);
     } else if (mode == Mode::DataFromCPU) {
         // first halfword
-        vram[x_pos + VRAM_WIDTH * y_pos] = data & 0xFFFF;
+        vram[(x_pos % VRAM_WIDTH) + VRAM_WIDTH * y_pos] = data & 0xFFFF;
         // increment and check for overflow
         auto increment = [&] {
             x_pos++;
@@ -491,7 +485,7 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
         increment();
 
         // second halfword
-        vram[x_pos + VRAM_WIDTH * y_pos] = data >> 16;
+        vram[(x_pos % VRAM_WIDTH) + VRAM_WIDTH * y_pos] = data >> 16;
         increment();
     } else {
         Panic("Invalid GPU transfer mode during CopyRectCpuToVram");
@@ -517,15 +511,15 @@ void GPU::CopyRectVramToCpu() {
         // the GPU uses 16-bit pixels but sends them in 32-bit packets
         words_remaining = img_size / 2;
 
-        // determine the end of a line
+        // determine the length of a line (can overflow VRAM_WIDTH in which case x_pos must wrap around)
         x_pos_max = x_pos + width;
-        Assert(x_pos_max < VRAM_WIDTH);
+
         mode = Mode::DataToCPU;
         LOG_DEBUG << fmt::format("CopyVramToCPU: {} words from (x={}, y={}) to (x={}, y={})",
                                  words_remaining, x_pos, y_pos, x_pos + width - 1, y_pos + height - 1);
     } else if (mode == Mode::DataToCPU) {
         // first halfword
-        u32 word1 = vram[x_pos + VRAM_WIDTH * y_pos];
+        u32 word1 = vram[(x_pos % VRAM_WIDTH) + VRAM_WIDTH * y_pos];
         // increment and check for overflow
         auto increment = [&] {
             x_pos++;
@@ -537,7 +531,7 @@ void GPU::CopyRectVramToCpu() {
         increment();
 
         // second halfword
-        u32 word2 = vram[x_pos + VRAM_WIDTH * y_pos];
+        u32 word2 = vram[(x_pos % VRAM_WIDTH) + VRAM_WIDTH * y_pos];
         increment();
 
         gpu_read = (word2 << 16) | word1;
