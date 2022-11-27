@@ -251,6 +251,8 @@ void BUS::Store(u32 address, Value value) {
 }
 
 u8 BUS::Peek(u32 address) {
+    // TODO: make Peek a template function like Load and Store
+
     const auto ToU8 = [&](u32 value) {
         return (value >> (address & 0x3)) & 0xFF;
     };
@@ -298,6 +300,17 @@ u8 BUS::Peek(u32 address) {
     if (InArea(EXP_REG_3_START, EXP_REG_3_SIZE, physical_addr)) return 0xFF;
 
     return 0;
+}
+
+u32 BUS::Peek32(u32 address) {
+    // HACK: just glue the values together until BUS::Peek supports all data sizes
+    u32 result = 0;
+    result |= Peek(address);
+    result |= Peek(address + 1) << 8;
+    result |= Peek(address + 2) << 16;
+    result |= Peek(address + 3) << 24;
+
+    return result;
 }
 
 void BUS::Reset() {

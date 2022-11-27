@@ -5,13 +5,22 @@
 
 #include "types.h"
 
+class System;
+
 class BIOS {
 public:
-    BIOS();
+    BIOS(System* system);
     void TraceFunction(u32 address, u32 index);
+    void TraceAFunction(u32 index);
+
     void PutChar(s8 value);
 private:
+    template <u32 arg_count>
+    void PrintFnWithArgs(const char* format_string);
+
     std::string stdout_buffer;
+
+    System* sys = nullptr;
 };
 
 // http://problemkaputt.de/psx-spx.htm#kernelbios

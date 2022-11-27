@@ -15,7 +15,7 @@ namespace CPU {
 bool DISASM_INSTRUCTION = false;
 bool TRACE_BIOS_CALLS = false;
 
-CPU::CPU(System* system) : sys(system), disassembler(this) {
+CPU::CPU(System* system) : sys(system), bios(system), disassembler(this) {
     cp.prid = 0x2;
     UpdatePC(0xBFC00000);
 }

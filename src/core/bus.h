@@ -26,6 +26,7 @@ public:
 
     // read from memory without causing side effects (i.e. MMIO state changes)
     u8 Peek(u32 address);
+    u32 Peek32(u32 address);
 private:
     ALWAYS_INLINE u32 MaskRegion(u32 address) { return address & MEM_REGION_MASKS[address >> 29]; }
 
