@@ -53,7 +53,7 @@ bool BUS::LoadPsExe(const std::string& path) {
     long length = file.tellg();
     file.seekg(0, std::ifstream::beg);
 
-    if (length < 0x800 || length > RAM_SIZE) {
+    if (length <= PSEXE_HEADER_SIZE) {
         LOG_WARN << "PS-EXE: invalid file size (" << length << " byte)";
         return false;
     }
@@ -67,15 +67,18 @@ bool BUS::LoadPsExe(const std::string& path) {
         return false;
     }
 
+    // entry point for psexe execution
     u32 execution_start_addr = *reinterpret_cast<u32*>(buffer.data() + 0x10);
-    u32 text_segment_start = *reinterpret_cast<u32*>(buffer.data() + 0x18);
-    // u32 text_segment_size = *reinterpret_cast<u32*>(buffer.data() + 0x1C);
+
+    // physical start address of TEXT segment (always the first segment in a psexe file)
+    u32 text_segment_start = *reinterpret_cast<u32*>(buffer.data() + 0x18) & 0x1FFFFFFF;
+    //u32 text_segment_size = *reinterpret_cast<u32*>(buffer.data() + 0x1C);
+    Assert(text_segment_start + length - PSEXE_HEADER_SIZE < RAM_SIZE);
+
+    // new stack pointer value
     u32 stack_start_addr = *reinterpret_cast<u32*>(buffer.data() + 0x30);
 
-    for (u32 i = 0x800; i < length; i++) {
-        ram.at(text_segment_start & 0x1FFFFFFF) = buffer[i];
-        text_segment_start++;
-    }
+    std::memcpy(ram.data() + text_segment_start, buffer.data() + PSEXE_HEADER_SIZE, length - PSEXE_HEADER_SIZE);
 
     sys->cpu->sp.pc = execution_start_addr;
     sys->cpu->next_pc = execution_start_addr + 4;
@@ -247,7 +250,6 @@ void BUS::Store(u32 address, Value value) {
     }
 
     Panic("Tried to store in invalid address [0x%08X]", address);
-    return;
 }
 
 u8 BUS::Peek(u32 address) {
@@ -339,12 +341,6 @@ void BUS::DrawMemEditor(bool* open) {
         ImGui::EndTabBar();
     }
     ImGui::End();
-}
-
-void BUS::DumpRAM(const std::string& path) {
-    std::ofstream out_file(path);
-    out_file.write((char*) ram.data(), ram.size());
-    LOG_INFO << "Dumped RAM into file " << path;
 }
 
 template u32 BUS::Load<u32>(u32 address);

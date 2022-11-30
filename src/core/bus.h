@@ -19,7 +19,6 @@ public:
     bool LoadPsExe(const std::string& path);
 
     void DrawMemEditor(bool* open);
-    void DumpRAM(const std::string& path);
 
     template <typename ValueType> ValueType Load(u32 address);
     template <typename Value> void Store(u32 address, Value value);
@@ -28,7 +27,7 @@ public:
     u8 Peek(u32 address);
     u32 Peek32(u32 address);
 private:
-    ALWAYS_INLINE u32 MaskRegion(u32 address) { return address & MEM_REGION_MASKS[address >> 29]; }
+    ALWAYS_INLINE static u32 MaskRegion(u32 address) { return address & MEM_REGION_MASKS[address >> 29]; }
 
     static constexpr u32 BIOS_SIZE = 512 * 1024;
     static constexpr u32 RAM_SIZE = 2048 * 1024;
@@ -48,7 +47,9 @@ private:
     static constexpr u32 EXP_REG_2_START = 0x1F802000;
     static constexpr u32 EXP_REG_3_START = 0x1FA00000;
 
-    const u32 MEM_REGION_MASKS[8] = {
+    static constexpr u32 PSEXE_HEADER_SIZE = 0x800;
+
+    static constexpr u32 MEM_REGION_MASKS[8] = {
         // KUSEG - 2048 MB
         0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
         // KSEG0 - 512 MB
