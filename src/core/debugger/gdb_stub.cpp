@@ -1,10 +1,13 @@
 #include "gdb_stub.h"
 
 #ifdef _WIN32
+// clang-format off
+#include <winsock2.h>
 #include <io.h>
 #include <iphlpapi.h>
-#include <winsock2.h>
 #include <ws2tcpip.h>
+// clang-format on
+
 #define SHUT_RDWR 2
 using ssize_t = long long;
 #else
