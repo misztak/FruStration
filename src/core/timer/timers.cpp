@@ -18,8 +18,8 @@ TimerController::TimerController(System* system)
     timers[2] = &system_timer;
 
     // register timed event
-    sys->timed_events[TIMED_EVENT_TIMERS] = {.add_cycles = [this](u32 cycles) { Step(cycles); },
-                                             .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }};
+    sys->RegisterEvent(
+        System::TimedEvent::Timer, [this](u32 cycles) { Step(cycles); }, [this]() { return CyclesUntilNextEvent(); });
 }
 
 void TimerController::Step(u32 cycles) {

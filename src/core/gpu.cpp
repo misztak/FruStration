@@ -18,8 +18,8 @@ GPU::GPU(System* system) : sys(system), renderer(this), vram(VRAM_SIZE, 0), outp
     status.can_receive_dma_block = true;
 
     // register timed event
-    sys->timed_events[TIMED_EVENT_GPU] = {.add_cycles = [this](u32 cycles) { Step(cycles); },
-                                          .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }};
+    sys->RegisterEvent(
+        System::TimedEvent::GPU, [this](u32 cycles) { Step(cycles); }, [this]() { return CyclesUntilNextEvent(); });
 }
 
 void GPU::Step(u32 cpu_cycles) {

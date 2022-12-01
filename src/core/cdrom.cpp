@@ -18,8 +18,8 @@ CDROM::CDROM(System* system) : sys(system) {
     cycles_until_second_response = MaxCycles;
 
     // register timed event
-    sys->timed_events[TIMED_EVENT_CDROM] = {.add_cycles = [this](u32 cycles) { Step(cycles); },
-                                            .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }};
+    sys->RegisterEvent(
+        System::TimedEvent::CDROM, [this](u32 cycles) { Step(cycles); }, [this]() { return CyclesUntilNextEvent(); });
 }
 
 void CDROM::Step(u32 cycles) {
