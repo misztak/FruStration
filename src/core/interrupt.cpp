@@ -8,7 +8,7 @@
 
 LOG_CHANNEL(IRQ);
 
-InterruptController::InterruptController(System* system): sys(system) {}
+InterruptController::InterruptController(System* system) : sys(system) {}
 
 void InterruptController::Reset() {
     stat.value = 0;
@@ -54,4 +54,3 @@ void InterruptController::UpdateCP0Interrupt() {
     else
         sys->cpu->cp.cause.IP &= ~BIT_10;
 }
-

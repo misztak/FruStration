@@ -1,7 +1,7 @@
 #include "gpu.h"
 
-#include "imgui.h"
 #include "fmt/format.h"
+#include "imgui.h"
 
 #include "debug_utils.h"
 #include "interrupt.h"
@@ -10,7 +10,7 @@
 
 LOG_CHANNEL(GPU);
 
-GPU::GPU(System* system): sys(system), renderer(this), vram(VRAM_SIZE, 0), output(VRAM_SIZE * 2, 0) {
+GPU::GPU(System* system) : sys(system), renderer(this), vram(VRAM_SIZE, 0), output(VRAM_SIZE * 2, 0) {
     status.display_disabled = true;
     // pretend that everything is ok
     status.can_receive_cmd_word = true;
@@ -18,10 +18,8 @@ GPU::GPU(System* system): sys(system), renderer(this), vram(VRAM_SIZE, 0), outpu
     status.can_receive_dma_block = true;
 
     // register timed event
-    sys->timed_events[TIMED_EVENT_GPU] = {
-        .add_cycles = [this](u32 cycles) { Step(cycles); },
-        .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }
-    };
+    sys->timed_events[TIMED_EVENT_GPU] = {.add_cycles = [this](u32 cycles) { Step(cycles); },
+                                          .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }};
 }
 
 void GPU::Step(u32 cpu_cycles) {
@@ -105,12 +103,16 @@ u32 GPU::CyclesUntilNextEvent() {
     }
 
     const u32 lines_until_vblank_flip = (scanline < 240 ? 240 : Scanlines()) - scanline;
-    const float cycles_until_vblank_flip = lines_until_vblank_flip * GpuCyclesPerScanline() - accumulated_dots / dots_per_cycle;
+    const float cycles_until_vblank_flip =
+        lines_until_vblank_flip * GpuCyclesPerScanline() - accumulated_dots / dots_per_cycle;
     MinCycles(cycles_until_vblank_flip);
 
     auto& hblank_timer = sys->timers->hblank_timer;
     if (!hblank_timer.paused && !hblank_timer.IsUsingSystemClock()) {
-        const float cycles_until_hblank = ((accumulated_dots < horizontal_res ? horizontal_res : dots_per_scanline + horizontal_res) - accumulated_dots) / dots_per_cycle;
+        const float cycles_until_hblank =
+            ((accumulated_dots < horizontal_res ? horizontal_res : dots_per_scanline + horizontal_res) -
+             accumulated_dots) /
+            dots_per_cycle;
         const float cycles_until_irq = hblank_timer.CyclesUntilNextIRQ() * GpuCyclesPerScanline() - cycles_until_hblank;
         MinCycles(cycles_until_irq);
     }
@@ -149,6 +151,8 @@ void GPU::SendGP0Cmd(u32 cmd) {
             command_counter++;
         }
     };
+
+    // clang-format off
 
     switch (command.gp0_op) {
         case 0x00: // nop
@@ -235,23 +239,23 @@ void GPU::SendGP0Cmd(u32 cmd) {
             tex_rectangle_xflip = (cmd >> 12) & 0x1;
             tex_rectangle_yflip = (cmd >> 13) & 0x1;
             break;
-        case 0xE2: // texture window setting
+        case 0xE2:    // texture window setting
             tex_window_x_mask = cmd & 0x1F;
             tex_window_y_mask = (cmd >> 5) & 0x1F;
             tex_window_x_offset = (cmd >> 10) & 0x1F;
             tex_window_y_offset = (cmd >> 15) & 0x1F;
             break;
-        case 0xE3: // drawing area top left
+        case 0xE3:    // drawing area top left
             drawing_area_top = static_cast<u16>((cmd >> 10) & 0x1FF);
             drawing_area_left = static_cast<u16>(cmd & 0x3FF);
             //LOG_DEBUG << "Set draw area top=" << drawing_area_top << ", left=" << drawing_area_left;
             break;
-        case 0xE4: // drawing area bottom right
+        case 0xE4:    // drawing area bottom right
             drawing_area_bottom = static_cast<u16>((cmd >> 10) & 0x1FF);
             drawing_area_right = static_cast<u16>(cmd & 0x3FF);
             //LOG_DEBUG << "Set draw area bottom=" << drawing_area_bottom << ", right=" << drawing_area_right;
             break;
-        case 0xE5: // drawing offset
+        case 0xE5:    // drawing offset
         {
             const u16 x = static_cast<u16>(cmd & 0x7FF);
             const u16 y = static_cast<u16>((cmd >> 11) & 0x7FF);
@@ -259,18 +263,22 @@ void GPU::SendGP0Cmd(u32 cmd) {
             drawing_y_offset = static_cast<s16>(y << 5) >> 5;
             break;
         }
-        case 0xE6: // mask bit setting
+        case 0xE6:    // mask bit setting
             status.mask_enable = cmd & 0x1;
             status.draw_pixels = (cmd >> 1) & 0x1;
             break;
         default:
             Panic("Invalid GP0 command 0x%08X", cmd);
     }
+
+    // clang-format on
 }
 
 void GPU::SendGP1Cmd(u32 cmd) {
     //LOG_DEBUG << fmt::format("GPU received GP1 command 0x{:08X}", cmd);
     command.value = cmd;
+
+    // clang-format off
 
     switch (command.gp1_op) {
         case Gp1Command::reset:
@@ -300,7 +308,8 @@ void GPU::SendGP1Cmd(u32 cmd) {
             display_line_start = cmd & 0x3FF;
             display_line_end = (cmd >> 10) & 0x3FF;
             break;
-        case Gp1Command::display_mode: {
+        case Gp1Command::display_mode:
+        {
             GpuStatus new_status;
             new_status.value = status.value;
 
@@ -334,8 +343,9 @@ void GPU::SendGP1Cmd(u32 cmd) {
         default:
             Panic("Unimplemented GP1 command 0x%08X", cmd);
     }
-}
 
+    // clang-format on
+}
 
 //              //
 //  TRIANGLES   //
@@ -363,7 +373,6 @@ void GPU::DrawTriangleTextured() {
 void GPU::DrawTriangleTexturedShaded() {
     Panic("Unimplemented");
 }
-
 
 //              //
 //    QUADS     //
@@ -415,7 +424,6 @@ void GPU::DrawQuadTexturedShaded() {
     Panic("Unimplemented");
 }
 
-
 //              //
 //  RECTANGLES  //
 //              //
@@ -443,8 +451,6 @@ void GPU::DrawRectangleTexture() {
 
     renderer.Draw(command_buffer[0]);
 }
-
-
 
 void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
     static u32 x_pos_max = 0;
@@ -515,8 +521,8 @@ void GPU::CopyRectVramToCpu() {
         x_pos_max = x_pos + width;
 
         mode = Mode::DataToCPU;
-        LOG_DEBUG << fmt::format("CopyVramToCPU: {} words from (x={}, y={}) to (x={}, y={})",
-                                 words_remaining, x_pos, y_pos, x_pos + width - 1, y_pos + height - 1);
+        LOG_DEBUG << fmt::format("CopyVramToCPU: {} words from (x={}, y={}) to (x={}, y={})", words_remaining, x_pos,
+                                 y_pos, x_pos + width - 1, y_pos + height - 1);
     } else if (mode == Mode::DataToCPU) {
         // first halfword
         u32 word1 = vram[(x_pos % VRAM_WIDTH) + VRAM_WIDTH * y_pos];
@@ -657,7 +663,7 @@ void GPU::DrawGpuState(bool* open) {
     ImGui::Separator();
     const ImVec4 white(1.0, 1.0, 1.0, 1.0);
     const ImVec4 grey(0.5, 0.5, 0.5, 1.0);
-    for (u32 i=0; i<12; i++) {
+    for (u32 i = 0; i < 12; i++) {
         ImGui::TextColored((i > command_counter) ? grey : white, " %-2d  %08X", i, command_buffer[i]);
         if (i == command_counter) {
             ImGui::SameLine();
@@ -701,7 +707,8 @@ void GPU::DrawGpuState(bool* open) {
     ImGui::Text("Horiz. range: start=%u, end=%u", display_horizontal_start, display_horizontal_end);
     ImGui::Text("Line range:   start=%u, end=%u", display_line_start, display_line_end);
 
-    ImGui::Text("Video mode: %s - %d BPP", status.video_mode == VideoMode::NTSC ? "NTSC" : "PAL", status.display_area_color_depth ? 24 : 15);
+    ImGui::Text("Video mode: %s - %d BPP", status.video_mode == VideoMode::NTSC ? "NTSC" : "PAL",
+                status.display_area_color_depth ? 24 : 15);
     ImGui::Text("Horizontal resolution: %u", HorizontalRes());
     ImGui::Text("Vertical resolution:   %u", VerticalRes());
 

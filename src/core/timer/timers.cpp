@@ -1,7 +1,7 @@
 #include "timers.h"
 
-#include "imgui.h"
 #include "fmt/format.h"
+#include "imgui.h"
 
 #include "debug_utils.h"
 #include "gpu.h"
@@ -11,20 +11,15 @@
 LOG_CHANNEL(Timer);
 
 TimerController::TimerController(System* system)
-    : dot_timer(TMR0, system),
-      hblank_timer(TMR1, system),
-      system_timer(TMR2, system),
-      sys(system) {
+    : dot_timer(TMR0, system), hblank_timer(TMR1, system), system_timer(TMR2, system), sys(system) {
 
     timers[0] = &dot_timer;
     timers[1] = &hblank_timer;
     timers[2] = &system_timer;
 
     // register timed event
-    sys->timed_events[TIMED_EVENT_TIMERS] = {
-        .add_cycles = [this](u32 cycles) { Step(cycles); },
-        .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }
-    };
+    sys->timed_events[TIMED_EVENT_TIMERS] = {.add_cycles = [this](u32 cycles) { Step(cycles); },
+                                             .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }};
 }
 
 void TimerController::Step(u32 cycles) {
@@ -58,18 +53,21 @@ u32 TimerController::Load(u32 address) {
         value = timers[timer_index]->counter;
     }
 
-    else if (timer_address == 0x4) {
+    else if (timer_address == 0x4)
+    {
         // reached flags get reset after read
         value = timers[timer_index]->mode.value;
         timers[timer_index]->mode.reached_target = false;
         timers[timer_index]->mode.reached_max_value = false;
     }
 
-    else if (timer_address == 0x8) {
+    else if (timer_address == 0x8)
+    {
         value = timers[timer_index]->target;
     }
 
-    else {
+    else
+    {
         Panic("Invalid timer register");
     }
 
@@ -90,10 +88,11 @@ void TimerController::Store(u32 address, u32 value) {
     auto& timer = timers[timer_index];
 
     if (timer_address == 0x0) {
-        timer->counter = value;
-    }
 
-    else if (timer_address == 0x4) {
+        timer->counter = value;
+
+    } else if (timer_address == 0x4) {
+
         // reset IRQ
         timer->pending_irq = false;
 
@@ -107,13 +106,12 @@ void TimerController::Store(u32 address, u32 value) {
         }
 
         timer->UpdatePaused();
-    }
 
-    else if (timer_address == 0x8) {
+    } else if (timer_address == 0x8) {
+
         timer->target = value;
-    }
 
-    else {
+    } else {
         Panic("Invalid timer register");
     }
 
@@ -138,7 +136,7 @@ u32 TimerController::Peek(u32 address) {
 }
 
 void TimerController::Reset() {
-    for (auto& timer: timers) {
+    for (auto& timer : timers) {
         timer->counter = 0;
         timer->mode.value = 0;
         timer->target = 0;
@@ -192,7 +190,8 @@ void TimerController::DrawTimerState(bool* open) {
         auto& timer = timers[i];
         ImGui::Text("TMR%u [%s]", i, timer->paused ? "paused" : "running");
         ImGui::Text("%u", timer->counter);
-        ImGui::Text("%u [%s]", timer->target & 0xFFFF, timer->mode.reset_mode == ResetMode::AfterTarget ? "enabled" : "disabled");
+        ImGui::Text("%u [%s]", timer->target & 0xFFFF,
+                    timer->mode.reset_mode == ResetMode::AfterTarget ? "enabled" : "disabled");
         ImGui::Text("%s", timer->mode.sync_enabled ? "enabled" : "disabled");
         ImGui::TextColored(timer->mode.sync_enabled ? white : grey, "%u", timer->mode.sync_mode.GetValue());
         ImGui::Text("%s", timer->mode.irq_on_target ? "yes" : "no");

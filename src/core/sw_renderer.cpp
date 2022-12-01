@@ -10,17 +10,17 @@
 
 LOG_CHANNEL(Renderer);
 
-Renderer::Renderer(GPU* gpu): gpu(gpu) {}
+Renderer::Renderer(GPU* gpu) : gpu(gpu) {}
 
 static constexpr s32 EdgeFunction(Vertex* v0, Vertex* v1, Vertex* v2) {
-    return (s32) ((v1->x - v0->x) * (v2->y - v0->y) - (v1->y - v0->y) * (v2->x - v0->x));
+    return (s32)((v1->x - v0->x) * (v2->y - v0->y) - (v1->y - v0->y) * (v2->x - v0->x));
 }
 
 static constexpr s32 EdgeFunction(Vertex* v0, Vertex* v1, s16 px, s16 py) {
-    return (s32) ((v1->x - v0->x) * (py - v0->y) - (v1->y - v0->y) * (px - v0->x));
+    return (s32)((v1->x - v0->x) * (py - v0->y) - (v1->y - v0->y) * (px - v0->x));
 }
 
-template <u32 draw_flags>
+template<u32 draw_flags>
 void Renderer::DrawTriangle() {
 #define DRAW_FLAGS_SET(flags) ((draw_flags & (flags)) != 0)
 
@@ -122,28 +122,28 @@ void Renderer::DrawTriangle() {
 #undef DRAW_FLAGS_SET
 }
 
-template <u32 draw_flags>
+template<u32 draw_flags>
 void Renderer::Draw4PointPolygon() {
     // build 4-point polygon using two calls to DrawTriangle
     DrawTriangle<draw_flags>();
     DrawTriangle<draw_flags | SECOND_TRIANGLE>();
 }
 
-template <RectSize size>
+template<RectSize size>
 static constexpr std::tuple<u16, u16> GetSize(Rectangle& rect) {
 #define MAKE(x, y) std::make_tuple(u16(x), u16(y))
 
     switch (size) {
-        case RectSize::ONE:      return MAKE(1, 1);
-        case RectSize::EIGHT:    return MAKE(8, 8);
-        case RectSize::SIXTEEN:  return MAKE(16, 16);
+        case RectSize::ONE: return MAKE(1, 1);
+        case RectSize::EIGHT: return MAKE(8, 8);
+        case RectSize::SIXTEEN: return MAKE(16, 16);
         case RectSize::VARIABLE: return MAKE(rect.size_x, rect.size_y);
     }
 
 #undef MAKE
 }
 
-template <RectSize size, u32 draw_flags>
+template<RectSize size, u32 draw_flags>
 void Renderer::DrawRectangle() {
 #define DRAW_FLAGS_SET(flags) ((draw_flags & (flags)) != 0)
 
@@ -185,7 +185,8 @@ u16 Renderer::GetTexel(u8 tex_x, u8 tex_y) {
     u16 texel;
 
     switch (tex_mode) {
-        case 0: {
+        case 0:
+        {
             u32 tx = std::min<u32>(base_x + (tex_x / 4), 1023u);
             u32 ty = std::min<u32>(base_y + tex_y, 511u);
 
@@ -198,7 +199,8 @@ u16 Renderer::GetTexel(u8 tex_x, u8 tex_y) {
             texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
             break;
         }
-        case 1: {
+        case 1:
+        {
             u32 tx = std::min<u32>(base_x + (tex_x / 2), 1023u);
             u32 ty = std::min<u32>(base_y + tex_y, 511u);
 
@@ -211,22 +213,23 @@ u16 Renderer::GetTexel(u8 tex_x, u8 tex_y) {
             texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
             break;
         }
-        case 2: {
+        case 2:
+        {
             u32 texel_x = (base_x + tex_x) & 1023u;
             u32 texel_y = (base_y + tex_y) & 511u;
 
             texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
             break;
         }
-        default:
-            texel = 0xFF;
-            LOG_WARN << "Invalid texture color mode 3";
+        default: texel = 0xFF; LOG_WARN << "Invalid texture color mode 3";
     }
 
     return texel;
 }
 
 void Renderer::Draw(u32 cmd) {
+    // clang-format off
+
     switch ((cmd >> 24)) {
         case 0x20: DrawTriangle<OPAQUE>(); break;
         case 0x22: DrawTriangle<NO_FLAGS>(); break;
@@ -280,7 +283,8 @@ void Renderer::Draw(u32 cmd) {
         case 0x7E: DrawRectangle<RectSize::VARIABLE, TEXTURED | BLENDING>(); break;
         case 0x7F: DrawRectangle<RectSize::VARIABLE, TEXTURED>(); break;
 
-        default:
-            Panic("Invalid draw command 0x%08X", cmd);
+        default: Panic("Invalid draw command 0x%08X", cmd);
     }
+
+    // clang-format on
 }

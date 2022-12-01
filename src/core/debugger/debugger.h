@@ -1,7 +1,7 @@
 #pragma once
 
-#include <unordered_map>
 #include <array>
+#include <unordered_map>
 
 #include "types.h"
 
@@ -12,17 +12,16 @@ public:
     ALWAYS_INLINE bool IsBreakpoint(u32 address) {
         return unlikely(breakpoints.size() != 0 && breakpoints.count(address));
     }
-    ALWAYS_INLINE bool IsBreakpointEnabled(u32 address) {
-        return breakpoints.find(address)->second.enabled;
-    }
 
-    ALWAYS_INLINE bool IsWatchpoint(u32 address) {
-        return unlikely(watchpoints.count(address));
-    }
+    ALWAYS_INLINE bool IsBreakpointEnabled(u32 address) { return breakpoints.find(address)->second.enabled; }
+
+    ALWAYS_INLINE bool IsWatchpoint(u32 address) { return unlikely(watchpoints.count(address)); }
+
     ALWAYS_INLINE bool WatchpointEnabledOnStore(u32 address) {
         auto& wp = watchpoints.find(address)->second;
         return wp.type == Watchpoint::ENABLED || wp.type == Watchpoint::ONLY_STORE;
     }
+
     ALWAYS_INLINE bool WatchpointEnabledOnLoad(u32 address) {
         auto& wp = watchpoints.find(address)->second;
         return wp.type == Watchpoint::ENABLED || wp.type == Watchpoint::ONLY_LOAD;
@@ -49,6 +48,7 @@ public:
     bool single_frame = false;
 
     bool show_disasm_view = false;
+
 private:
     struct Breakpoint {
         bool enabled = true;

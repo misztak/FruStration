@@ -87,7 +87,7 @@ void System::RecalculateCyclesUntilNextEvent() {
 }
 
 void System::UpdateComponents(u32 cycles) {
-    for (auto& event: timed_events) {
+    for (auto& event : timed_events) {
         std::invoke(event.add_cycles, cycles);
     }
 }

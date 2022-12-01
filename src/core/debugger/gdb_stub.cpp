@@ -1,17 +1,17 @@
 #include "gdb_stub.h"
 
 #ifdef _WIN32
-#include <winsock2.h>
 #include <io.h>
 #include <iphlpapi.h>
+#include <winsock2.h>
 #include <ws2tcpip.h>
 #define SHUT_RDWR 2
 using ssize_t = long long;
 #else
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 #endif
 
 #include <array>
@@ -57,7 +57,7 @@ Debugger* debugger = nullptr;
 #ifdef _WIN32
 WSADATA InitData;
 #endif
-}
+}    //namespace
 
 static std::string ValuesToHex(u8* start, u32 length) {
     std::stringstream ss;
@@ -83,7 +83,7 @@ static std::optional<u32> FromHexChars(std::string_view& string_view) {
 static std::string CalcChecksum(std::string_view& packet) {
     u8 csum = 0;
     for (auto& c : packet) {
-        csum += (u8) c;
+        csum += (u8)c;
     }
     return ValuesToHex(&csum, 1);
 }
@@ -100,13 +100,13 @@ static std::string ReadRegisters() {
 
     auto& cpu = debugger->GetContext()->cpu;
 
-    ss << ValuesToHex((u8*) cpu->gp.r, GP_REGISTER_COUNT * sizeof(u32));
-    ss << ValuesToHex((u8*) &cpu->cp.sr, sizeof(u32));
-    ss << ValuesToHex((u8*) &cpu->sp.lo, sizeof(u32));
-    ss << ValuesToHex((u8*) &cpu->sp.hi, sizeof(u32));
-    ss << ValuesToHex((u8*) &cpu->cp.bad_vaddr, sizeof(u32));
-    ss << ValuesToHex((u8*) &cpu->cp.cause, sizeof(u32));
-    ss << ValuesToHex((u8*) &cpu->sp.pc, sizeof(u32));
+    ss << ValuesToHex((u8*)cpu->gp.r, GP_REGISTER_COUNT * sizeof(u32));
+    ss << ValuesToHex((u8*)&cpu->cp.sr, sizeof(u32));
+    ss << ValuesToHex((u8*)&cpu->sp.lo, sizeof(u32));
+    ss << ValuesToHex((u8*)&cpu->sp.hi, sizeof(u32));
+    ss << ValuesToHex((u8*)&cpu->cp.bad_vaddr, sizeof(u32));
+    ss << ValuesToHex((u8*)&cpu->cp.cause, sizeof(u32));
+    ss << ValuesToHex((u8*)&cpu->sp.pc, sizeof(u32));
 
     // unused FP registers
     for (u32 i = 0; i < GDB_UNUSED_REGISTERS; i++) {
@@ -129,7 +129,7 @@ static std::string ReadRegister(u32 index) {
         ss << "00000000";
     } else if (index < GP_REGISTER_COUNT) {
         // GP register
-        ss << ValuesToHex((u8*) &cpu->gp.r[index], sizeof(u32));
+        ss << ValuesToHex((u8*)&cpu->gp.r[index], sizeof(u32));
     } else {
         // everything else
         u32 rel_index = index - GP_REGISTER_COUNT;
@@ -144,7 +144,7 @@ static std::string ReadRegister(u32 index) {
             case 5: reg = cpu->sp.pc; break;
         }
 
-        ss << ValuesToHex((u8*) &reg, sizeof(u32));
+        ss << ValuesToHex((u8*)&reg, sizeof(u32));
     }
 
     return ss.str();
@@ -230,7 +230,7 @@ void HandleClientRequest() {
         return;
     }
 
-    std::string_view request((const char *) rx_buffer.data());
+    std::string_view request((const char*)rx_buffer.data());
 
     // handle ACK and ERR
     if (request[0] == '+') {
@@ -299,7 +299,8 @@ void HandleClientRequest() {
             LOG_INFO << "GDB client closed connection";
             Shutdown();
             break;
-        case 'p': {
+        case 'p':
+        {
             // read single register, index is in hex
             auto index = FromHexChars(params);
             if (index) {
@@ -308,8 +309,10 @@ void HandleClientRequest() {
                 LOG_WARN << "Failed to parse register index";
                 Send("E00");
             }
-            break; }
-        case 'm': {
+            break;
+        }
+        case 'm':
+        {
             // read memory
             u32 delim_pos = params.find(',');
             std::string_view addr_str = params.substr(0, delim_pos);
@@ -325,13 +328,15 @@ void HandleClientRequest() {
                 LOG_DEBUG << fmt::format("Reading memory from 0x{:08x} to 0x{:08x}", address.value(), end_address);
                 Send(ReadMemory(address.value(), length.value()));
             }
-            break; }
+            break;
+        }
         case 'M':
             // TODO: write memory
             Send("OK");
             break;
         case 'z':
-        case 'Z': {
+        case 'Z':
+        {
             // add/remove breakpoint
             char type = params[0];
             if (type != '0' && type != '1') {
@@ -366,7 +371,8 @@ void HandleClientRequest() {
                 Send("E00");
             }
 
-            break; }
+            break;
+        }
         default:
             //LOG_DEBUG << fmt::format("Unsupported request '{}', sending empty reply", request);
             Send("");
@@ -399,12 +405,12 @@ void Init(u16 port, Debugger* _debugger) {
     // make sure we can bind to the same port without waiting
     // can't use SO_REUSEPORT because windows does not support it
     const s32 reuse_port = 1;
-    if (setsockopt(init_socket, SOL_SOCKET, SO_REUSEADDR, (const char *) &reuse_port, sizeof(reuse_port)) < 0) {
+    if (setsockopt(init_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse_port, sizeof(reuse_port)) < 0) {
         LOG_WARN << "Failed to set socket option REUSEPORT";
         return;
     }
 
-    if (bind(init_socket, (sockaddr *) &init_sockaddr, sizeof(init_sockaddr)) == -1) {
+    if (bind(init_socket, (sockaddr*)&init_sockaddr, sizeof(init_sockaddr)) == -1) {
         LOG_WARN << fmt::format("Failed to bind socket to port {}", port);
         return;
     }
@@ -418,7 +424,7 @@ void Init(u16 port, Debugger* _debugger) {
     sockaddr_in gdb_sockaddr = {};
     socklen_t socklen = sizeof(gdb_sockaddr);
 
-    gdb_socket = accept(init_socket, (sockaddr *) &gdb_sockaddr, &socklen);
+    gdb_socket = accept(init_socket, (sockaddr*)&gdb_sockaddr, &socklen);
     if (gdb_socket < 0) {
         LOG_WARN << "Failed to connect to client";
         return;
@@ -449,5 +455,4 @@ void Shutdown() {
 #endif
 }
 
-}
-
+}    //namespace GDB

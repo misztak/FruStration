@@ -1,7 +1,7 @@
 #include "cpu.h"
 
-#include "imgui.h"
 #include "fmt/format.h"
+#include "imgui.h"
 
 #include "bus.h"
 #include "cpu_common.h"
@@ -71,14 +71,15 @@ void CPU::Step() {
 #ifdef DEBUG
     if (TRACE_BIOS_CALLS && sp.pc <= 0xC0) bios.TraceFunction(sp.pc, Get(9));
     if (DISASM_INSTRUCTION) LOG_DEBUG << disassembler.InstructionAt(sp.pc, instr.value);
-    static u64 instr_counter = 0; instr_counter++;
+    static u64 instr_counter = 0;
+    instr_counter++;
 #endif
 
     // special actions for specific memory locations
     //
     // bios put_char calls
-    if (sp.pc ==  0xA0 && Get(9) == 0x3C) bios.PutChar(Get(4));
-    if (sp.pc ==  0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
+    if (sp.pc == 0xA0 && Get(9) == 0x3C) bios.PutChar(Get(4));
+    if (sp.pc == 0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
     // psexe inject point
     //const char* psexe_path = "../test/exe/helloworld.psexe";
     //const char* psexe_path = "../test/exe/psxtest_cpu.exe";
@@ -98,6 +99,8 @@ void CPU::Step() {
         Exception(ExceptionCode::LoadAddress);
         return;
     }
+
+    // clang-format off
 
     switch (instr.n.op) {
         case PrimaryOpcode::special:
@@ -120,7 +123,8 @@ void CPU::Step() {
                 case SecondaryOpcode::srav:
                     Set(instr.s.rd, static_cast<s32>(Get(instr.s.rt)) >> (Get(instr.s.rs) & 0x1F));
                     break;
-                case SecondaryOpcode::jr: {
+                case SecondaryOpcode::jr:
+                {
                     u32 jump_address = Get(instr.s.rs);
                     in_delay_slot = true;
                     if ((jump_address & 0x3) != 0) {
@@ -131,7 +135,8 @@ void CPU::Step() {
                     branch_taken = true;
                     break;
                 }
-                case SecondaryOpcode::jalr: {
+                case SecondaryOpcode::jalr:
+                {
                     u32 jump_address = Get(instr.s.rs);
                     Set(instr.s.rd, next_pc);
                     in_delay_slot = true;
@@ -170,7 +175,8 @@ void CPU::Step() {
                     sp.hi = result >> 32;
                     break;
                 }
-                case SecondaryOpcode::multu: {
+                case SecondaryOpcode::multu:
+                {
                     const u64 a = Get(instr.s.rs);
                     const u64 b = Get(instr.s.rt);
                     const u64 result = a * b;
@@ -179,7 +185,8 @@ void CPU::Step() {
                     sp.hi = result >> 32;
                     break;
                 }
-                case SecondaryOpcode::div: {
+                case SecondaryOpcode::div:
+                {
                     const s32 n = static_cast<s32>(Get(instr.s.rs));
                     const s32 d = static_cast<s32>(Get(instr.s.rt));
 
@@ -196,7 +203,8 @@ void CPU::Step() {
                     }
                     break;
                 }
-                case SecondaryOpcode::divu: {
+                case SecondaryOpcode::divu:
+                {
                     const u32 n = Get(instr.s.rs);
                     const u32 d = Get(instr.s.rt);
 
@@ -210,23 +218,29 @@ void CPU::Step() {
                     }
                     break;
                 }
-                case SecondaryOpcode::add: {
+                case SecondaryOpcode::add:
+                {
                     const u32 a = Get(instr.s.rs);
                     const u32 b = Get(instr.s.rt);
                     const u32 result = a + b;
-                    if (!((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000)) Exception(ExceptionCode::Overflow);
-                    else Set(instr.s.rd, result);
+                    if (!((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000))
+                        Exception(ExceptionCode::Overflow);
+                    else
+                        Set(instr.s.rd, result);
                     break;
                 }
                 case SecondaryOpcode::addu:
                     Set(instr.s.rd, Get(instr.s.rs) + Get(instr.s.rt));
                     break;
-                case SecondaryOpcode::sub: {
+                case SecondaryOpcode::sub:
+                {
                     const u32 a = Get(instr.s.rs);
                     const u32 b = Get(instr.s.rt);
                     const u32 result = a - b;
-                    if (((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000)) Exception(ExceptionCode::Overflow);
-                    else Set(instr.s.rd, result);
+                    if (((a ^ b) & 0x80000000) && ((result ^ a) & 0x80000000))
+                        Exception(ExceptionCode::Overflow);
+                    else
+                        Set(instr.s.rd, result);
                     break;
                 }
                 case SecondaryOpcode::subu:
@@ -255,7 +269,8 @@ void CPU::Step() {
                     Exception(ExceptionCode::ReservedInstr);
             }
             break;
-        case PrimaryOpcode::bxxx: {
+        case PrimaryOpcode::bxxx:
+        {
             const bool is_bgez = (instr.n.rt & 0x01) != 0;
             const bool is_link = (instr.n.rt & 0x1E) == 0x10;
 
@@ -313,17 +328,18 @@ void CPU::Step() {
                 branch_taken = true;
             }
             break;
-        case PrimaryOpcode::addi: {
+        case PrimaryOpcode::addi:
+        {
             const u32 old = Get(instr.n.rs);
             const u32 add = instr.imm_se();
             const u32 result = old + add;
-            if (!((old ^ add) & 0x80000000) && ((result ^ old) & 0x80000000)) Exception(ExceptionCode::Overflow);
-            else Set(instr.n.rt, result);
+            if (!((old ^ add) & 0x80000000) && ((result ^ old) & 0x80000000))
+                Exception(ExceptionCode::Overflow);
+            else
+                Set(instr.n.rt, result);
             break;
         }
-        case PrimaryOpcode::addiu:
-            Set(instr.n.rt, Get(instr.n.rs) + instr.imm_se());
-            break;
+        case PrimaryOpcode::addiu: Set(instr.n.rt, Get(instr.n.rs) + instr.imm_se()); break;
         case PrimaryOpcode::slti:
             Set(instr.n.rt, (static_cast<s32>(Get(instr.n.rs)) < static_cast<s32>(instr.imm_se())) ? 1 : 0);
             break;
@@ -351,11 +367,12 @@ void CPU::Step() {
                     //LOG_DEBUG << fmt::format("MTC: Set Register {} to 0x{:08X}", instr.cop.rd, Get(instr.cop.rt));
                     SetCP0(instr.cop.rd, Get(instr.cop.rt));
                     break;
-                case CoprocessorOpcode::rfe: {
+                case CoprocessorOpcode::rfe:
+                {
                     if ((instr.value & 0x3F) != 0b010000) Panic("Invalid CP0 instruction 0x%08X!", instr.value);
                     // restore the interrupt/user pairs that we changed before jumping into the exception handler
                     const u32 mode = cp.sr.value & 0x3C;
-                    cp.sr.value &= ~0xFu; // bits 4-5 are left unchanged
+                    cp.sr.value &= ~0xFu;    // bits 4-5 are left unchanged
                     cp.sr.value |= (mode >> 2);
                     break;
                 }
@@ -385,13 +402,15 @@ void CPU::Step() {
         case PrimaryOpcode::cop3:
             Exception(ExceptionCode::CopError);
             break;
-        case PrimaryOpcode::lb: {
+        case PrimaryOpcode::lb:
+        {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u32 value = static_cast<s8>(Load8(address));
             SetDelayEntry(instr.n.rt, value);
             break;
         }
-        case PrimaryOpcode::lh: {
+        case PrimaryOpcode::lh:
+        {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u32 value = static_cast<s16>(Load16(address));
             if (address & 0x1)
@@ -400,7 +419,8 @@ void CPU::Step() {
                 SetDelayEntry(instr.n.rt, value);
             break;
         }
-        case PrimaryOpcode::lwl:{
+        case PrimaryOpcode::lwl:
+        {
             if (cp.sr.isolate_cache) Panic("Load with isolated cache");
             u32 address = Get(instr.n.rs) + instr.imm_se();
 
@@ -417,7 +437,8 @@ void CPU::Step() {
             SetDelayEntry(instr.n.rt, new_value);
             break;
         }
-        case PrimaryOpcode::lw: {
+        case PrimaryOpcode::lw:
+        {
             if (cp.sr.isolate_cache) Panic("Load with isolated cache");
             u32 address = Get(instr.n.rs) + instr.imm_se();
             if (address & 0x3)
@@ -426,12 +447,14 @@ void CPU::Step() {
                 SetDelayEntry(instr.n.rt, Load32(address));
             break;
         }
-        case PrimaryOpcode::lbu: {
+        case PrimaryOpcode::lbu:
+        {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             SetDelayEntry(instr.n.rt, Load8(address));
             break;
         }
-        case PrimaryOpcode::lhu: {
+        case PrimaryOpcode::lhu:
+        {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             if (address & 0x1)
                 Exception(ExceptionCode::LoadAddress);
@@ -439,7 +462,8 @@ void CPU::Step() {
                 SetDelayEntry(instr.n.rt, Load16(address));
             break;
         }
-        case PrimaryOpcode::lwr: {
+        case PrimaryOpcode::lwr:
+        {
             if (cp.sr.isolate_cache) Panic("Load with isolated cache");
             u32 address = Get(instr.n.rs) + instr.imm_se();
 
@@ -456,13 +480,15 @@ void CPU::Step() {
             SetDelayEntry(instr.n.rt, new_value);
             break;
         }
-        case PrimaryOpcode::sb: {
+        case PrimaryOpcode::sb:
+        {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u8 byte = static_cast<u8>(Get(instr.n.rt) & 0xFF);
             Store8(address, byte);
             break;
         }
-        case PrimaryOpcode::sh: {
+        case PrimaryOpcode::sh:
+        {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u16 halfword = static_cast<u16>(Get(instr.n.rt) & 0xFFFF);
             if (address & 0x1)
@@ -471,7 +497,8 @@ void CPU::Step() {
                 Store16(address, halfword);
             break;
         }
-        case PrimaryOpcode::swl: {
+        case PrimaryOpcode::swl:
+        {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u32 aligned_value = Load32(address & ~0x3);
             u32 old_value = Get(instr.n.rt);
@@ -486,7 +513,8 @@ void CPU::Step() {
             Store32(address & ~0x3, new_value);
             break;
         }
-        case PrimaryOpcode::sw: {
+        case PrimaryOpcode::sw:
+        {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             if (address & 0x3)
                 Exception(ExceptionCode::StoreAddress);
@@ -494,7 +522,8 @@ void CPU::Step() {
                 Store32(address, Get(instr.n.rt));
             break;
         }
-        case PrimaryOpcode::swr: {
+        case PrimaryOpcode::swr:
+        {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u32 aligned_value = Load32(address & ~0x3);
             u32 old_value = Get(instr.n.rt);
@@ -509,14 +538,16 @@ void CPU::Step() {
             Store32(address & ~0x3, new_value);
             break;
         }
-        case PrimaryOpcode::lwc2: {
+        case PrimaryOpcode::lwc2:
+        {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u32 value = Load32(address);
             LOG_DEBUG << fmt::format("LWC2: 0x{:08X}", value);
             Panic("LWC2 (GTE) not implemented");
             break;
         }
-        case PrimaryOpcode::swc2: {
+        case PrimaryOpcode::swc2:
+        {
             Panic("SWC2 (GTE) not implemented");
             break;
         }
@@ -531,6 +562,8 @@ void CPU::Step() {
             LOG_CRIT << fmt::format("Invalid opcode 0x{:02X} [0x{:08X}]", (u32)instr.n.op.GetValue(), instr.value);
             Exception(ExceptionCode::ReservedInstr);
     }
+
+    // clang-format on
 
     // update delay entries
     gp.r[pending_delay_entry.reg] = pending_delay_entry.value;
@@ -584,7 +617,9 @@ void CPU::Exception(ExceptionCode cause) {
     LOG_DEBUG << fmt::format("CPU Exception {:#04x}", (u32)cause);
 }
 
-u32 CPU::Load32(u32 address) { return sys->bus->Load<u32>(address); }
+u32 CPU::Load32(u32 address) {
+    return sys->bus->Load<u32>(address);
+}
 
 void CPU::Store32(u32 address, u32 value) {
     if (cp.sr.isolate_cache) return;
@@ -700,8 +735,8 @@ void CPU::DrawCpuState(bool* open) {
 
     ImGui::Text("GP Registers");
     ImGui::Columns(4);
-    for (u32 col=0; col<4; col++) {
-        for (u32 row=0; row<8; row++) {
+    for (u32 col = 0; col < 4; col++) {
+        for (u32 row = 0; row < 8; row++) {
             const u32 index = row + col * 8;
             ImGui::Text(" $%-3s %08X", rnames[index], gp.r[row + col * 8]);
         }
@@ -712,16 +747,18 @@ void CPU::DrawCpuState(bool* open) {
     ImGui::Separator();
     ImGui::Text("SP Registers");
     ImGui::Columns(4);
-    ImGui::Text(" PC   %08X", sp.pc); ImGui::NextColumn();
-    ImGui::Text(" HI   %08X", sp.hi); ImGui::NextColumn();
+    ImGui::Text(" PC   %08X", sp.pc);
+    ImGui::NextColumn();
+    ImGui::Text(" HI   %08X", sp.hi);
+    ImGui::NextColumn();
     ImGui::Text(" LO   %08X", sp.lo);
     ImGui::Columns(1);
 
     ImGui::Separator();
     ImGui::Text("COP0 Registers");
     ImGui::Columns(4);
-    for (u32 col=0; col<4; col++) {
-        for (u32 row=0; row<4; row++) {
+    for (u32 col = 0; col < 4; col++) {
+        for (u32 row = 0; row < 4; row++) {
             const u32 index = row + col * 4;
             ImGui::Text(" $%-10s %08X", coprnames[index], cp.cpr[row + col * 4]);
         }
@@ -732,4 +769,4 @@ void CPU::DrawCpuState(bool* open) {
     ImGui::End();
 }
 
-}  // namespace CPU
+}    // namespace CPU

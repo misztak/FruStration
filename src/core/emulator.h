@@ -2,8 +2,8 @@
 
 #include <string>
 
-#include "types.h"
 #include "system.h"
+#include "types.h"
 
 class Emulator {
 public:
@@ -39,6 +39,7 @@ public:
     // end of config
 
     u16* GetVRAM();
+
 private:
     System sys;
 };

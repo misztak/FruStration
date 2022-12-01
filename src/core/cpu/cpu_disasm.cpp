@@ -20,10 +20,12 @@ std::string Disassembler::InstructionAt(u32 address, u32 value, bool with_curr_v
 }
 
 void Disassembler::Disassemble(u32 address, u32 value) {
-    Instruction i{value};
+    Instruction i {value};
 
     result.append(fmt::format("{:08x}: {:08x} ", address, value));
     address += 4;
+
+    // clang-format off
 
     switch (i.n.op) {
         case PrimaryOpcode::special:
@@ -238,6 +240,8 @@ void Disassembler::Disassemble(u32 address, u32 value) {
         default:
             Panic("Invalid opcode");
     }
+
+    // clang-format on
 }
 
 void Disassembler::PrintInstruction(const char* name, u32 r1, u32 r2, u32 r3) {
@@ -282,4 +286,4 @@ void Disassembler::PrintCP0Instruction(const char* name, u32 reg1, u32 reg2) {
                               cpu->gp.r[reg1], coprnames[reg2], cpu->cp.cpr[reg2]));
 }
 
-}  // namespace CPU
+}    // namespace CPU

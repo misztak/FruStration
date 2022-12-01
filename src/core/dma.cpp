@@ -42,7 +42,7 @@ void DMA::Store(u32 address, u32 value) {
 #if 0
     printf("DMA IO Store [0x%X @ relative address 0x%X]\n", value, address);
 #endif
-    
+
     if (address == 0x70) {
         control.value = value;
         return;
@@ -82,15 +82,11 @@ void DMA::StartTransfer(u32 index) {
     //       (dir == Direction::ToRAM) ? "RAM" : "device", index,
     //       (u32)channel[index].control.sync_mode.GetValue(), channel[index].base_address);
     // TODO: chopping and priority handling
-    
+
     switch (channel[index].control.sync_mode) {
-        case SyncMode::LinkedList:
-            TransferLinkedList(index);
-            break;
+        case SyncMode::LinkedList: TransferLinkedList(index); break;
         case SyncMode::Manual:
-        case SyncMode::Request:
-            TransferBlock(index);
-            break;
+        case SyncMode::Request: TransferBlock(index); break;
     }
 
     // transfer is over
@@ -124,16 +120,13 @@ void DMA::TransferBlock(u32 index) {
 
     u32 transfer_count = 0;
     switch (ch.control.sync_mode) {
-        case SyncMode::Manual:
-            transfer_count = (ch.bcr.word_count == 0) ? 0x10000 : ch.bcr.word_count;
-            break;
+        case SyncMode::Manual: transfer_count = (ch.bcr.word_count == 0) ? 0x10000 : ch.bcr.word_count; break;
         case SyncMode::Request:
             transfer_count = ch.bcr.block_count * ch.bcr.block_size;
             if (index == 2 && ch.control.transfer_direction == Direction::ToDevice)
                 LOG_DEBUG << "Possible start of CopyImageToVRAM with size " << transfer_count;
             break;
-        case SyncMode::LinkedList:
-            Panic("This should never be reached");
+        case SyncMode::LinkedList: Panic("This should never be reached");
     }
 
     const u32 total_word_count = transfer_count;
@@ -154,34 +147,27 @@ void DMA::TransferBlock(u32 index) {
                     case DMA_Channel::MDECout:
                     case DMA_Channel::CDROM:
                     case DMA_Channel::SPU:
-                    case DMA_Channel::PIO:
-                        Panic("DMA block transfer for channel %u not implemented", index);
-                        break;
+                    case DMA_Channel::PIO: Panic("DMA block transfer for channel %u not implemented", index); break;
                     case DMA_Channel::GPU:
                         // invalid command value, only used to update GPUREAD
                         sys->gpu->SendGP0Cmd(0xFF);
                         // read next 32-bit packet
                         data = sys->gpu->gpu_read;
                         break;
-                    case DMA_Channel::OTC:
-                        data = (transfer_count == 1) ? 0xFFFFFF : ((addr - 4) & 0x1FFFFF);
-                        break;
+                    case DMA_Channel::OTC: data = (transfer_count == 1) ? 0xFFFFFF : ((addr - 4) & 0x1FFFFF); break;
                 }
                 sys->bus->Store<u32>(curr_addr, data);
                 break;
             case Direction::ToDevice:
                 data = sys->bus->Load<u32>(curr_addr);
                 switch (channel_type) {
-                    case DMA_Channel::GPU:
-                        sys->gpu->SendGP0Cmd(data);
-                        break;
+                    case DMA_Channel::GPU: sys->gpu->SendGP0Cmd(data); break;
                     case DMA_Channel::CDROM:
                     case DMA_Channel::SPU:
                     case DMA_Channel::PIO:
                     case DMA_Channel::OTC:
                     case DMA_Channel::MDECout:
-                    case DMA_Channel::MDECin:
-                        Panic("DMA block transfer for channel %u not implemented", index);
+                    case DMA_Channel::MDECin: Panic("DMA block transfer for channel %u not implemented", index);
                 }
         }
 

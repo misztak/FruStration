@@ -14,8 +14,9 @@ public:
     void TraceAFunction(u32 index);
 
     void PutChar(s8 value);
+
 private:
-    template <u32 arg_count>
+    template<u32 arg_count>
     void PrintFnWithArgs(const char* format_string);
 
     std::string stdout_buffer;
@@ -55,33 +56,33 @@ static const std::array<const char*, 192> bios_functions_A {
     "strlen(src)",
     "index(src,char)",
     "rindex(src,char)",
-    "strchr(src,char)",                 // exactly the same as "index"
-    "strrchr(src,char)",                // exactly the same as "rindex"
+    "strchr(src,char)",     // exactly the same as "index"
+    "strrchr(src,char)",    // exactly the same as "rindex"
     "strpbrk(src,list)",
     "strspn(src,list)",
     "strcspn(src,list)",
-    "strtok(src,list)",                 // use strtok(0,list) in further calls
-    "strstr(str,substr)",               // buggy
+    "strtok(src,list)",      // use strtok(0,list) in further calls
+    "strstr(str,substr)",    // buggy
     "toupper(char)",
     "tolower(char)",
     "bcopy(src,dst,len)",
     "bzero(dst,len)",
-    "bcmp(ptr1,ptr2,len)",              // Bugged
+    "bcmp(ptr1,ptr2,len)",    // Bugged
     "memcpy(dst,src,len)",
     "memset(dst,fillbyte,len)",
-    "memmove(dst,src,len)",             // Bugged
-    "memcmp(src1,src2,len)",            // Bugged
+    "memmove(dst,src,len)",     // Bugged
+    "memcmp(src1,src2,len)",    // Bugged
     "memchr(src,scanbyte,len)",
     "rand()",
     "srand(seed)",
     "qsort(base,nel,width,callback)",
-    "strtod(src,src_end)",              // Does NOT work - uses (ABSENT) cop1 !!!
+    "strtod(src,src_end)",    // Does NOT work - uses (ABSENT) cop1 !!!
     "malloc(size)",
     "free(buf)",
     "lsearch(key,base,nel,width,callback)",
     "bsearch(key,base,nel,width,callback)",
-    "calloc(sizx,sizy)",                // SLOW!
-    "realloc(old_buf,new_siz)",         // SLOW!
+    "calloc(sizx,sizy)",           // SLOW!
+    "realloc(old_buf,new_siz)",    // SLOW!
     "InitHeap(addr,size)",
     "SystemErrorExit(exitcode)",
     "or B(3Ch) std_in_getchar()",
@@ -98,8 +99,8 @@ static const std::array<const char*, 192> bios_functions_A {
     "GPU_dw(Xdst,Ydst,Xsiz,Ysiz,src)",
     "gpu_send_dma(Xdst,Ydst,Xsiz,Ysiz,src)",
     "SendGP1Command(gp1cmd)",
-    "GPU_cw(gp0cmd)",                   // send GP0 command word
-    "GPU_cwp(src,num)",                 // send GP0 command word and parameter words
+    "GPU_cw(gp0cmd)",      // send GP0 command word
+    "GPU_cwp(src,num)",    // send GP0 command word and parameter words
     "send_gpu_linked_list(src)",
     "gpu_abort_dma()",
     "GetGPUStatus()",
@@ -111,15 +112,15 @@ static const std::array<const char*, 192> bios_functions_A {
     "SystemError",
     "CdInit()",
     "_bu_init()",
-    "CdRemove()",                       // does NOT work due to SysDeqIntRP bug
+    "CdRemove()",    // does NOT work due to SysDeqIntRP bug
     "return 0",
     "return 0",
     "return 0",
     "return 0",
-    "dev_tty_init()",                   // PS2: SystemError
-    "dev_tty_open(fcb,and unused:path\\name,accessmode)", // PS2: SystemError
-    "dev_tty_in_out(fcb,cmd)",          // PS2: SystemError
-    "dev_tty_ioctl(fcb,cmd,arg)",       // PS2: SystemError
+    "dev_tty_init()",                                        // PS2: SystemError
+    "dev_tty_open(fcb,and unused:path\\name,accessmode)",    // PS2: SystemError
+    "dev_tty_in_out(fcb,cmd)",                               // PS2: SystemError
+    "dev_tty_ioctl(fcb,cmd,arg)",                            // PS2: SystemError
     "dev_cd_open(fcb,path\\name,accessmode)",
     "dev_cd_read(fcb,dst,len)",
     "dev_cd_close(fcb)",
@@ -139,36 +140,36 @@ static const std::array<const char*, 192> bios_functions_A {
     "?   ;card ;[r4+18h]=00000000h",    // card_clear_error(fcb) or so
     "_bu_init()",
     "CdInit()",
-    "CdRemove()",                       // does NOT work due to SysDeqIntRP bug
+    "CdRemove()",    // does NOT work due to SysDeqIntRP bug
     "return 0",
     "return 0",
     "return 0",
     "return 0",
     "return 0",
     "CdAsyncSeekL(src)",
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
     "CdAsyncGetStatus(dst)",
-    "return 0",                         // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
     "CdAsyncReadSector(count,dst,mode)",
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
     "CdAsyncSetMode(mode)",
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?, or reportedly, CdStop (?)
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
-    "return 0",                         // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?, or reportedly, CdStop (?)
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
+    "return 0",    // DTL-H: Unknown?
     "CdromIoIrqFunc1()",
     "CdromDmaIrqFunc1()",
     "CdromIoIrqFunc2()",
@@ -176,20 +177,20 @@ static const std::array<const char*, 192> bios_functions_A {
     "CdromGetInt5errCode(dst1,dst2)",
     "CdInitSubFunc()",
     "AddCDROMDevice()",
-    "AddMemCardDevice()",               // DTL-H: SystemError
-    "AddDuartTtyDevice()",              // DTL-H: AddAdconsTtyDevice ;PS2: SystemError
+    "AddMemCardDevice()",     // DTL-H: SystemError
+    "AddDuartTtyDevice()",    // DTL-H: AddAdconsTtyDevice ;PS2: SystemError
     "AddDummyTtyDevice()",
-    "SystemError",                      // DTL-H: AddMessageWindowDevice
-    "SystemError",                      // DTL-H: AddCdromSimDevice
+    "SystemError",    // DTL-H: AddMessageWindowDevice
+    "SystemError",    // DTL-H: AddCdromSimDevice
     "SetConf(num_EvCB,num_TCB,stacktop)",
     "GetConf(num_EvCB_dst,num_TCB_dst,stacktop_dst)",
     "SetCdromIrqAutoAbort(type,flag)",
     "SetMemSize(megabytes)",
     "WarmBoot()",
     "SystemErrorBootOrDiskFailure(type,errorcode)",
-    "EnqueueCdIntr()",                  // with prio=0 (fixed)
-    "DequeueCdIntr()",                  // does NOT work due to SysDeqIntRP bug
-    "CdGetLbn(filename)",               // get 1st sector number (or garbage when not found)
+    "EnqueueCdIntr()",       // with prio=0 (fixed)
+    "DequeueCdIntr()",       // does NOT work due to SysDeqIntRP bug
+    "CdGetLbn(filename)",    // get 1st sector number (or garbage when not found)
     "CdReadSector(count,sector,buffer)",
     "CdGetStatus()",
     "bu_callback_okay()",
@@ -200,12 +201,12 @@ static const std::array<const char*, 192> bios_functions_A {
     "_card_async_load_directory(port)",
     "set_card_auto_format(flag)",
     "bu_callback_err_prev_write()",
-    "card_write_test(port)",            // CEX-1000: jump_to_00000000h
-    "return 0",                         // CEX-1000: jump_to_00000000h
-    "return 0",                         // CEX-1000: jump_to_00000000h
-    "ioabort_raw(param)",               // CEX-1000: jump_to_00000000h
-    "return 0",                         // CEX-1000: jump_to_00000000h
-    "GetSystemInfo(index)",             // CEX-1000: jump_to_00000000h
+    "card_write_test(port)",    // CEX-1000: jump_to_00000000h
+    "return 0",                 // CEX-1000: jump_to_00000000h
+    "return 0",                 // CEX-1000: jump_to_00000000h
+    "ioabort_raw(param)",       // CEX-1000: jump_to_00000000h
+    "return 0",                 // CEX-1000: jump_to_00000000h
+    "GetSystemInfo(index)",     // CEX-1000: jump_to_00000000h
     "jump_to_00000000h",
     "jump_to_00000000h",
     "jump_to_00000000h",
@@ -291,13 +292,13 @@ static const std::array<const char*, 94> bios_functions_B = {
     "FileRename(old_filename,new_filename)",
     "FileDelete(filename)",
     "FileUndelete(filename)",
-    "AddDevice(device_info)",                       // subfunction for AddXxxDevice functions
+    "AddDevice(device_info)",    // subfunction for AddXxxDevice functions
     "RemoveDevice(device_name_lowercase)",
     "PrintInstalledDevices()",
-    "InitCard(pad_enable)",                         // uses/destroys k0/k1 !!!
+    "InitCard(pad_enable)",    // uses/destroys k0/k1 !!!
     "StartCard()",
     "StopCard()",
-    "_card_info_subfunc(port)",                     // subfunction for "_card_info"
+    "_card_info_subfunc(port)",    // subfunction for "_card_info"
     "write_card_sector(port,sector,src)",
     "read_card_sector(port,sector,dst)",
     "allow_new_card()",
@@ -319,34 +320,34 @@ static const std::array<const char*, 94> bios_functions_B = {
 };
 
 static const std::array<const char*, 30> bios_functions_C = {
-    "EnqueueTimerAndVblankIrqs(priority)",                      // used with prio=1
-    "EnqueueSyscallHandler(priority)",                          // used with prio=0
-    "SysEnqIntRP(priority,struc)",                              // bugged, use with care
-    "SysDeqIntRP(priority,struc)",                              // bugged, use with care
+    "EnqueueTimerAndVblankIrqs(priority)",    // used with prio=1
+    "EnqueueSyscallHandler(priority)",        // used with prio=0
+    "SysEnqIntRP(priority,struc)",            // bugged, use with care
+    "SysDeqIntRP(priority,struc)",            // bugged, use with care
     "get_free_EvCB_slot()",
     "get_free_TCB_slot()",
     "ExceptionHandler()",
-    "InstallExceptionHandlers()",                               // destroys/uses k0/k1
+    "InstallExceptionHandlers()",    // destroys/uses k0/k1
     "SysInitMemory(addr,size)",
     "SysInitKernelVariables()",
     "ChangeClearRCnt(t,flag)",
     "SystemError",
-    "InitDefInt(priority)",                                     // used with prio=3
+    "InitDefInt(priority)",    // used with prio=3
     "SetIrqAutoAck(irq,flag)",
-    "return 0",                                                 // DTL-H2000: dev_sio_init
-    "return 0",                                                 // DTL-H2000: dev_sio_open
-    "return 0",                                                 // DTL-H2000: dev_sio_in_out
-    "return 0",                                                 // DTL-H2000: dev_sio_ioctl
+    "return 0",    // DTL-H2000: dev_sio_init
+    "return 0",    // DTL-H2000: dev_sio_open
+    "return 0",    // DTL-H2000: dev_sio_in_out
+    "return 0",    // DTL-H2000: dev_sio_ioctl
     "InstallDevices(ttyflag)",
     "FlushStdInOutPut()",
-    "return 0",                                                 // DTL-H2000: SystemError
+    "return 0",    // DTL-H2000: SystemError
     "tty_cdevinput(circ,char)",
     "tty_cdevscan()",
-    "tty_circgetc(circ)",                                       // uses r5 as garbage txt for ioabort
+    "tty_circgetc(circ)",    // uses r5 as garbage txt for ioabort
     "tty_circputc(char,circ)",
     "ioabort(txt1,txt2)",
-    "set_card_find_mode(mode)",                                 // 0=normal, 1=find deleted files
-    "KernelRedirect(ttyflag)",                                  // PS2: ttyflag=1 causes SystemError
+    "set_card_find_mode(mode)",    // 0=normal, 1=find deleted files
+    "KernelRedirect(ttyflag)",     // PS2: ttyflag=1 causes SystemError
     "AdjustA0Table()",
     "get_card_find_mode()",
     // C(1Eh..7Fh) N/A ;jump_to_00000000h

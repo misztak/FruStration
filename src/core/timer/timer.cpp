@@ -2,9 +2,9 @@
 
 #include <limits>
 
-#include "types.h"
 #include "debug_utils.h"
 #include "system.h"
+#include "types.h"
 
 LOG_CHANNEL(Timer);
 
@@ -90,15 +90,10 @@ void Timer::UpdateBlankState(bool entered_blank) {
 
     if (gpu_currently_in_blank && mode.sync_enabled) {
         switch (mode.sync_mode) {
-            case 0:
-                break;
+            case 0: break;
             case 1:
-            case 2:
-                counter = 0;
-                break;
-            case 3:
-                mode.sync_enabled = false;
-                break;
+            case 2: counter = 0; break;
+            case 3: mode.sync_enabled = false; break;
         }
     }
 

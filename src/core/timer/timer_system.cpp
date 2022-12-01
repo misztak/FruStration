@@ -1,7 +1,7 @@
 #include "timer.h"
 
-#include "system.h"
 #include "interrupt.h"
+#include "system.h"
 
 SystemTimer::SystemTimer(u32 index, System *system) : Timer(index, system) {}
 

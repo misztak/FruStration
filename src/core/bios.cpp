@@ -1,22 +1,25 @@
 #include "bios.h"
 
-#include "system.h"
 #include "bus.h"
 #include "cpu.h"
 #include "debug_utils.h"
 #include "fmt/format.h"
+#include "system.h"
 
 LOG_CHANNEL(BIOS);
 
 BIOS::BIOS(System* system) : sys(system) {}
 
 void BIOS::TraceFunction(u32 address, u32 index) {
-    if      (address == 0xA0 && index < 0xBF) LOG_DEBUG << "A function " << bios_functions_A[index];
-    else if (address == 0xB0 && index < 0x5E) LOG_DEBUG << "B function " << bios_functions_B[index];
-    else if (address == 0xC0 && index < 0x1E) LOG_DEBUG << "C function " << bios_functions_C[index];
+    if (address == 0xA0 && index < 0xBF)
+        LOG_DEBUG << "A function " << bios_functions_A[index];
+    else if (address == 0xB0 && index < 0x5E)
+        LOG_DEBUG << "B function " << bios_functions_B[index];
+    else if (address == 0xC0 && index < 0x1E)
+        LOG_DEBUG << "C function " << bios_functions_C[index];
 }
 
-template <u32 arg_count>
+template<u32 arg_count>
 void BIOS::PrintFnWithArgs(const char* format_string) {
     static_assert(arg_count < 7);
 
@@ -48,20 +51,16 @@ void BIOS::PrintFnWithArgs(const char* format_string) {
     }
 }
 
-#define FN_WITH_ARGS(args, definition) \
-    PrintFnWithArgs<(args)>((definition));  \
+#define FN_WITH_ARGS(args, definition)     \
+    PrintFnWithArgs<(args)>((definition)); \
     break
 
 void BIOS::TraceAFunction(u32 index) {
     switch (index) {
-        case 0x00:
-            FN_WITH_ARGS(2, "open(filename=0x{:08X}, accessmode=0x{:08X})");
-        case 0x01:
-            FN_WITH_ARGS(3, "lseek(fd={}, offset={}, seektype=0x{:08X})");
-        case 0x2F:
-            FN_WITH_ARGS(0, "rand()");
-        default:
-            Panic("Invalid A function index %u", index);
+        case 0x00: FN_WITH_ARGS(2, "open(filename=0x{:08X}, accessmode=0x{:08X})");
+        case 0x01: FN_WITH_ARGS(3, "lseek(fd={}, offset={}, seektype=0x{:08X})");
+        case 0x2F: FN_WITH_ARGS(0, "rand()");
+        default: Panic("Invalid A function index %u", index);
     }
 }
 

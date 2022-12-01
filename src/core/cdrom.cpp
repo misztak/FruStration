@@ -8,7 +8,7 @@
 
 LOG_CHANNEL(CDROM);
 
-CDROM::CDROM(System* system): sys(system) {
+CDROM::CDROM(System* system) : sys(system) {
     stat.motor_on = true;
 
     status.par_fifo_empty = true;
@@ -18,10 +18,8 @@ CDROM::CDROM(System* system): sys(system) {
     cycles_until_second_response = MaxCycles;
 
     // register timed event
-    sys->timed_events[TIMED_EVENT_CDROM] = {
-        .add_cycles = [this](u32 cycles) { Step(cycles); },
-        .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }
-    };
+    sys->timed_events[TIMED_EVENT_CDROM] = {.add_cycles = [this](u32 cycles) { Step(cycles); },
+                                            .cycles_until_event = [this]() { return CyclesUntilNextEvent(); }};
 }
 
 void CDROM::Step(u32 cycles) {
@@ -60,8 +58,7 @@ void CDROM::Step(u32 cycles) {
                 state = State::Idle;
             }
             break;
-        case State::Idle:
-            break;
+        case State::Idle: break;
     }
 }
 
@@ -79,7 +76,7 @@ void CDROM::ScheduleFirstResponse() {
     }
 }
 
-void CDROM::ScheduleSecondResponse(std::function<void ()> command, s32 cycles = 0x0004a00) {
+void CDROM::ScheduleSecondResponse(std::function<void()> command, s32 cycles = 0x0004a00) {
     //DebugAssert(cycles_until_second_response == MaxCycles);
     state = State::ExecutingSecondResponse;
 
@@ -108,8 +105,7 @@ void CDROM::ExecCommand(Command command) {
     // will be overwritten in ScheduleSecondResponse
     state = State::Idle;
 
-    if (!response_fifo.empty())
-        LOG_WARN << "Response fifo not empty, overwriting unread values!";
+    if (!response_fifo.empty()) LOG_WARN << "Response fifo not empty, overwriting unread values!";
 
     response_fifo.clear();
 
@@ -133,9 +129,7 @@ void CDROM::ExecCommand(Command command) {
         case Command::ReadN:
             LOG_DEBUG << "ReadN";
             PushResponse(INT3, stat.value);
-            ScheduleSecondResponse([this] {
-                ReadN();
-            });
+            ScheduleSecondResponse([this] { ReadN(); });
             break;
         case Command::Setmode:
             LOG_DEBUG << "Setmode";
@@ -146,9 +140,7 @@ void CDROM::ExecCommand(Command command) {
         case Command::SeekL:
             LOG_DEBUG << "SeekL";
             PushResponse(INT3, stat.value);
-            ScheduleSecondResponse([this] {
-                PushResponse(INT2, stat.value);
-            });
+            ScheduleSecondResponse([this] { PushResponse(INT2, stat.value); });
             break;
         case Command::Test:
             LOG_DEBUG << "Test";
@@ -163,12 +155,9 @@ void CDROM::ExecCommand(Command command) {
             //});
 
             // licensed disc (NTSC)
-            ScheduleSecondResponse([this] {
-                PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
-            });
+            ScheduleSecondResponse([this] { PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'}); });
             break;
-        default:
-            Panic("Unimplemented CDROM command 0x%02X", static_cast<u8>(command));
+        default: Panic("Unimplemented CDROM command 0x%02X", static_cast<u8>(command));
     }
 
     // clear the parameter fifo and reset flags
@@ -189,8 +178,7 @@ void CDROM::ExecSubCommand() {
             // CDROM controller version (PU-7, version vC0)
             PushResponse(INT3, {0x94, 0x09, 0x19, 0xC0});
             break;
-        default:
-            Panic("Unimplemented CDROM test command 0x%02X", sub_command);
+        default: Panic("Unimplemented CDROM test command 0x%02X", sub_command);
     }
 }
 
@@ -242,9 +230,7 @@ u8 CDROM::Load(u32 address) {
     if (address == 0x3) {
         switch (status.index) {
             case 0:
-            case 2:
-                Panic("Unimplemented");
-                break;
+            case 2: Panic("Unimplemented"); break;
             case 1:
             case 3:
             {
@@ -358,9 +344,7 @@ void CDROM::Store(u32 address, u8 value) {
     }
 }
 
-void CDROM::ReadN() {
-
-}
+void CDROM::ReadN() {}
 
 u8 CDROM::Peek(u32 address) {
     if (address == 0x0) {

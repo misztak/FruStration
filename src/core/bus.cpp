@@ -2,9 +2,9 @@
 
 #include <fstream>
 
+#include "fmt/format.h"
 #include "imgui.h"
 #include "imgui_memory_editor.h"
-#include "fmt/format.h"
 
 #include "cdrom.h"
 #include "cpu.h"
@@ -93,7 +93,7 @@ static constexpr bool InArea(u32 start, u32 length, u32 address) {
     return address >= start && address < start + length;
 }
 
-template <typename ValueType>
+template<typename ValueType>
 ValueType BUS::Load(u32 address) {
     static_assert(std::is_same<ValueType, u32>::value || std::is_same<ValueType, u16>::value ||
                   std::is_same<ValueType, u8>::value);
@@ -115,26 +115,22 @@ ValueType BUS::Load(u32 address) {
     // IO Ports
     if (InArea(IO_PORTS_START, IO_PORTS_SIZE, masked_addr)) {
         switch (masked_addr) {
-            case(0x1F801070): return sys->interrupt->LoadStat();
-            case(0x1F801074): return sys->interrupt->LoadMask();
-            case(0x1F801810): return sys->gpu->gpu_read; // GPUREAD
-            case(0x1F801814): return (ValueType) sys->gpu->ReadStat(); // GPUSTAT
+            case (0x1F801070): return sys->interrupt->LoadStat();
+            case (0x1F801074): return sys->interrupt->LoadMask();
+            case (0x1F801810): return sys->gpu->gpu_read;                 // GPUREAD
+            case (0x1F801814): return (ValueType)sys->gpu->ReadStat();    // GPUSTAT
         }
 
         // DMA
-        if (InArea(0x1F801080, 120, masked_addr))
-            return (ValueType) sys->dma->Load(masked_addr - 0x1F801080);
+        if (InArea(0x1F801080, 120, masked_addr)) return (ValueType)sys->dma->Load(masked_addr - 0x1F801080);
 
         // Timer
-        if (InArea(0x1F801100, 48, masked_addr))
-            return (ValueType) sys->timers->Load(masked_addr - 0x1F801100);
+        if (InArea(0x1F801100, 48, masked_addr)) return (ValueType)sys->timers->Load(masked_addr - 0x1F801100);
 
         // CDROM
-        if (InArea(0x1F801800, 4, masked_addr))
-            return (ValueType) sys->cdrom->Load(masked_addr - 0x1F801800);
+        if (InArea(0x1F801800, 4, masked_addr)) return (ValueType)sys->cdrom->Load(masked_addr - 0x1F801800);
 
-
-        if (InArea(0x1F801C00, 644, masked_addr)) return 0; // SPU
+        if (InArea(0x1F801C00, 644, masked_addr)) return 0;    // SPU
 
         // Joypad
         if (InArea(0x1F801040, 16, masked_addr)) {
@@ -148,7 +144,8 @@ ValueType BUS::Load(u32 address) {
     if (InArea(BIOS_START, BIOS_SIZE, masked_addr))
         return *reinterpret_cast<ValueType*>(bios.data() + (masked_addr - BIOS_START));
     // Cache Control
-    if (InArea(CACHE_CTRL_START, CACHE_CTRL_SIZE, masked_addr)) Panic("Tried to load from Cache Control [0x%08X]", address);
+    if (InArea(CACHE_CTRL_START, CACHE_CTRL_SIZE, masked_addr))
+        Panic("Tried to load from Cache Control [0x%08X]", address);
     // Expansion Region 1
     if (InArea(EXP_REG_1_START, EXP_REG_1_SIZE, masked_addr)) {
         LOG_WARN << fmt::format("Tried to load from Expansion Region 1 [0x{:08X}]", address);
@@ -167,7 +164,7 @@ ValueType BUS::Load(u32 address) {
     return 0;
 }
 
-template <typename Value>
+template<typename Value>
 void BUS::Store(u32 address, Value value) {
     static_assert(std::is_same<decltype(value), u32>::value || std::is_same<decltype(value), u16>::value ||
                   std::is_same<decltype(value), u8>::value);
@@ -196,10 +193,10 @@ void BUS::Store(u32 address, Value value) {
     // IO Ports
     if (InArea(IO_PORTS_START, IO_PORTS_SIZE, masked_addr)) {
         switch (masked_addr) {
-            case(0x1F801070): sys->interrupt->StoreStat(value); return;
-            case(0x1F801074): sys->interrupt->StoreMask(value); return;
-            case(0x1F801810): sys->gpu->SendGP0Cmd(value); return;
-            case(0x1F801814): sys->gpu->SendGP1Cmd(value); return;
+            case (0x1F801070): sys->interrupt->StoreStat(value); return;
+            case (0x1F801074): sys->interrupt->StoreMask(value); return;
+            case (0x1F801810): sys->gpu->SendGP0Cmd(value); return;
+            case (0x1F801814): sys->gpu->SendGP1Cmd(value); return;
         }
 
         // DMA
@@ -214,7 +211,7 @@ void BUS::Store(u32 address, Value value) {
             return;
         }
 
-        if (InArea(0x1F801C00, 644, masked_addr)) return; // SPU
+        if (InArea(0x1F801C00, 644, masked_addr)) return;    // SPU
 
         // CDROM
         if (InArea(0x1F801800, 4, masked_addr)) {
@@ -255,9 +252,7 @@ void BUS::Store(u32 address, Value value) {
 u8 BUS::Peek(u32 address) {
     // TODO: make Peek a template function like Load and Store
 
-    const auto ToU8 = [&](u32 value) {
-        return (value >> (address & 0x3)) & 0xFF;
-    };
+    const auto ToU8 = [&](u32 value) { return (value >> (address & 0x3)) & 0xFF; };
 
     const u32 physical_addr = MaskRegion(address);
 
@@ -274,24 +269,19 @@ u8 BUS::Peek(u32 address) {
         if (InArea(0x1F801814, 4, physical_addr)) return ToU8(sys->gpu->ReadStat());
 
         // DMA
-        if (InArea(0x1F801080, 120, physical_addr))
-            return sys->dma->Peek(physical_addr);
+        if (InArea(0x1F801080, 120, physical_addr)) return sys->dma->Peek(physical_addr);
 
         // Timer
-        if (InArea(0x1F801100, 48, physical_addr))
-            return sys->timers->Peek(physical_addr);
+        if (InArea(0x1F801100, 48, physical_addr)) return sys->timers->Peek(physical_addr);
 
         // CDROM
-        if (InArea(0x1F801800, 4, physical_addr))
-            return sys->cdrom->Peek(physical_addr);
+        if (InArea(0x1F801800, 4, physical_addr)) return sys->cdrom->Peek(physical_addr);
 
-
-        if (InArea(0x1F801C00, 644, physical_addr)) return 0; // SPU
-        if (InArea(0x1F801040, 16, physical_addr)) return 0;  // Joypad
+        if (InArea(0x1F801C00, 644, physical_addr)) return 0;    // SPU
+        if (InArea(0x1F801040, 16, physical_addr)) return 0;     // Joypad
     }
     // BIOS
-    if (InArea(BIOS_START, BIOS_SIZE, physical_addr))
-        return *(bios.data() + (physical_addr - BIOS_START));
+    if (InArea(BIOS_START, BIOS_SIZE, physical_addr)) return *(bios.data() + (physical_addr - BIOS_START));
     // Cache Control
     if (InArea(CACHE_CTRL_START, CACHE_CTRL_SIZE, physical_addr)) return 0;
     // Expansion Region 1

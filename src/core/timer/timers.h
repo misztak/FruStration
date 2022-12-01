@@ -1,8 +1,8 @@
 #pragma once
 
-#include "types.h"
 #include "bitfield.h"
 #include "timer.h"
+#include "types.h"
 
 class System;
 
@@ -25,6 +25,7 @@ public:
     SystemTimer system_timer;
 
     Timer* timers[3] = {};
+
 private:
     static constexpr u32 MODE_WRITE_MASK = 0b1110001111111111;
 

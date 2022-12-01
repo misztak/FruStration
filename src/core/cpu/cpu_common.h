@@ -102,15 +102,15 @@ union GP_Registers {
     u32 r[GP_REG_COUNT] = {};
 
     struct {
-        u32 zero;  // always zero
-        u32 at;    // assembler temporary
-        u32 v0;    // function return values
+        u32 zero;    // always zero
+        u32 at;      // assembler temporary
+        u32 v0;      // function return values
         u32 v1;
-        u32 a0;  // function arguments
+        u32 a0;    // function arguments
         u32 a1;
         u32 a2;
         u32 a3;
-        u32 t0;  // temporary registers
+        u32 t0;    // temporary registers
         u32 t1;
         u32 t2;
         u32 t3;
@@ -118,7 +118,7 @@ union GP_Registers {
         u32 t5;
         u32 t6;
         u32 t7;
-        u32 s0;  // saved registers
+        u32 s0;    // saved registers
         u32 s1;
         u32 s2;
         u32 s3;
@@ -126,14 +126,14 @@ union GP_Registers {
         u32 s5;
         u32 s6;
         u32 s7;
-        u32 t8;  // more temporary registers
+        u32 t8;    // more temporary registers
         u32 t9;
-        u32 k0;  // kernel reserved registers
+        u32 k0;    // kernel reserved registers
         u32 k1;
-        u32 gp;  // global pointer
-        u32 sp;  // stack pointer
-        u32 fp;  // frame pointer
-        u32 ra;  // function return address
+        u32 gp;    // global pointer
+        u32 sp;    // stack pointer
+        u32 fp;    // frame pointer
+        u32 ra;    // function return address
     };
 
     static constexpr u32 RA = 31;
@@ -144,7 +144,7 @@ union SP_Registers {
     u32 spr[SP_REG_COUNT] = {};
 
     struct {
-        u32 pc;  // we set the pc to 0xbfc00000 during cpu init
+        u32 pc;    // we set the pc to 0xbfc00000 during cpu init
         u32 hi;
         u32 lo;
     };
@@ -158,15 +158,15 @@ union CP0_Registers {
         u32 cop0r0;
         u32 cop0r1;
         u32 cop0r2;
-        u32 bpc;        // breakpoint on execute (R/W)
+        u32 bpc;    // breakpoint on execute (R/W)
         u32 cop0r4;
-        u32 bda;        // breakpoint on data access (R/W)
-        u32 jumpdest;   // randomly memorized jump address (R)
-        u32 dcic;       // breakpoint control (R/W)
-        u32 bad_vaddr;  // bad virtual address (R)
-        u32 bdam;       // data access breakpoint mask (R/W)
+        u32 bda;          // breakpoint on data access (R/W)
+        u32 jumpdest;     // randomly memorized jump address (R)
+        u32 dcic;         // breakpoint control (R/W)
+        u32 bad_vaddr;    // bad virtual address (R)
+        u32 bdam;         // data access breakpoint mask (R/W)
         u32 cop0r10;
-        u32 bpcm;       // execute breakpoint mask (R/W)
+        u32 bpcm;    // execute breakpoint mask (R/W)
         // system status register (R/W)
         union {
             u32 value;
@@ -182,10 +182,12 @@ union CP0_Registers {
             BitField<u32, u32, 28, 1> CE;
             BitField<u32, u32, 31, 1> BD;
         } cause;
-        u32 epc;        // return address from trap (R)
-        u32 prid;       // processor ID (R)
+        u32 epc;     // return address from trap (R)
+        u32 prid;    // processor ID (R)
     };
 };
+
+// clang-format off
 
 const char* const rnames[GP_REG_COUNT] = {
     "0", "at", "v0", "v1",
@@ -208,6 +210,8 @@ const char* const coprnames[COP_REG_COUNT] = {
     "bad_vaddr", "bdam", "10", "bpcm",
     "sr", "cause", "epc", "prid"
 };
+
+// clang-format on
 
 union Instruction {
     u32 value = 0;
@@ -245,4 +249,4 @@ struct LoadDelayEntry {
     u32 value = 0;
 };
 
-}  // namespace CPU
+}    // namespace CPU

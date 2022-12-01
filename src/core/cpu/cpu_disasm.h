@@ -12,6 +12,7 @@ class Disassembler {
 public:
     explicit Disassembler(CPU* cpu);
     std::string InstructionAt(u32 address, u32 value, bool with_curr_value = true);
+
 private:
     void Disassemble(u32 address, u32 value);
     void PrintInstruction(const char* name, u32 r1, u32 r2 = 32, u32 r3 = 32);
@@ -23,4 +24,4 @@ private:
     std::string result;
     CPU* cpu = nullptr;
 };
-}
+}    //namespace CPU

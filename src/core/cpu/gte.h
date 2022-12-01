@@ -7,6 +7,7 @@ public:
     void Reset();
 
     void SetReg(u32 index, u32 value);
+
 private:
 
     struct Vec3 {

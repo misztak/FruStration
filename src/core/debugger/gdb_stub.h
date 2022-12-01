@@ -12,4 +12,4 @@ void Shutdown();
 void HandleClientRequest();
 
 bool ServerRunning();
-}
+}    //namespace GDB

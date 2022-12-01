@@ -15,9 +15,10 @@ class Debugger;
 namespace CPU {
 
 class CPU {
-friend class Disassembler;
-friend class ::Debugger;
-friend class ::BUS;
+    friend class Disassembler;
+    friend class ::Debugger;
+    friend class ::BUS;
+
 public:
     CPU(System* system);
     void Reset();
@@ -37,6 +38,7 @@ public:
     GP_Registers gp;
     SP_Registers sp;
     CP0_Registers cp;
+
 private:
     void Set(u32 index, u32 value);
     u32 Get(u32 index);
@@ -63,4 +65,4 @@ private:
     Disassembler disassembler;
 };
 
-}  // namespace CPU
+}    // namespace CPU

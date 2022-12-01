@@ -2,14 +2,15 @@
 
 #include <vector>
 
-#include "types.h"
 #include "bitfield.h"
 #include "sw_renderer.h"
+#include "types.h"
 
 class System;
 
 class GPU {
-friend class Renderer;
+    friend class Renderer;
+
 public:
     static constexpr u32 VRAM_WIDTH = 1024;
     static constexpr u32 VRAM_HEIGHT = 512;
@@ -23,7 +24,7 @@ public:
     void SendGP1Cmd(u32 cmd);
 
     u16* GetVRAM();
-    u8*  GetVideoOutput();
+    u8* GetVideoOutput();
 
     void DrawGpuState(bool* open);
 
@@ -43,13 +44,9 @@ private:
         return status.video_mode == VideoMode::NTSC ? REFRESH_RATE_NTSC : REFRESH_RATE_PAL;
     }
 
-    ALWAYS_INLINE u32 Scanlines() const {
-        return status.video_mode == VideoMode::NTSC ? 263 : 314;
-    }
+    ALWAYS_INLINE u32 Scanlines() const { return status.video_mode == VideoMode::NTSC ? 263 : 314; }
 
-    ALWAYS_INLINE u32 VerticalRes() const {
-        return status.vertical_res ? 480 : 240;
-    }
+    ALWAYS_INLINE u32 VerticalRes() const { return status.vertical_res ? 480 : 240; }
 
     u32 HorizontalRes() const {
         if (status.horizontal_res_2) return 368;
@@ -65,25 +62,15 @@ private:
         return 0;
     }
 
-    float DotsPerGpuCycle() const {
-        return static_cast<float>(HorizontalRes()) / 2560.f;
-    }
+    float DotsPerGpuCycle() const { return static_cast<float>(HorizontalRes()) / 2560.f; }
 
-    float GpuCyclesPerScanline() const {
-        return (GPU_CLOCK_SPEED / RefreshRate()) / Scanlines();
-    }
+    float GpuCyclesPerScanline() const { return (GPU_CLOCK_SPEED / RefreshRate()) / Scanlines(); }
 
-    float DotsPerScanline() const {
-        return DotsPerGpuCycle() * GpuCyclesPerScanline();
-    }
+    float DotsPerScanline() const { return DotsPerGpuCycle() * GpuCyclesPerScanline(); }
 
-    ALWAYS_INLINE bool IsGpuInHblank() const {
-        return accumulated_dots >= static_cast<float>(HorizontalRes());
-    }
+    ALWAYS_INLINE bool IsGpuInHblank() const { return accumulated_dots >= static_cast<float>(HorizontalRes()); }
 
-    ALWAYS_INLINE bool IsGpuInVblank() const {
-        return scanline >= 240;
-    }
+    ALWAYS_INLINE bool IsGpuInVblank() const { return scanline >= 240; }
 
     std::pair<float, float> GpuCyclesAndDots(u32 cpu_cycles) const {
         const float gpu_cycles = static_cast<float>(cpu_cycles) * GPU_CLOCK_RATIO;
@@ -119,9 +106,7 @@ private:
         VramToCpu = 3,
     };
 
-    enum class VideoMode : u32 {
-        NTSC, PAL
-    };
+    enum class VideoMode : u32 { NTSC, PAL };
 
     // TODO: more enums for types
     union GpuStatus {

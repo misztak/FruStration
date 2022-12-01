@@ -1,10 +1,10 @@
 #pragma once
 
 #include <array>
+#include <functional>
+#include <limits>
 #include <memory>
 #include <string>
-#include <limits>
-#include <functional>
 
 #include "types.h"
 
@@ -53,6 +53,7 @@ public:
     };
 
     std::array<TimedEvent, TIMED_EVENT_COUNT> timed_events = {};
+
 private:
     void UpdateComponents(u32 cycles);
 

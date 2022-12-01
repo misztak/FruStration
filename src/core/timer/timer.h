@@ -9,9 +9,7 @@ constexpr static u32 TMR0 = 0;
 constexpr static u32 TMR1 = 1;
 constexpr static u32 TMR2 = 2;
 
-enum class ResetMode: u32 {
-    AfterMaxValue, AfterTarget
-};
+enum class ResetMode : u32 { AfterMaxValue, AfterTarget };
 
 class System;
 

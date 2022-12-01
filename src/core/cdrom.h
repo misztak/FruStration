@@ -3,8 +3,8 @@
 #include <deque>
 #include <functional>
 
-#include "types.h"
 #include "bitfield.h"
+#include "types.h"
 
 class System;
 
@@ -82,13 +82,13 @@ private:
     void SendInterrupt();
 
     void ScheduleFirstResponse();
-    void ScheduleSecondResponse(std::function<void ()> command, s32 cycles);
+    void ScheduleSecondResponse(std::function<void()> command, s32 cycles);
 
     void ReadN();
 
     u8 minute = 0, second = 0, sector = 0;
 
-    std::function<void ()> second_response_command = nullptr;
+    std::function<void()> second_response_command = nullptr;
 
     u32 cycles_until_first_response = 0;
     u32 cycles_until_second_response = 0;
