@@ -1,10 +1,9 @@
 #include "cpu_disasm.h"
 
-#include "fmt/format.h"
-
 #include "cpu.h"
 #include "cpu_common.h"
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 
 LOG_CHANNEL(DISASM);
 

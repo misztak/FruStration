@@ -18,5 +18,5 @@ add_library(core
         debugger/debugger.cpp
         debugger/gdb_stub.cpp)
 
-target_include_directories(core PUBLIC . cpu debugger timer util ../../libs/nanolog)
-target_link_libraries(core PRIVATE fmt nanolog imgui)
+target_include_directories(core PUBLIC . cpu debugger timer util ../common)
+target_link_libraries(core PRIVATE common imgui)

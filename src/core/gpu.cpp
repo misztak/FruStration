@@ -1,9 +1,9 @@
 #include "gpu.h"
 
-#include "fmt/format.h"
 #include "imgui.h"
 
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 #include "interrupt.h"
 #include "system.h"
 #include "timers.h"
@@ -174,7 +174,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
             });
             break;
         case 0x1F: // interrupt request
-            LOG_WARN << "Interrupt request [Unimplemented]";
+            LogWarn("Interrupt request [Unimplemented]");
             break;
         case 0x20: case 0x22: // mono triangle
             CommandAfterCount(3, [this]() { DrawTriangleMono(); });
@@ -285,10 +285,10 @@ void GPU::SendGP1Cmd(u32 cmd) {
             ResetCommand();
             break;
         case Gp1Command::cmd_buf_reset:
-            LOG_DEBUG << "Reset command buffer [Unimplemented]";
+            LogDebug("Reset command buffer [Unimplemented]");
             break;
         case Gp1Command::ack_gpu_interrupt:
-            LOG_DEBUG << "ACK GPU Interrupt [Unimplemented]";
+            LogDebug("ACK GPU Interrupt [Unimplemented]");
             break;
         case Gp1Command::display_enable:
             status.display_disabled = cmd & 0x1;
@@ -320,7 +320,7 @@ void GPU::SendGP1Cmd(u32 cmd) {
             new_status.vertical_interlace = (cmd >> 5) & 0x1;
             new_status.horizontal_res_2 = (cmd >> 6) & 0x1;
             if ((cmd >> 7) & 0x1) {
-                LOG_WARN << "Unimplemented: Toggled GPUSTAT.14 (Reverse Flag)";
+                LogWarn("Unimplemented: Toggled GPUSTAT.14 (Reverse Flag)");
             }
 
             if (new_status.value != status.value) {
@@ -521,7 +521,7 @@ void GPU::CopyRectVramToCpu() {
         x_pos_max = x_pos + width;
 
         mode = Mode::DataToCPU;
-        LOG_DEBUG << fmt::format("CopyVramToCPU: {} words from (x={}, y={}) to (x={}, y={})", words_remaining, x_pos,
+        LogDebug("CopyVramToCPU: {} words from (x={}, y={}) to (x={}, y={})", words_remaining, x_pos,
                                  y_pos, x_pos + width - 1, y_pos + height - 1);
     } else if (mode == Mode::DataToCPU) {
         // first halfword

@@ -2,7 +2,8 @@
 
 #include "bus.h"
 #include "cpu.h"
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 #include "gdb_stub.h"
 #include "gpu.h"
 #include "timers.h"
@@ -43,7 +44,7 @@ bool Emulator::IsHalted() {
 
 void Emulator::SetHalt(bool halt) {
     sys.cpu->halt = halt;
-    LOG_INFO << "System " << (halt ? "paused" : "resumed");
+    LogInfo("Emulator {} execution", halt ? "paused" : "resumed");
 }
 
 u8* Emulator::GetVideoOutput() {

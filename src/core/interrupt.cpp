@@ -1,9 +1,8 @@
 #include "interrupt.h"
 
-#include "fmt/format.h"
-
 #include "cpu.h"
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 #include "system.h"
 
 LOG_CHANNEL(IRQ);
@@ -23,7 +22,7 @@ void InterruptController::Request(IRQ irq) {
 void InterruptController::StoreStat(u32 value) {
     u32 old_stat = stat.value;
     stat.value &= value;
-    LOG_DEBUG << fmt::format("ISTAT ACK [0b{:011b}] --> [0b{:011b}]", old_stat & IRQ_MASK, stat.value & IRQ_MASK);
+    LogDebug("ISTAT ACK [0b{:011b}] --> [0b{:011b}]", old_stat & IRQ_MASK, stat.value & IRQ_MASK);
     UpdateCP0Interrupt();
 }
 
@@ -33,7 +32,7 @@ u32 InterruptController::LoadStat() {
 }
 
 void InterruptController::StoreMask(u32 value) {
-    LOG_DEBUG << fmt::format("IMASK SET [0b{:011b}] --> [0b{:011b}]", mask.value & IRQ_MASK, value & IRQ_MASK);
+    LogDebug("IMASK SET [0b{:011b}] --> [0b{:011b}]", mask.value & IRQ_MASK, value & IRQ_MASK);
     // for now only allow interrupts that we can "handle"
     Assert((value & ~(0b1111101)) == 0);
     mask.value = value;

@@ -1,6 +1,3 @@
-add_library(fmt STATIC fmt/src/format.cc fmt/src/os.cc)
-target_include_directories(fmt PUBLIC fmt/include)
-
 # use cmake for nativefiledialog
 set(NFD_SOURCES nativefiledialog/src/nfd_common.c)
 if (WIN32)
@@ -29,7 +26,7 @@ if(UNIX AND NOT APPLE AND NOT ANDROID)
     endif()
 endif()
 
-add_library(nanolog STATIC nanolog/nano_log.cpp)
+add_subdirectory(spdlog)
 
 add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GL3W)
 

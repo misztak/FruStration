@@ -4,7 +4,7 @@
 
 #include "bus.h"
 #include "cpu.h"
-#include "debug_utils.h"
+#include "log.h"
 #include "system.h"
 
 LOG_CHANNEL(Debugger);
@@ -44,7 +44,7 @@ void Debugger::DrawDebugger(bool* open) {
     if (ImGui::Button("Next Frame") || ImGui::IsKeyReleased(63)) {
         if (single_frame) {
             sys->cpu->halt = false;
-            LOG_INFO << "Next Frame";
+            LogInfo("Next Frame");
         }
     }
     ImGui::SameLine();

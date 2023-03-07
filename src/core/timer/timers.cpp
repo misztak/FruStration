@@ -1,9 +1,9 @@
 #include "timers.h"
 
-#include "fmt/format.h"
 #include "imgui.h"
 
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 #include "gpu.h"
 #include "interrupt.h"
 #include "system.h"
@@ -77,7 +77,7 @@ u32 TimerController::Load(u32 address) {
 }
 
 void TimerController::Store(u32 address, u32 value) {
-    LOG_DEBUG << fmt::format("Store call to Timers [0x{:08X} @ 0x{:08X}]", value, address);
+    LogDebug("Store call to Timers [0x{:08X} @ 0x{:08X}]", value, address);
 
     const u32 timer_index = (address & 0xF0) >> 4;
     const u32 timer_address = address & 0xF;

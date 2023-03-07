@@ -3,13 +3,13 @@
 #include "bus.h"
 #include "cdrom.h"
 #include "cpu.h"
-#include "debug_utils.h"
 #include "debugger.h"
 #include "dma.h"
 #include "gdb_stub.h"
 #include "gpu.h"
 #include "interrupt.h"
 #include "timers.h"
+#include "log.h"
 
 LOG_CHANNEL(System);
 
@@ -25,7 +25,7 @@ System::System() {
 
     RecalculateCyclesUntilNextEvent();
 
-    LOG_INFO << "Initialized PSX core";
+    LogInfo("Initialized PSX core");
 }
 
 // required to allow forward declaration with unique_ptr
@@ -46,7 +46,7 @@ void System::Reset() {
 
     RecalculateCyclesUntilNextEvent();
 
-    LOG_INFO << "System reset";
+    LogInfo("System reset");
 }
 
 void System::AddCycles(u32 cycles) {

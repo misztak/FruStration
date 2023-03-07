@@ -5,9 +5,10 @@
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
 
+#include "asserts.h"
 #include "display.h"
-#include "debug_utils.h"
 #include "emulator.h"
+#include "log.h"
 
 LOG_CHANNEL(MAIN);
 
@@ -24,16 +25,15 @@ int RunCore() {
 }
 
 int main(int, char**) {
-    // init nanolog
-    nanolog::initialize(nanolog::GuaranteedLogger());
-    nanolog::set_log_level(nanolog::LogLevel::DBG);
+    // initialize logger
+    Log::Init();
 
     if constexpr (RUN_HEADLESS) {
         return RunCore();
     }
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        LOG_CRIT << "Error: " << SDL_GetError();
+        LogCrit("Error: {}", SDL_GetError());
         return 1;
     }
     // some linux WMs/Compositors will render artifacts and have other issues if this is not enabled
@@ -64,7 +64,7 @@ int main(int, char**) {
     SDL_Window* window = SDL_CreateWindow("FruStration", 3840, 0,
                                           Display::WIDTH, Display::HEIGHT, window_flags);
     if (!window) {
-        LOG_CRIT << "Failed to create SDL_Window";
+        LogCrit("Failed to create SDL_Window");
         return 1;
     }
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
@@ -72,7 +72,7 @@ int main(int, char**) {
 
     bool err = gl3wInit() != 0;
     if (err) {
-        LOG_CRIT << "Failed to initialize OpenGL loader";
+        LogCrit("Failed to initialize OpenGL loader");
         return 1;
     }
 
@@ -84,7 +84,7 @@ int main(int, char**) {
 
     Display display;
     if (!display.Init(&emulator, window, gl_context, glsl_version)) {
-        LOG_CRIT << "Failed to initialize imgui display";
+        LogCrit("Failed to initialize imgui display");
         return 1;
     }
 
@@ -123,6 +123,8 @@ int main(int, char**) {
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
+
+    Log::Shutdown();
 
     return 0;
 }

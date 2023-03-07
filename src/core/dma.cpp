@@ -1,9 +1,8 @@
 #include "dma.h"
 
-#include "fmt/format.h"
-
 #include "bus.h"
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 #include "gpu.h"
 #include "interrupt.h"
 #include "system.h"
@@ -124,7 +123,7 @@ void DMA::TransferBlock(u32 index) {
         case SyncMode::Request:
             transfer_count = ch.bcr.block_count * ch.bcr.block_size;
             if (index == 2 && ch.control.transfer_direction == Direction::ToDevice)
-                LOG_DEBUG << "Possible start of CopyImageToVRAM with size " << transfer_count;
+                LogDebug("Possible start of CopyImageToVRAM with size {}", transfer_count);
             break;
         case SyncMode::LinkedList: Panic("This should never be reached");
     }

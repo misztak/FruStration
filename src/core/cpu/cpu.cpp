@@ -1,11 +1,11 @@
 #include "cpu.h"
 
-#include "fmt/format.h"
 #include "imgui.h"
 
 #include "bus.h"
 #include "cpu_common.h"
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 #include "system.h"
 
 LOG_CHANNEL(CPU);
@@ -45,7 +45,7 @@ void CPU::Step() {
         sys->debugger->ToggleBreakpoint(sp.pc);
 
         if (enabled) {
-            LOG_DEBUG << "Hit breakpoint";
+            LogDebug("Hit breakpoint");
             halt = true;
             return;
         }
@@ -70,7 +70,7 @@ void CPU::Step() {
 
 #ifdef DEBUG
     if (TRACE_BIOS_CALLS && sp.pc <= 0xC0) bios.TraceFunction(sp.pc, Get(9));
-    if (DISASM_INSTRUCTION) LOG_DEBUG << disassembler.InstructionAt(sp.pc, instr.value);
+    if (DISASM_INSTRUCTION) LogDebug(disassembler.InstructionAt(sp.pc, instr.value));
     static u64 instr_counter = 0;
     instr_counter++;
 #endif
@@ -95,7 +95,7 @@ void CPU::Step() {
 
     // TODO: at what point should this be called/checked?
     if (unlikely(current_pc & 0x3)) {
-        LOG_CRIT << "Invalid program counter";
+        LogCrit("Invalid program counter");
         Exception(ExceptionCode::LoadAddress);
         return;
     }
@@ -265,7 +265,7 @@ void CPU::Step() {
                     Set(instr.s.rd, (Get(instr.s.rs) < Get(instr.s.rt)) ? 1 : 0);
                     break;
                 default:
-                    LOG_CRIT << fmt::format("Invalid special opcode 0x%02X [0x%08X]\n", (u32)instr.s.sop.GetValue(), instr.value);
+                    LogCrit("Invalid special opcode 0x%02X [0x%08X]\n", (u32)instr.s.sop.GetValue(), instr.value);
                     Exception(ExceptionCode::ReservedInstr);
             }
             break;
@@ -383,10 +383,10 @@ void CPU::Step() {
         case PrimaryOpcode::cop2:
             switch (instr.cop.cop_op) {
                 case CoprocessorOpcode::mf:
-                    LOG_DEBUG << "GTE: MFC [Unimplemented]";
+                    LogDebug("GTE: MFC [Unimplemented]");
                     break;
                 case CoprocessorOpcode::mcf:
-                    LOG_DEBUG << "GTE: MCFC [Unimplemented]";
+                    LogDebug("GTE: MCFC [Unimplemented]");
                     break;
                 case CoprocessorOpcode::mt:
                     gte.SetReg(instr.cop.rd, Get(instr.cop.rt));
@@ -542,7 +542,7 @@ void CPU::Step() {
         {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u32 value = Load32(address);
-            LOG_DEBUG << fmt::format("LWC2: 0x{:08X}", value);
+            LogDebug("LWC2: 0x{:08X}", value);
             Panic("LWC2 (GTE) not implemented");
             break;
         }
@@ -559,7 +559,7 @@ void CPU::Step() {
             Exception(ExceptionCode::CopError);
             break;
         default:
-            LOG_CRIT << fmt::format("Invalid opcode 0x{:02X} [0x{:08X}]", (u32)instr.n.op.GetValue(), instr.value);
+            LogCrit("Invalid opcode 0x{:02X} [0x{:08X}]", (u32)instr.n.op.GetValue(), instr.value);
             Exception(ExceptionCode::ReservedInstr);
     }
 
@@ -582,7 +582,7 @@ void CPU::Exception(ExceptionCode cause) {
         Instruction i;
         i.value = Load32(sp.pc);
         if (instr.n.op == PrimaryOpcode::cop2) {
-            LOG_DEBUG << "GTE command during interrupt, delaying interrupt";
+            LogDebug("GTE command during interrupt, delaying interrupt");
             return;
         }
     }
@@ -614,7 +614,7 @@ void CPU::Exception(ExceptionCode cause) {
 
     sp.pc = handler;
     next_pc = handler + 4;
-    LOG_DEBUG << fmt::format("CPU Exception {:#04x}", (u32)cause);
+    LogDebug("CPU Exception {:#04x}", (u32)cause);
 }
 
 u32 CPU::Load32(u32 address) {
@@ -667,7 +667,7 @@ void CPU::SetCP0(u32 index, u32 value) {
     Assert(index < 16);
     // TODO: only allow setting writable registers
     if (index == 13) {
-        LOG_DEBUG << "Set value of CAUSE.IP to " << ((value & 0x300U) >> 8);
+        LogDebug("Set value of CAUSE.IP to {}", (value & 0x300U) >> 8);
         // only bits 8-9 of CAUSE are writable
         cp.cause.value = (cp.cause.value & ~0x300U) | (value & 0x300U);
         return;

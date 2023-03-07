@@ -1,3 +1,6 @@
 [submodule "libs/nativefiledialog"]
 	path = libs/nativefiledialog
 	url = https://github.com/mlabbe/nativefiledialog.git
+[submodule "libs/spdlog"]
+	path = libs/spdlog
+	url = https://github.com/gabime/spdlog.git

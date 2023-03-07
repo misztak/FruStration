@@ -3,9 +3,8 @@
 #include <algorithm>
 #include <tuple>
 
-#include "fmt/format.h"
-
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 #include "gpu.h"
 
 LOG_CHANNEL(Renderer);
@@ -24,7 +23,9 @@ template<u32 draw_flags>
 void Renderer::DrawTriangle() {
 #define DRAW_FLAGS_SET(flags) ((draw_flags & (flags)) != 0)
 
-    if ((draw_flags & (TEXTURED | SHADED)) == (TEXTURED | SHADED)) Panic("Unimplemented");
+    // Unimplemented
+    Assert((draw_flags & (TEXTURED | SHADED)) != (TEXTURED | SHADED));
+
     // made possible by Fabian Giesen's great series of articles about software rasterizers
     // starting with:
     // https://fgiesen.wordpress.com/2013/02/06/the-barycentric-conspirac/
@@ -221,7 +222,9 @@ u16 Renderer::GetTexel(u8 tex_x, u8 tex_y) {
             texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
             break;
         }
-        default: texel = 0xFF; LOG_WARN << "Invalid texture color mode 3";
+        default:
+            texel = 0xFF;
+            LogWarn("Invalid texture color mode 3");
     }
 
     return texel;

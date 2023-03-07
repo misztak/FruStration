@@ -1,8 +1,7 @@
 #include "cdrom.h"
 
-#include "fmt/format.h"
-
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 #include "interrupt.h"
 #include "system.h"
 
@@ -105,7 +104,7 @@ void CDROM::ExecCommand(Command command) {
     // will be overwritten in ScheduleSecondResponse
     state = State::Idle;
 
-    if (!response_fifo.empty()) LOG_WARN << "Response fifo not empty, overwriting unread values!";
+    if (!response_fifo.empty()) LogWarn("Response fifo not empty, overwriting unread values!");
 
     response_fifo.clear();
 
@@ -114,12 +113,12 @@ void CDROM::ExecCommand(Command command) {
 
     switch (command) {
         case Command::GetStat:
-            LOG_DEBUG << "GetStat";
+            LogDebug("GetStat");
             PushResponse(INT3, stat.value);
             stat.shell_opened = false;
             break;
         case Command::Setloc:
-            LOG_DEBUG << "Setloc";
+            LogDebug("Setloc");
             DebugAssert(parameter_fifo.size() >= 3);
             minute = parameter_fifo[0];
             second = parameter_fifo[1];
@@ -127,27 +126,27 @@ void CDROM::ExecCommand(Command command) {
             PushResponse(INT3, stat.value);
             break;
         case Command::ReadN:
-            LOG_DEBUG << "ReadN";
+            LogDebug("ReadN");
             PushResponse(INT3, stat.value);
             ScheduleSecondResponse([this] { ReadN(); });
             break;
         case Command::Setmode:
-            LOG_DEBUG << "Setmode";
+            LogDebug("Setmode");
             DebugAssert(!parameter_fifo.empty() && parameter_fifo[0] == 0x80);
             mode.value = parameter_fifo[0];
             PushResponse(INT3, stat.value);
             break;
         case Command::SeekL:
-            LOG_DEBUG << "SeekL";
+            LogDebug("SeekL");
             PushResponse(INT3, stat.value);
             ScheduleSecondResponse([this] { PushResponse(INT2, stat.value); });
             break;
         case Command::Test:
-            LOG_DEBUG << "Test";
+            LogDebug("Test");
             ExecSubCommand();
             break;
         case Command::GetID:
-            LOG_DEBUG << "GetID";
+            LogDebug("GetID");
             PushResponse(INT3, stat.value);
             // no disc
             //ScheduleSecondResponse([this] {
@@ -174,7 +173,7 @@ void CDROM::ExecSubCommand() {
 
     switch (sub_command) {
         case 0x20:
-            LOG_DEBUG << "CDROM controller version [PU-7, version vC0]";
+            LogDebug("CDROM controller version [PU-7, version vC0]");
             // CDROM controller version (PU-7, version vC0)
             PushResponse(INT3, {0x94, 0x09, 0x19, 0xC0});
             break;
@@ -206,19 +205,19 @@ u8 CDROM::Load(u32 address) {
 
     if (address == 0x0) {
         status.res_fifo_not_empty = !response_fifo.empty();
-        LOG_DEBUG << fmt::format("Load: status [0b{:08b}]", status.value);
+        LogDebug("Load: status [0b{:08b}]", status.value);
         return status.value;
     }
 
     if (address == 0x1) {
         if (response_fifo.empty()) {
-            LOG_WARN << "Read from empty response fifo";
+            LogWarn("Read from empty response fifo");
             // TODO: return old value or 0x00 depending on position
             return 0;
         } else {
             u8 response_byte = response_fifo.front();
             response_fifo.pop_front();
-            LOG_DEBUG << fmt::format("Load: read from response fifo [0x{:02X}]", response_byte);
+            LogDebug("Load: read from response fifo [0x{:02X}]", response_byte);
             return response_byte;
         }
     }
@@ -237,7 +236,7 @@ u8 CDROM::Load(u32 address) {
                 u8 result = 0b11100000;
 
                 if (!interrupt_fifo.empty()) result |= interrupt_fifo.front();
-                LOG_DEBUG << fmt::format("Load: read from interrupt fifo [0b{:08b}]", result);
+                LogDebug("Load: read from interrupt fifo [0b{:08b}]", result);
 
                 return result;
             }
@@ -252,7 +251,7 @@ void CDROM::Store(u32 address, u8 value) {
 
     if (address == 0x0) {
         // only the index field is writable
-        LOG_DEBUG << fmt::format("Store: changed register index from {} to {}", status.index, value & 0x3);
+        LogDebug("Store: changed register index from {} to {}", status.index, value & 0x3);
         status.index = value & 0x3;
         return;
     }
@@ -269,7 +268,7 @@ void CDROM::Store(u32 address, u8 value) {
 
             sys->ForceUpdateComponents();
 
-            LOG_DEBUG << fmt::format("Store: push new command 0x{:02X}", value);
+            LogDebug("Store: push new command 0x{:02X}", value);
             pending_command = static_cast<Command>(value);
             ScheduleFirstResponse();
 
@@ -281,7 +280,7 @@ void CDROM::Store(u32 address, u8 value) {
 
     if (address == 0x2) {
         if (index == 0) {
-            LOG_DEBUG << fmt::format("Store: push parameter 0x{:02X}", value);
+            LogDebug("Store: push parameter 0x{:02X}", value);
             parameter_fifo.push_back(value);
         }
         if (index == 1) {
@@ -290,7 +289,7 @@ void CDROM::Store(u32 address, u8 value) {
             // set interrupt enable
             interrupt_enable = value;
 
-            LOG_DEBUG << fmt::format("Store: interrupt enable -> 0b{:08b}", value);
+            LogDebug("Store: interrupt enable -> 0b{:08b}", value);
 
             // if an interrupt was waiting it can be sent now
             SendInterrupt();
@@ -309,7 +308,7 @@ void CDROM::Store(u32 address, u8 value) {
             sys->ForceUpdateComponents();
 
             if (value & 0x40) {
-                LOG_DEBUG << "Store: cleared parameter fifo";
+                LogDebug("Store: cleared parameter fifo");
 
                 // reset parameter fifo
                 parameter_fifo.clear();
@@ -320,7 +319,7 @@ void CDROM::Store(u32 address, u8 value) {
             // acknowledge an IRQ
             if (value & 0x07) {
                 DebugAssert(value == 0x07 || value == 0x1F);
-                LOG_DEBUG << "Store: acknowledged last interrupt";
+                LogDebug("Store: acknowledged last interrupt");
 
                 if (!interrupt_fifo.empty()) {
                     interrupt_fifo.pop_front();

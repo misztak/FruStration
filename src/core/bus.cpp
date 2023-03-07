@@ -2,13 +2,13 @@
 
 #include <fstream>
 
-#include "fmt/format.h"
 #include "imgui.h"
 #include "imgui_memory_editor.h"
 
 #include "cdrom.h"
 #include "cpu.h"
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 #include "debugger.h"
 #include "dma.h"
 #include "gpu.h"
@@ -21,11 +21,11 @@ LOG_CHANNEL(BUS);
 BUS::BUS(System* system) : sys(system), bios(BIOS_SIZE), ram(RAM_SIZE, 0xCA), scratchpad(SCRATCH_SIZE) {}
 
 bool BUS::LoadBIOS(const std::string& path) {
-    LOG_INFO << "Loading BIOS from file " << path;
+    LogInfo("Loading BIOS from file {}", path);
 
     std::ifstream file(path, std::ifstream::binary);
     if (!file || !file.good()) {
-        LOG_WARN << "Failed to open BIOS file " << path;
+        LogWarn("Failed to open BIOS file {}", path);
         return false;
     }
     file.seekg(0, std::ifstream::end);
@@ -33,7 +33,7 @@ bool BUS::LoadBIOS(const std::string& path) {
     file.seekg(0, std::ifstream::beg);
 
     if (length != BIOS_SIZE) {
-        LOG_WARN << "BIOS file" << path << "has invalid length " << length;
+        LogWarn("BIOS file {} has invalid length {}", path, length);
         return false;
     }
 
@@ -42,11 +42,11 @@ bool BUS::LoadBIOS(const std::string& path) {
 }
 
 bool BUS::LoadPsExe(const std::string& path) {
-    LOG_INFO << "Loading PS-EXE from file " << path;
+    LogInfo("Loading PS-EXE from file {}", path);
 
     std::ifstream file(path, std::ifstream::binary);
     if (!file || !file.good()) {
-        LOG_WARN << "Failed to open PS-EXE file " << path;
+        LogWarn("Failed to open PS-EXE file {}", path);
         return false;
     }
     file.seekg(0, std::ifstream::end);
@@ -54,7 +54,7 @@ bool BUS::LoadPsExe(const std::string& path) {
     file.seekg(0, std::ifstream::beg);
 
     if (length <= PSEXE_HEADER_SIZE) {
-        LOG_WARN << "PS-EXE: invalid file size (" << length << " byte)";
+        LogWarn("PS-EXE: invalid file size ({} byte)", length);
         return false;
     }
 
@@ -63,7 +63,7 @@ bool BUS::LoadPsExe(const std::string& path) {
 
     std::string magic(buffer.begin(), buffer.begin() + 8);
     if (magic != "PS-X EXE") {
-        LOG_WARN << "PS-EXE: Invalid header " << magic;
+        LogWarn("PS-EXE: Invalid header {}", magic);
         return false;
     }
 
@@ -148,7 +148,7 @@ ValueType BUS::Load(u32 address) {
         Panic("Tried to load from Cache Control [0x%08X]", address);
     // Expansion Region 1
     if (InArea(EXP_REG_1_START, EXP_REG_1_SIZE, masked_addr)) {
-        LOG_WARN << fmt::format("Tried to load from Expansion Region 1 [0x{:08X}]", address);
+        LogWarn("Tried to load from Expansion Region 1 [0x{:08X}]", address);
         return 0xFF;
     }
     // Expansion Region 2
@@ -224,12 +224,12 @@ void BUS::Store(u32 address, Value value) {
     }
     // BIOS
     if (InArea(BIOS_START, BIOS_SIZE, masked_addr)) {
-        LOG_WARN << fmt::format("Tried to store value in BIOS address range [0x{:08X}] - Ignored", address);
+        LogWarn("Tried to store value in BIOS address range [0x{:08X}] - Ignored", address);
         return;
     }
     // Cache Control
     if (InArea(CACHE_CTRL_START, CACHE_CTRL_SIZE, masked_addr)) {
-        LOG_WARN << fmt::format("Store call to Cache Control [0x{:X} @ 0x{:08X}] - Ignored", value, address);
+        LogWarn("Store call to Cache Control [0x{:X} @ 0x{:08X}] - Ignored", value, address);
         return;
     }
     // Expansion Region 1
@@ -238,7 +238,7 @@ void BUS::Store(u32 address, Value value) {
     }
     // Expansion Region 2
     if (InArea(EXP_REG_2_START, EXP_REG_2_SIZE, masked_addr)) {
-        LOG_WARN << fmt::format("Tried to store in Expansion Region 2 [0x{:X} @ 0x{:08X}] - Ignored", value, address);
+        LogWarn("Tried to store in Expansion Region 2 [0x{:X} @ 0x{:08X}] - Ignored", value, address);
         return;
     }
     // Expansion Region 3

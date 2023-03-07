@@ -10,7 +10,8 @@
 #include "imgui_impl_sdl.h"
 #include "nfd.h"
 
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 #include "emulator.h"
 
 LOG_CHANNEL(Display);
@@ -30,11 +31,11 @@ bool Display::Init(Emulator* system, SDL_Window* win, SDL_GLContext context, con
     int display = SDL_GetWindowDisplayIndex(window);
     float dpi = 96.0f;
     if (SDL_GetDisplayDPI(display, &dpi, nullptr, nullptr) != 0) {
-        LOG_CRIT << "Failed to get window dpi";
+        LogCrit("Failed to get window dpi");
         return false;
     }
     float scale_factor = std::min(2.f, dpi / 96.0f);
-    LOG_INFO << "Using scale factor " << scale_factor;
+    LogInfo("Using scale factor {:.2}", scale_factor);
 
     // int scaled_x = static_cast<int>(std::floor(scale_factor * DEFAULT_W));
     // int scaled_y = static_cast<int>(std::floor(scale_factor * DEFAULT_H));
@@ -78,7 +79,7 @@ bool Display::Init(Emulator* system, SDL_Window* win, SDL_GLContext context, con
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, system->GetVRAM());
     GLenum status;
     if ((status = glGetError()) != GL_NO_ERROR) {
-        LOG_CRIT << "OpenGL error " << status << " during texture creation";
+        LogCrit("OpenGL error {} during texture creation", status);
         return false;
     }
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -90,7 +91,7 @@ bool Display::Init(Emulator* system, SDL_Window* win, SDL_GLContext context, con
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, nullptr);
     if ((status = glGetError()) != GL_NO_ERROR) {
-        LOG_CRIT << "OpenGL error " << status << " during texture creation";
+        LogCrit("OpenGL error {} during texture creation", status);
         return false;
     }
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -111,9 +112,9 @@ void Display::Draw() {
                 nfdchar_t* out_path = nullptr;
                 nfdresult_t result = NFD_OpenDialog(nullptr, nullptr, &out_path);
                 if (result == NFD_OKAY) {
-                    LOG_INFO << "Selected file " << out_path;
+                    LogInfo("Selected file {}", out_path);
                 } else if (result == NFD_ERROR) {
-                    LOG_WARN << "Failed to open file: " << NFD_GetError();
+                    LogWarn("Failed to open file: {}", NFD_GetError());
                 }
             }
             ImGui::Separator();

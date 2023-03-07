@@ -2,7 +2,8 @@
 
 #include <limits>
 
-#include "debug_utils.h"
+#include "log.h"
+#include "asserts.h"
 #include "system.h"
 #include "types.h"
 
