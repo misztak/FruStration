@@ -7,15 +7,9 @@
 #define STR_(x) #x
 #define STRINGIFY_(x) STR_(x)
 
-#ifndef NDEBUG
-#define LOG_FILE_NAME __FILE__
-#else
-#define LOG_FILE_NAME __FILE_NAME__
-#endif
-
 #define Panic(Message, ...)                                                                       \
     {                                                                                             \
-        LogCrit("PANIC: " #Message " at " LOG_FILE_NAME ":" STRINGIFY_(__LINE__), ##__VA_ARGS__); \
+        LogCrit("PANIC: " #Message " at " __FILE_NAME__ ":" STRINGIFY_(__LINE__), ##__VA_ARGS__); \
         Log::Shutdown();                                                                          \
         std::exit(1);                                                                             \
     }                                                                                             \
@@ -23,7 +17,7 @@
 
 #define Assert(Expr)                                                                    \
     if (!(Expr)) {                                                                      \
-        LogCrit("Assert failed: " #Expr " at " LOG_FILE_NAME ":" STRINGIFY_(__LINE__)); \
+        LogCrit("Assert failed: " #Expr " at " __FILE_NAME__ ":" STRINGIFY_(__LINE__)); \
         Log::Shutdown();                                                                \
         std::exit(1);                                                                   \
     }                                                                                   \
@@ -32,7 +26,7 @@
 #ifndef NDEBUG
 #define DebugAssert(Expr)                                                               \
     if (!(Expr)) {                                                                      \
-        LogCrit("Assert failed: " #Expr " at " LOG_FILE_NAME ":" STRINGIFY_(__LINE__)); \
+        LogCrit("Assert failed: " #Expr " at " __FILE_NAME__ ":" STRINGIFY_(__LINE__)); \
         Log::Shutdown();                                                                \
         std::exit(1);                                                                   \
     }                                                                                   \
