@@ -1,8 +1,8 @@
 #include "dma.h"
 
 #include "bus.h"
-#include "log.h"
-#include "asserts.h"
+#include "common/asserts.h"
+#include "common/log.h"
 #include "gpu.h"
 #include "interrupt.h"
 #include "system.h"

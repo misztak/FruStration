@@ -2,7 +2,7 @@
 
 #include "cpu_common.h"
 #include "cpu_disasm.h"
-#include "debugger.h"
+#include "debugger/debugger.h"
 #include "gte.h"
 
 #include "bios.h"

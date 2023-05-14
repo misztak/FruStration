@@ -3,8 +3,8 @@
 #include <deque>
 #include <functional>
 
-#include "bitfield.h"
-#include "types.h"
+#include "util/bitfield.h"
+#include "util/types.h"
 
 class System;
 

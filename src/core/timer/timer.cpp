@@ -2,10 +2,9 @@
 
 #include <limits>
 
-#include "log.h"
-#include "asserts.h"
+#include "common/asserts.h"
+#include "common/log.h"
 #include "system.h"
-#include "types.h"
 
 LOG_CHANNEL(Timer);
 

@@ -3,7 +3,7 @@
 #include <string>
 
 #include "system.h"
-#include "types.h"
+#include "util/types.h"
 
 class Emulator {
 public:
@@ -36,6 +36,8 @@ public:
 
     bool cfg_gdb_server_enabled = false;
 
+    const std::string bios_path = "../bios/SCPH1001.BIN";
+    const std::string imgui_ini_path = "../imgui.ini";
     // end of config
 
     u16* GetVRAM();

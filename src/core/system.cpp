@@ -2,14 +2,14 @@
 
 #include "bus.h"
 #include "cdrom.h"
-#include "cpu.h"
-#include "debugger.h"
+#include "common/log.h"
+#include "cpu/cpu.h"
+#include "debugger/debugger.h"
+#include "debugger/gdb_stub.h"
 #include "dma.h"
-#include "gdb_stub.h"
 #include "gpu.h"
 #include "interrupt.h"
-#include "timers.h"
-#include "log.h"
+#include "timer/timers.h"
 
 LOG_CHANNEL(System);
 

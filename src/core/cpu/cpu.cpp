@@ -3,9 +3,9 @@
 #include "imgui.h"
 
 #include "bus.h"
+#include "common/asserts.h"
+#include "common/log.h"
 #include "cpu_common.h"
-#include "log.h"
-#include "asserts.h"
 #include "system.h"
 
 LOG_CHANNEL(CPU);
@@ -68,7 +68,7 @@ void CPU::Step() {
     halt = sys->debugger->single_step;
     sys->debugger->StoreLastInstruction(sp.pc, instr.value);
 
-#ifdef DEBUG
+#ifndef NDEBUG
     if (TRACE_BIOS_CALLS && sp.pc <= 0xC0) bios.TraceFunction(sp.pc, Get(9));
     if (DISASM_INSTRUCTION) LogDebug(disassembler.InstructionAt(sp.pc, instr.value));
     static u64 instr_counter = 0;

@@ -1,7 +1,7 @@
 #include "gte.h"
 
-#include "log.h"
-#include "asserts.h"
+#include "common/asserts.h"
+#include "common/log.h"
 
 LOG_CHANNEL(GTE);
 

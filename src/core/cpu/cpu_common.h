@@ -1,7 +1,7 @@
 #pragma once
 
-#include "bitfield.h"
-#include "types.h"
+#include "util/bitfield.h"
+#include "util/types.h"
 
 namespace CPU {
 

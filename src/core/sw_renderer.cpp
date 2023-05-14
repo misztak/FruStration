@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <tuple>
 
-#include "log.h"
-#include "asserts.h"
+#include "common/asserts.h"
+#include "common/log.h"
 #include "gpu.h"
 
 LOG_CHANNEL(Renderer);

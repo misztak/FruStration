@@ -10,8 +10,8 @@
 #include "imgui_impl_sdl.h"
 #include "nfd.h"
 
-#include "log.h"
-#include "asserts.h"
+#include "common/asserts.h"
+#include "common/log.h"
 #include "emulator.h"
 
 LOG_CHANNEL(Display);
@@ -44,6 +44,9 @@ bool Display::Init(Emulator* system, SDL_Window* win, SDL_GLContext context, con
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
+
+    io.IniFilename = emu->imgui_ini_path.data();
+
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;

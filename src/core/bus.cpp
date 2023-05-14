@@ -6,15 +6,15 @@
 #include "imgui_memory_editor.h"
 
 #include "cdrom.h"
-#include "cpu.h"
-#include "log.h"
-#include "asserts.h"
-#include "debugger.h"
+#include "common/asserts.h"
+#include "common/log.h"
+#include "cpu/cpu.h"
+#include "debugger/debugger.h"
 #include "dma.h"
 #include "gpu.h"
 #include "interrupt.h"
 #include "system.h"
-#include "timers.h"
+#include "timer/timers.h"
 
 LOG_CHANNEL(BUS);
 

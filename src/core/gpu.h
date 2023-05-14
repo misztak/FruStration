@@ -2,9 +2,9 @@
 
 #include <vector>
 
-#include "bitfield.h"
 #include "sw_renderer.h"
-#include "types.h"
+#include "util/bitfield.h"
+#include "util/types.h"
 
 class System;
 

@@ -1,4 +1,5 @@
-# use cmake for nativefiledialog
+
+# nativefiledialog
 set(NFD_SOURCES nativefiledialog/src/nfd_common.c)
 if (WIN32)
     list(APPEND NFD_SOURCES nativefiledialog/src/nfd_win.cpp)
@@ -13,6 +14,7 @@ endif()
 add_library(nativefiledialog STATIC ${NFD_SOURCES})
 target_include_directories(nativefiledialog PUBLIC nativefiledialog/src/include)
 target_compile_definitions(nativefiledialog PUBLIC ${NFD_DEFS})
+# NFD on linux requires GTK dependency
 if(UNIX AND NOT APPLE AND NOT ANDROID)
     find_package(PkgConfig)
     if (PKG_CONFIG_FOUND)
@@ -26,13 +28,14 @@ if(UNIX AND NOT APPLE AND NOT ANDROID)
     endif()
 endif()
 
+# spdlog
 add_subdirectory(spdlog)
 
-add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GL3W)
-
+# gl3w
 add_library(gl3w STATIC gl3w/gl3w.c)
 target_include_directories(gl3w PUBLIC gl3w)
 
+# imgui
 add_library(imgui STATIC
         imgui/imgui.cpp
         imgui/imgui_demo.cpp
@@ -41,5 +44,6 @@ add_library(imgui STATIC
         imgui/imgui_impl_sdl.cpp
         imgui/imgui_widgets.cpp
         imgui/imgui_memory_editor.h)
+target_compile_definitions(imgui PRIVATE -DIMGUI_IMPL_OPENGL_LOADER_GL3W)
 target_include_directories(imgui PUBLIC imgui gl3w ${SDL2_INCLUDE_DIRS})
 target_link_libraries(imgui PRIVATE gl3w ${SDL2_LIBRARIES})

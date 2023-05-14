@@ -6,7 +6,7 @@
 #include <memory>
 #include <string>
 
-#include "types.h"
+#include "util/types.h"
 
 namespace CPU {
 class CPU;

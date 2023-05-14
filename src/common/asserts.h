@@ -7,7 +7,7 @@
 #define STR_(x) #x
 #define STRINGIFY_(x) STR_(x)
 
-#ifdef DEBUG
+#ifndef NDEBUG
 #define LOG_FILE_NAME __FILE__
 #else
 #define LOG_FILE_NAME __FILE_NAME__
@@ -29,7 +29,7 @@
     }                                                                                   \
     while (0)
 
-#ifdef DEBUG
+#ifndef NDEBUG
 #define DebugAssert(Expr)                                                               \
     if (!(Expr)) {                                                                      \
         LogCrit("Assert failed: " #Expr " at " LOG_FILE_NAME ":" STRINGIFY_(__LINE__)); \

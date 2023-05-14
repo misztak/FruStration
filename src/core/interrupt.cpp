@@ -1,8 +1,8 @@
 #include "interrupt.h"
 
-#include "cpu.h"
-#include "log.h"
-#include "asserts.h"
+#include "common/asserts.h"
+#include "common/log.h"
+#include "cpu/cpu.h"
 #include "system.h"
 
 LOG_CHANNEL(IRQ);

@@ -1,12 +1,12 @@
 #include "emulator.h"
 
 #include "bus.h"
-#include "cpu.h"
-#include "log.h"
-#include "asserts.h"
-#include "gdb_stub.h"
+#include "common/asserts.h"
+#include "common/log.h"
+#include "cpu/cpu.h"
+#include "debugger/gdb_stub.h"
 #include "gpu.h"
-#include "timers.h"
+#include "timer/timers.h"
 
 LOG_CHANNEL(Emulator);
 

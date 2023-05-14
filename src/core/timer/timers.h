@@ -1,8 +1,8 @@
 #pragma once
 
-#include "bitfield.h"
 #include "timer.h"
-#include "types.h"
+#include "util/bitfield.h"
+#include "util/types.h"
 
 class System;
 

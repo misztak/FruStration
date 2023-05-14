@@ -1,9 +1,9 @@
 #include "cpu_disasm.h"
 
+#include "common/asserts.h"
+#include "common/log.h"
 #include "cpu.h"
 #include "cpu_common.h"
-#include "log.h"
-#include "asserts.h"
 
 LOG_CHANNEL(DISASM);
 

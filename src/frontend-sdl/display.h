@@ -5,7 +5,7 @@
 
 #include <chrono>
 
-#include "types.h"
+#include "util/types.h"
 
 class Emulator;
 

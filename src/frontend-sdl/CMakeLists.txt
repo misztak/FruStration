@@ -2,7 +2,7 @@ add_executable(frustration
         main.cpp
         display.cpp)
 
-target_include_directories(frustration PUBLIC ../common ../core ../../libs/gl3w ../../libs/imgui ../../libs/nativefiledialog/src/include ${SDL2_INCLUDE_DIRS})
+target_include_directories(frustration PUBLIC .. ../../libs/gl3w ../../libs/imgui ../../libs/nativefiledialog/src/include ${SDL2_INCLUDE_DIRS})
 target_link_libraries(frustration PRIVATE common core gl3w imgui nativefiledialog ${SDL2_LIBRARIES})
 
 if (WIN32)

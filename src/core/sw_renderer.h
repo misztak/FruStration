@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "types.h"
+#include "util/types.h"
 
 class GPU;
 

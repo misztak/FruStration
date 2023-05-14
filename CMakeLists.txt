@@ -1,26 +1,39 @@
-cmake_minimum_required(VERSION 3.15)
-project(FruStration)
+# Root cmake file
 
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/.cmake-modules/")
+cmake_minimum_required(VERSION 3.19)
+
+project(FruStration)
 
 set(CMAKE_CXX_STANDARD 17)
 
-#set(CMAKE_VERBOSE_MAKEFILE ON)
+# verbose build script output
+#set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
+
+# uncomment to generate a compile_commands.json file
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
+if (MSVC)
+    # enable asserts in relwithdebinfo builds
+    string(REPLACE "/DNDEBUG" "" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+    string(REPLACE "/DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+else()
+    # same as above
+    string(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+    string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 
-if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Og")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Og -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC")
-
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Wall")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        # use -Og for debug builds
+        add_compile_options(-Og)
+        # this prevents glibc assertions from being removed by -Og
+        add_compile_options(-D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC)
+    endif()
 endif()
 
-#message("CXX debug flags: ${CMAKE_CXX_FLAGS_DEBUG}")
-#message("CXX release flags: ${CMAKE_CXX_FLAGS_RELEASE}")
+# sanity check for default build flags
+#message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
+#message("CMAKE_CXX_FLAGS_RELEASE is ${CMAKE_CXX_FLAGS_RELEASE}")
+#message("CMAKE_CXX_FLAGS_RELWITHDEBINFO is ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+#message("CMAKE_CXX_FLAGS_MINSIZEREL is ${CMAKE_CXX_FLAGS_MINSIZEREL}")
 
 if (WIN32)
     set(SDL2_FOUND_TRUE)
@@ -28,32 +41,12 @@ if (WIN32)
     set(SDL2_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/libs/windows/sdl2/lib/SDL2.lib")
     set(SDL2MAIN_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/libs/windows/sdl2/lib/SDL2main.lib")
     set(SDL2_DLL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/windows/sdl2/bin/SDL2.dll")
-    # avoid name collision with windef.h
-    add_definitions(-DNOMINMAX)
 else()
     find_package(SDL2 REQUIRED)
 endif()
 
-# linker flags
-if (APPLE)
-    message(FATAL_ERROR "macOS build not yet supported")
-    #set(LIBS "-lc++abi -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo")
-elseif(UNIX AND NOT APPLE)
-    # use groups for older gcc versions
-    if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.0)
-        set(LIBS "-Wl,--start-group -lGL -ldl")
-    else()
-        set(LIBS "-lGL -ldl")
-    endif()
-elseif(WIN32)
-	set(LIBS "opengl32.lib ws2_32.lib")
-else()
-    message(FATAL_ERROR "Unsupported platform")
-endif ()
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LIBS}")
-
-# output
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
+# put executable in root of build directory
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_subdirectory(libs)
 add_subdirectory(src)

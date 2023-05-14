@@ -1,4 +1,4 @@
-add_library(core
+add_library(core STATIC
         emulator.cpp
         system.cpp
         cpu/cpu.cpp
@@ -18,5 +18,5 @@ add_library(core
         debugger/debugger.cpp
         debugger/gdb_stub.cpp)
 
-target_include_directories(core PUBLIC . cpu debugger timer util ../common)
+target_include_directories(core PUBLIC .)
 target_link_libraries(core PRIVATE common imgui)

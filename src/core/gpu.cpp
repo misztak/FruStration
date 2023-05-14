@@ -2,11 +2,11 @@
 
 #include "imgui.h"
 
-#include "log.h"
-#include "asserts.h"
+#include "common/log.h"
+#include "common/asserts.h"
 #include "interrupt.h"
 #include "system.h"
-#include "timers.h"
+#include "timer/timers.h"
 
 LOG_CHANNEL(GPU);
 

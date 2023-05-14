@@ -5,24 +5,15 @@
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
 
-#include "asserts.h"
+#include "common/asserts.h"
+#include "common/log.h"
 #include "display.h"
 #include "emulator.h"
-#include "log.h"
 
 LOG_CHANNEL(MAIN);
 
 constexpr bool RUN_HEADLESS = false;
-
-int RunCore() {
-    const std::string bios_path = "SCPH1001.BIN";
-
-    Emulator emulator;
-    if (!emulator.LoadBIOS(bios_path)) return 1;
-
-    while (true) emulator.Tick();
-    return 0;
-}
+int RunCore();
 
 int main(int, char**) {
     // initialize logger
@@ -77,8 +68,9 @@ int main(int, char**) {
     }
 
     Emulator emulator;
-    if (!emulator.LoadBIOS("SCPH1001.BIN")) return 1;
-    //if (!emulator.LoadBIOS("SCPH7002.BIN")) return 1;
+
+    if (!emulator.LoadBIOS(emulator.bios_path)) return 1;
+    //if (!emulator.LoadBIOS(emulator.bios_path)) return 1;
 
     emulator.StartGDBServer();
 
@@ -126,5 +118,15 @@ int main(int, char**) {
 
     Log::Shutdown();
 
+    return 0;
+}
+
+int RunCore() {
+    Emulator emulator;
+    if (!emulator.LoadBIOS(emulator.bios_path)) return 1;
+
+    while (true) emulator.Tick();
+
+    // unreachable
     return 0;
 }

@@ -20,15 +20,17 @@ using ssize_t = long long;
 #include <array>
 #include <charconv>
 #include <optional>
+#include <tuple>
 #include <sstream>
 #include <string>
 #include <string_view>
 
 #include "bus.h"
-#include "cpu.h"
-#include "log.h"
-#include "asserts.h"
+#include "common/asserts.h"
+#include "common/log.h"
+#include "cpu/cpu.h"
 #include "debugger.h"
+#include "gdb_target_info.h"
 #include "system.h"
 
 LOG_CHANNEL(GDB);
@@ -36,6 +38,8 @@ LOG_CHANNEL(GDB);
 namespace GDB {
 namespace {
 constexpr char HEX_CHARS[] = "0123456789abcdef";
+
+constexpr u32 RX_BUFFER_SIZE = 1024;
 
 constexpr u32 GDB_REGISTER_COUNT = 73;
 constexpr u32 GDB_USED_REGISTERS = 38;
@@ -50,7 +54,7 @@ bool server_enabled = false;
 // resets once emulation stopped again
 bool received_step_or_continue_cmd = false;
 
-std::array<s8, 256> rx_buffer = {};
+std::array<s8, RX_BUFFER_SIZE> rx_buffer = {};
 
 s32 gdb_socket = -1;
 
@@ -88,6 +92,20 @@ static std::string CalcChecksum(std::string_view& packet) {
         csum += (u8)c;
     }
     return ValuesToHex(&csum, 1);
+}
+
+static std::tuple<u32, u32> ParseStartAndOffset(std::string_view& packet) {
+    u32 start_delim = packet.find_last_of(':');
+    u32 offset_delim = packet.find_last_of(',');
+
+    u32 start = 0, offset = 0;
+    auto result = std::from_chars(packet.data() + start_delim + 1, packet.data() + offset_delim, start);
+    if (result.ec != std::errc()) LogWarn("Failed to parse start index of partial send command");
+
+    result = std::from_chars(packet.data() + offset_delim + 1, packet.data() + packet.size(), offset);
+    if (result.ec != std::errc()) LogWarn("Failed to parse offset index of partial send command");
+
+    return std::make_tuple(start, offset);
 }
 
 static std::string ReadRegisters() {
@@ -181,7 +199,7 @@ static void Receive() {
     rx_len = read(gdb_socket, rx_buffer.data(), rx_buffer.size());
 
     if (rx_len < 1) {
-        LogWarn("Failed to receive package");
+        LogWarn("Failed to receive package: {}", rx_len);
     }
 }
 
@@ -275,6 +293,31 @@ void HandleClientRequest() {
             // send SIGINT at start of session
             Send("S02");
             break;
+        case 'q':
+        {
+            if (request.compare(0, 10, "qSupported") == 0) {
+                // we have to provide target information, especially the memory map
+                //Send("PacketSize=1024;qXfer:features:read+;qXfer:memory-map:read+");
+                Send("PacketSize=1024;qXfer:memory-map:read+");
+            } else if (request.compare(0, 31, "qXfer:features:read:target.xml:") == 0) {
+                std::string_view target_xml(MIPS_TARGET_CONFIG, sizeof(MIPS_TARGET_CONFIG));
+
+                auto [start, offset] = ParseStartAndOffset(request);
+                LogDebug("Start: {}, Offset: {}", start, offset);
+
+                Send(target_xml.substr(start, offset));
+            } else if (request.compare(0, 23, "qXfer:memory-map:read::") == 0) {
+                std::string_view mem_map_xml(PSX_MEMORY_MAP, sizeof(PSX_MEMORY_MAP));
+
+                auto [start, offset] = ParseStartAndOffset(request);
+                LogDebug("Start: {}, Offset: {}", start, offset);
+
+                Send(mem_map_xml);
+            } else {
+                Send("");
+            }
+            break;
+        }
         case 'c':
             // continue
             LogDebug("Received continue command, resuming emulator...");
