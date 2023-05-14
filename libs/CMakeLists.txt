@@ -13,14 +13,14 @@ else()
 endif()
 add_library(nativefiledialog STATIC ${NFD_SOURCES})
 target_include_directories(nativefiledialog PUBLIC nativefiledialog/src/include)
-target_compile_definitions(nativefiledialog PUBLIC ${NFD_DEFS})
+target_compile_definitions(nativefiledialog PRIVATE ${NFD_DEFS})
 # NFD on linux requires GTK dependency
-if(UNIX AND NOT APPLE AND NOT ANDROID)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(PkgConfig)
     if (PKG_CONFIG_FOUND)
         pkg_check_modules(GTK "gtk+-3.0")
         if (GTK_FOUND)
-            target_link_libraries(nativefiledialog ${GTK_LIBRARIES})
+            target_link_libraries(nativefiledialog PRIVATE ${GTK_LIBRARIES})
             add_definitions(${GTK_CFLAGS} ${GTK_CFLAGS_OTHER})
         else()
             message(FATAL_ERROR "Could not find GTK3 libraries")
@@ -33,7 +33,7 @@ add_subdirectory(spdlog)
 
 # gl3w
 add_library(gl3w STATIC gl3w/gl3w.c)
-target_include_directories(gl3w PUBLIC gl3w)
+target_include_directories(gl3w PRIVATE gl3w)
 
 # imgui
 add_library(imgui STATIC

@@ -1,5 +1,5 @@
 
-# modules can include each other (with path from root)
+# modules can include each other (with path from this root (src))
 include_directories(.)
 
 if (MSVC)
@@ -16,7 +16,7 @@ else()
         -Wall
         -Wextra
         -Wmissing-declarations
-        #Wshadow
+        #-Wshadow
         -Wunused
 
         $<$<CXX_COMPILER_ID:Clang>:-Werror=shadow-uncaptured-local>

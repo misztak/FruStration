@@ -1,4 +1,4 @@
-# Root cmake file
+# FruStration
 
 cmake_minimum_required(VERSION 3.19)
 
@@ -29,7 +29,7 @@ else()
     endif()
 endif()
 
-# sanity check for default build flags
+# sanity checks for default build flags after above changes
 #message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
 #message("CMAKE_CXX_FLAGS_RELEASE is ${CMAKE_CXX_FLAGS_RELEASE}")
 #message("CMAKE_CXX_FLAGS_RELWITHDEBINFO is ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
