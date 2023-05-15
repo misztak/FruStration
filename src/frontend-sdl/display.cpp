@@ -157,16 +157,20 @@ void Display::Draw() {
 
     // video output
     {
+        auto [hres, vres, in_24_bpp_mode] = emu->DisplayInfo();
+
         glBindTexture(GL_TEXTURE_2D, output_tex_handler);
-        if (emu->In24BPPMode()) {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, emu->GetVideoOutput());
+        if (in_24_bpp_mode) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei)hres, (GLsizei)vres, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                         emu->GetVideoOutput());
         } else {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, emu->GetVideoOutput());
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei)hres, (GLsizei)vres, 0, GL_RGBA,
+                         GL_UNSIGNED_SHORT_1_5_5_5_REV, emu->GetVideoOutput());
         }
 
         ImGui::SetNextWindowSize(ImVec2(640 + 25, 480 + 60));
         ImGui::Begin("Video", nullptr, ImGuiWindowFlags_NoScrollbar);
-        ImGui::Image((void*)(intptr_t)output_tex_handler, ImVec2(640, 480));
+        ImGui::Image((void*)(intptr_t)output_tex_handler, ImVec2(hres, vres));
         ImGui::End();
     }
 

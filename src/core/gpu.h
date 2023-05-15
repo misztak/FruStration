@@ -19,6 +19,22 @@ public:
     GPU(System* system);
     void Reset();
 
+    ALWAYS_INLINE u32 VerticalRes() const { return status.vertical_res ? 480 : 240; }
+
+    u32 HorizontalRes() const {
+        if (status.horizontal_res_2) return 368;
+
+        switch (status.horizontal_res_1) {
+            case 0: return 256;
+            case 1: return 320;
+            case 2: return 512;
+            case 3: return 640;
+        }
+
+        // unreachable
+        return 0;
+    }
+
     u32 ReadStat();
     void SendGP0Cmd(u32 cmd);
     void SendGP1Cmd(u32 cmd);
@@ -45,22 +61,6 @@ private:
     }
 
     ALWAYS_INLINE u32 Scanlines() const { return status.video_mode == VideoMode::NTSC ? 263 : 314; }
-
-    ALWAYS_INLINE u32 VerticalRes() const { return status.vertical_res ? 480 : 240; }
-
-    u32 HorizontalRes() const {
-        if (status.horizontal_res_2) return 368;
-
-        switch (status.horizontal_res_1) {
-            case 0: return 256;
-            case 1: return 320;
-            case 2: return 512;
-            case 3: return 640;
-        }
-
-        // unreachable
-        return 0;
-    }
 
     float DotsPerGpuCycle() const { return static_cast<float>(HorizontalRes()) / 2560.f; }
 

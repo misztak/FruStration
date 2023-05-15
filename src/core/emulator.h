@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <tuple>
 
 #include "system.h"
 #include "util/types.h"
@@ -17,8 +18,10 @@ public:
     void SetHalt(bool halt);
     void Reset();
 
-    bool In24BPPMode();
+    std::tuple<u32, u32, bool> DisplayInfo();
     u8* GetVideoOutput();
+
+    u16* GetVRAM();
 
     bool done = false;
 
@@ -39,8 +42,6 @@ public:
     std::string bios_path = "../bios/SCPH1001.BIN";
     const std::string imgui_ini_path = "../imgui.ini";
     // end of config
-
-    u16* GetVRAM();
 
 private:
     System sys;

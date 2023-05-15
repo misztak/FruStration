@@ -68,7 +68,6 @@ void GPU::Step(u32 cpu_cycles) {
         sys->interrupt->Request(IRQ::VBLANK);
 
         draw_frame = true;
-        //LOG_DEBUG << "VBLANK";
 
         // TODO: interlaced even/odd stuff
     }
@@ -605,10 +604,28 @@ u16* GPU::GetVRAM() {
 }
 
 u8* GPU::GetVideoOutput() {
+    const u32 hres = HorizontalRes();
+    const u32 vres = VerticalRes();
+    const usize size = HorizontalRes() * VerticalRes();
+
+    if (output.size() != size) {
+        LogDebug("Changing display size to {}x{}", hres, vres);
+        output.resize(size);
+        //output.clear();
+    }
+
+    const u32 start_y = display_vram_y_start;
+    const u32 end_y = start_y + vres;
+    DebugAssert(end_y < 512);
+
+    // VRAM data is indexed as halfwords (u16)
+    const u32 start_x = display_vram_x_start;
+    const u32 row_bytes = status.display_area_color_depth ? (hres * 3) : (hres * 2);
+    DebugAssert(start_x * 2 + row_bytes < 2048);
+
     // copy display area from vram to output
-    const u32 count = status.display_area_color_depth ? (640 * 3) : (640 * 2);
-    for (u32 y = 0; y < 480; y++) {
-        std::memcpy(output.data() + count * y, (u8*)(vram.data() + VRAM_WIDTH * y), count);
+    for (u32 y = start_y, dest_i = 0; y < end_y; y++, dest_i++) {
+        std::memcpy(output.data() + row_bytes * dest_i, (u8*)(vram.data() + VRAM_WIDTH * y + start_x), row_bytes);
     }
 
     return output.data();
