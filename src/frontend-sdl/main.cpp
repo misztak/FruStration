@@ -13,7 +13,7 @@
 LOG_CHANNEL(MAIN);
 
 constexpr bool RUN_HEADLESS = false;
-int RunCore();
+int RunHeadless();
 
 int main(int argc, char* argv[]) {
     // initialize logger
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     // TODO: proper argument parsing
 
     if constexpr (RUN_HEADLESS) {
-        return RunCore();
+        return RunHeadless();
     }
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -129,7 +129,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-int RunCore() {
+int RunHeadless() {
     Emulator emulator;
     if (!emulator.LoadBIOS(emulator.bios_path)) return 1;
 

@@ -26,10 +26,13 @@ jobs:
         cd build
         cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
         cmake --build .
+    - name: Get short commit hash
+      id: vars
+      run: echo "sha_short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: frustration-linux-${{ matrix.build_type }}
+        name: frustration-linux-${{ steps.vars.outputs.sha_short }}-${{ matrix.build_type }}
         path: |
           build/frustration
           imgui.ini
@@ -73,7 +76,9 @@ jobs:
       - name: Get artifacts
         uses: actions/download-artifact@v3
       - name: Package artifacts
-        run: for i in ./*; do zip -r -j ${i}.zip $i; done
+        run: |
+          for i in ./*; do mv -v "$i" "`echo $i | tr '[A-Z]' '[a-z]'`"; done
+          for i in ./*; do zip -r -j ${i}.zip $i; done
       - name: Create new release
         uses: ncipollo/release-action@v1
         with:
