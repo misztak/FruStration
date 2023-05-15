@@ -26,7 +26,9 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: frustration-linux
-        path: build-release/frustration
+        path: |
+          build-release/frustration
+          imgui.ini
 
   #build-windows:
   #  runs-on: windows-2019

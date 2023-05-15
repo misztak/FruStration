@@ -36,7 +36,7 @@ public:
 
     bool cfg_gdb_server_enabled = false;
 
-    const std::string bios_path = "../bios/SCPH1001.BIN";
+    std::string bios_path = "../bios/SCPH1001.BIN";
     const std::string imgui_ini_path = "../imgui.ini";
     // end of config
 

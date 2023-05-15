@@ -15,9 +15,11 @@ LOG_CHANNEL(MAIN);
 constexpr bool RUN_HEADLESS = false;
 int RunCore();
 
-int main(int, char**) {
+int main(int argc, char* argv[]) {
     // initialize logger
     Log::Init();
+
+    // TODO: proper argument parsing
 
     if constexpr (RUN_HEADLESS) {
         return RunCore();
@@ -68,6 +70,8 @@ int main(int, char**) {
     }
 
     Emulator emulator;
+
+    if (argc >= 2) emulator.bios_path = std::string(argv[1]);
 
     if (!emulator.LoadBIOS(emulator.bios_path)) return 1;
     //if (!emulator.LoadBIOS(emulator.bios_path)) return 1;
