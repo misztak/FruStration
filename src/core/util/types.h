@@ -12,6 +12,10 @@ using u16 = uint16_t;
 using u32 = uint32_t;
 using u64 = uint64_t;
 
+// only 64-bit architectures are supported
+using ssize = int64_t;
+using usize = uint64_t;
+
 // force inline helper
 #ifndef ALWAYS_INLINE
 #if defined(_MSC_VER)
