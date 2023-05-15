@@ -50,10 +50,10 @@ void Renderer::DrawTriangle() {
 
     // clip against drawing area
     // origin is top-left
-    minX = std::clamp<s32>(minX, gpu->drawing_area_left, gpu->drawing_area_right);
-    maxX = std::clamp<s32>(maxX, gpu->drawing_area_left, gpu->drawing_area_right);
-    minY = std::clamp<s32>(minY, gpu->drawing_area_top, gpu->drawing_area_bottom);
-    maxY = std::clamp<s32>(maxY, gpu->drawing_area_top, gpu->drawing_area_bottom);
+    minX = std::clamp<s32>(minX + gpu->drawing_x_offset, gpu->drawing_area_left, gpu->drawing_area_right);
+    maxX = std::clamp<s32>(maxX + gpu->drawing_x_offset, gpu->drawing_area_left, gpu->drawing_area_right);
+    minY = std::clamp<s32>(minY + gpu->drawing_y_offset, gpu->drawing_area_top, gpu->drawing_area_bottom);
+    maxY = std::clamp<s32>(maxY + gpu->drawing_y_offset, gpu->drawing_area_top, gpu->drawing_area_bottom);
 
     // prepare per-pixel increments
     const s32 A01 = v0->y - v1->y, B01 = v1->x - v0->x;
@@ -151,17 +151,20 @@ void Renderer::DrawRectangle() {
     auto& rect = gpu->rectangle;
 
     auto [size_x, size_y] = GetSize<size>(rect);
-    DebugAssert(size_x < 1024);
-    DebugAssert(size_y < 512);
 
-    const u16 end_x = rect.start_x + size_x;
-    const u16 end_y = rect.start_y + size_y;
+    const s32 start_with_offset_x = (s32)rect.start_x + (s32)gpu->drawing_x_offset;
+    const s32 start_with_offset_y = (s32)rect.start_y + (s32)gpu->drawing_y_offset;
 
-    for (u16 y = rect.start_y; y < end_y; y++) {
-        for (u16 x = rect.start_x; x < end_x; x++) {
+    const s32 start_x = std::clamp<s32>(start_with_offset_x, gpu->drawing_area_left, gpu->drawing_area_right);
+    const s32 start_y = std::clamp<s32>(start_with_offset_y, gpu->drawing_area_top, gpu->drawing_area_bottom);
+    const s32 end_x = std::clamp<s32>(start_with_offset_x + size_x, gpu->drawing_area_left, gpu->drawing_area_right);
+    const s32 end_y = std::clamp<s32>(start_with_offset_y + size_y, gpu->drawing_area_top, gpu->drawing_area_bottom);
+
+    for (u16 y = start_y; y < end_y; y++) {
+        for (u16 x = start_x; x < end_x; x++) {
             if constexpr (DRAW_FLAGS_SET(TEXTURED)) {
                 // textured
-                u16 texel = GetTexel(rect.tex_x + (x - rect.start_x), rect.tex_y + (y - rect.start_y));
+                u16 texel = GetTexel(rect.tex_x + (x - start_x), rect.tex_y + (y - start_y));
                 if (texel & TEXEL_MASK) {
                     gpu->vram[x + GPU::VRAM_WIDTH * y] = texel;
                 }
