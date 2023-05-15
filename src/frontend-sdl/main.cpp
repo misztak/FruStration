@@ -17,7 +17,11 @@ int RunCore();
 
 int main(int argc, char* argv[]) {
     // initialize logger
-    Log::Init();
+#ifndef NDEBUG
+    Log::Init(spdlog::level::trace);
+#else
+    Log::Init(spdlog::level::info);
+#endif
 
     // TODO: proper argument parsing
 

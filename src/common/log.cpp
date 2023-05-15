@@ -30,11 +30,11 @@ public:
 
 }    //namespace
 
-void Init() {
+void Init(spdlog::level::level_enum log_level) {
     auto logger = spdlog::stdout_color_mt("stdout_logger");
     spdlog::set_default_logger(logger);
 
-    spdlog::set_level(spdlog::level::trace);
+    spdlog::set_level(log_level);
 
     auto formatter = std::make_unique<spdlog::pattern_formatter>();
     formatter->add_flag<time_since_launch_formatter>('*');

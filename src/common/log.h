@@ -4,7 +4,7 @@
 
 namespace Log {
 
-void Init();
+void Init(spdlog::level::level_enum log_level);
 void Shutdown();
 
 }    //namespace Log
