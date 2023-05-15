@@ -81,7 +81,8 @@ void CPU::Step() {
     if (sp.pc == 0xA0 && Get(9) == 0x3C) bios.PutChar(Get(4));
     if (sp.pc == 0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
     // psexe inject point
-    //const char* psexe_path = "../test/exe/helloworld.psexe";
+    //const char* psexe_path = "../test/exe/hello_world.exe";
+    //const char* psexe_path = "../test/exe/timer.exe";
     //const char* psexe_path = "../test/exe/psxtest_cpu.exe";
     //const char* psexe_path = "../test/exe/psxtest_cpx.exe";
     //const char* psexe_path = "../test/exe/HelloWorld16BPP.exe";

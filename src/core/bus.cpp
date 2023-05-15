@@ -72,11 +72,8 @@ bool BUS::LoadPsExe(const std::string& path) {
 
     // physical start address of TEXT segment (always the first segment in a psexe file)
     u32 text_segment_start = *reinterpret_cast<u32*>(buffer.data() + 0x18) & 0x1FFFFFFF;
-    //u32 text_segment_size = *reinterpret_cast<u32*>(buffer.data() + 0x1C);
+    u32 text_segment_size = *reinterpret_cast<u32*>(buffer.data() + 0x1C);
     Assert(text_segment_start + length - PSEXE_HEADER_SIZE < RAM_SIZE);
-
-    // new stack pointer value
-    u32 stack_start_addr = *reinterpret_cast<u32*>(buffer.data() + 0x30);
 
     std::memcpy(ram.data() + text_segment_start, buffer.data() + PSEXE_HEADER_SIZE, length - PSEXE_HEADER_SIZE);
 
@@ -84,7 +81,14 @@ bool BUS::LoadPsExe(const std::string& path) {
     sys->cpu->next_pc = execution_start_addr + 4;
     sys->cpu->instr.value = Load<u32>(execution_start_addr);
 
-    sys->cpu->gp.sp = stack_start_addr;
+    // new stack pointer value (ignore if 0)
+    u32 stack_start_addr = *reinterpret_cast<u32*>(buffer.data() + 0x30);
+    if (stack_start_addr != 0) sys->cpu->gp.sp = stack_start_addr;
+
+    LogInfo("PSEXE file injected at:");
+    LogInfo("    pc=0x{:08x}", execution_start_addr);
+    LogInfo("    text=[0x{:08x}, 0x{:x}]", text_segment_start, text_segment_size);
+    LogInfo("    sp=0x{:08x}", sys->cpu->gp.sp);
 
     return true;
 }
