@@ -12,3 +12,5 @@ if (WIN32)
         #WIN32_EXECUTABLE TRUE
         DEBUG_POSTFIX "-debug")
 endif()
+
+define_file_basename_for_sources(frustration)

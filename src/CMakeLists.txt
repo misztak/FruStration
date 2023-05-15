@@ -30,6 +30,21 @@ else()
     endif()
 endif()
 
+# __FILE_NAME__ on gcc is only available since version 12
+# so use cmake to manually generate macro definitions for every TU (FILE_BASENAME definition)
+# this cannot be used in header files or it would cause an ODR violation
+function(define_file_basename_for_sources target)
+    get_target_property(source_files "${target}" SOURCES)
+    foreach(sourcefile ${source_files})
+        # Add the FILE_BASENAME=filename compile definition to the list.
+        get_filename_component(basename "${sourcefile}" NAME)
+        # Set the updated compile definitions on the source file.
+        set_property(
+            SOURCE "${sourcefile}" APPEND
+            PROPERTY COMPILE_DEFINITIONS "FILE_BASENAME=\"${basename}\"")
+    endforeach()
+endfunction()
+
 add_subdirectory(core)
 add_subdirectory(common)
 add_subdirectory(frontend-sdl)

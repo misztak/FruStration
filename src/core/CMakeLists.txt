@@ -20,3 +20,5 @@ add_library(core STATIC
 
 target_include_directories(core PUBLIC .)
 target_link_libraries(core PRIVATE common imgui)
+
+define_file_basename_for_sources(core)
