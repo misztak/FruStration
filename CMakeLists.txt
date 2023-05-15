@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 17)
 # verbose build script output
 #set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
 
-# uncomment to generate a compile_commands.json file
+# generate compile_commands.json
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (MSVC)
@@ -36,6 +36,7 @@ endif()
 #message("CMAKE_CXX_FLAGS_MINSIZEREL is ${CMAKE_CXX_FLAGS_MINSIZEREL}")
 
 if (WIN32)
+    # bundled SDL2 for windows
     set(SDL2_FOUND_TRUE)
     set(SDL2_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/libs/windows/sdl2/include")
     set(SDL2_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/libs/windows/sdl2/lib/SDL2.lib")

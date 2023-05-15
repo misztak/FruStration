@@ -19,9 +19,9 @@ else()
         #-Wshadow
         -Wunused
 
-        $<$<CXX_COMPILER_ID:Clang>:-Werror=shadow-uncaptured-local>
-        $<$<CXX_COMPILER_ID:Clang>:-Werror=implicit-fallthrough>
-        $<$<CXX_COMPILER_ID:Clang>:-Werror=type-limits>
+        $<$<CXX_COMPILER_ID:Clang>:-Wshadow-uncaptured-local>
+        $<$<CXX_COMPILER_ID:Clang>:-Wimplicit-fallthrough>
+        $<$<CXX_COMPILER_ID:Clang>:-Wtype-limits>
     )
 
     # make sure file offset size is 64 bits
