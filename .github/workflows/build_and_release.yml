@@ -8,6 +8,10 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        build_type: ['Debug', 'Release']
+
     steps:
     - uses: actions/checkout@v3
       with:
@@ -16,18 +20,18 @@ jobs:
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: libsdl2-dev libgtk-3-dev
-    - name: Compile release build
+    - name: Compile ${{ matrix.build_type }} build
       run: |
-        mkdir build-release
-        cd build-release
-        cmake -DCMAKE_BUILD_TYPE=Release ..
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
         cmake --build .
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: frustration-linux
+        name: frustration-linux-${{ matrix.build_type }}
         path: |
-          build-release/frustration
+          build/frustration
           imgui.ini
 
   #build-windows:
