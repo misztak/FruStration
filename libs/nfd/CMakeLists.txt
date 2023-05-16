@@ -14,8 +14,8 @@ else()
 endif()
 
 add_library(nfd STATIC ${SRCS})
-target_include_directories(nfd PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_include_directories(nfd INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(nfd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(nfd INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_compile_definitions(nfd PRIVATE ${NFD_DEFS})
 
