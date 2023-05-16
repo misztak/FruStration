@@ -1,7 +1,7 @@
 add_library(common STATIC
+        config.cpp
         log.cpp)
 
-target_include_directories(common PUBLIC "${PROJECT_SOURCE_DIR}/libs/spdlog/include")
-target_link_libraries(common PUBLIC spdlog)
+target_link_libraries(common PUBLIC simpleini spdlog)
 
 define_file_basename_for_sources(common)

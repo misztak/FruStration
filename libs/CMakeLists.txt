@@ -1,5 +1,6 @@
 
 # nativefiledialog
+# TODO: use normal folder instead of submodule
 set(NFD_SOURCES nativefiledialog/src/nfd_common.c)
 if (WIN32)
     list(APPEND NFD_SOURCES nativefiledialog/src/nfd_win.cpp)
@@ -28,22 +29,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
 endif()
 
-# spdlog
 add_subdirectory(spdlog)
 
-# gl3w
-add_library(gl3w STATIC gl3w/gl3w.c)
-target_include_directories(gl3w PRIVATE gl3w)
+add_subdirectory(simpleini)
 
-# imgui
-add_library(imgui STATIC
-        imgui/imgui.cpp
-        imgui/imgui_demo.cpp
-        imgui/imgui_draw.cpp
-        imgui/imgui_impl_opengl3.cpp
-        imgui/imgui_impl_sdl.cpp
-        imgui/imgui_widgets.cpp
-        imgui/imgui_memory_editor.h)
-target_compile_definitions(imgui PRIVATE -DIMGUI_IMPL_OPENGL_LOADER_GL3W)
-target_include_directories(imgui PUBLIC imgui gl3w ${SDL2_INCLUDE_DIRS})
-target_link_libraries(imgui PRIVATE gl3w ${SDL2_LIBRARIES})
+add_subdirectory(gl3w)
+
+add_subdirectory(imgui)
