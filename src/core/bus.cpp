@@ -7,6 +7,7 @@
 
 #include "cdrom.h"
 #include "common/asserts.h"
+#include "common/config.h"
 #include "common/log.h"
 #include "cpu/cpu.h"
 #include "debugger/debugger.h"
@@ -20,7 +21,8 @@ LOG_CHANNEL(BUS);
 
 BUS::BUS(System* system) : sys(system), bios(BIOS_SIZE), ram(RAM_SIZE, 0xCA), scratchpad(SCRATCH_SIZE) {}
 
-bool BUS::LoadBIOS(const std::string& path) {
+bool BUS::LoadBIOS() {
+    std::string path = Config::bios_path.Get();
     LogInfo("Loading BIOS from file {}", path);
 
     std::ifstream file(path, std::ifstream::binary);
@@ -41,7 +43,16 @@ bool BUS::LoadBIOS(const std::string& path) {
     return true;
 }
 
-bool BUS::LoadPsExe(const std::string& path) {
+bool BUS::LoadPsExe() {
+    // Called at the injection address (0x80030000) during BIOS setup
+    // Do not load the psexe if:
+    //  1. no psexe file was specified
+    //  2. a game file was specified (regardless of whether a psexe file was specified)
+    //  3. the psexe file is invalid/malformed
+    // If one of the conditions is met the emulator resumes normal BIOS setup
+    if (Config::psexe_file_path.empty() || !Config::ps_bin_file_path.empty()) return false;
+
+    std::string path = Config::psexe_file_path;
     LogInfo("Loading PS-EXE from file {}", path);
 
     std::ifstream file(path, std::ifstream::binary);

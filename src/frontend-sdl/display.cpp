@@ -11,6 +11,7 @@
 #include "nfd.h"
 
 #include "common/asserts.h"
+#include "common/config.h"
 #include "common/log.h"
 #include "emulator.h"
 
@@ -44,8 +45,6 @@ bool Display::Init(Emulator* system, SDL_Window* win, SDL_GLContext context, con
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-
-    io.IniFilename = emu->imgui_ini_path.data();
 
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -133,11 +132,11 @@ void Display::Draw() {
         }
         if (ImGui::BeginMenu("Window")) {
             ImGui::MenuItem("Stats", nullptr, &show_stats_window);
-            ImGui::MenuItem("CPU Stats", nullptr, &emu->draw_cpu_state);
-            ImGui::MenuItem("GPU Stats", nullptr, &emu->draw_gpu_state);
-            ImGui::MenuItem("Timer Stats", nullptr, &emu->draw_timer_state);
-            ImGui::MenuItem("Debugger", nullptr, &emu->draw_debugger);
-            ImGui::MenuItem("Mem Editor", nullptr, &emu->draw_mem_viewer);
+            ImGui::MenuItem("CPU Stats", nullptr, &Config::draw_cpu_state);
+            ImGui::MenuItem("GPU Stats", nullptr, &Config::draw_gpu_state);
+            ImGui::MenuItem("Timer Stats", nullptr, &Config::draw_timer_state);
+            ImGui::MenuItem("Debugger", nullptr, &Config::draw_debugger);
+            ImGui::MenuItem("Mem Editor", nullptr, &Config::draw_mem_viewer);
             ImGui::MenuItem("Demo", nullptr, &show_demo_window);
             ImGui::EndMenu();
         }

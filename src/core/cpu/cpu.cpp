@@ -75,20 +75,13 @@ void CPU::Step() {
     instr_counter++;
 #endif
 
-    // special actions for specific memory locations
-    //
     // bios put_char calls
     if (sp.pc == 0xA0 && Get(9) == 0x3C) bios.PutChar(Get(4));
     if (sp.pc == 0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
+
     // psexe inject point
-    //const char* psexe_path = "../test/exe/hello_world.exe";
-    //const char* psexe_path = "../test/exe/timer.exe";
-    //const char* psexe_path = "../test/exe/psxtest_cpu.exe";
-    //const char* psexe_path = "../test/exe/psxtest_cpx.exe";
-    //const char* psexe_path = "../test/exe/HelloWorld16BPP.exe";
-    //const char* psexe_path = "../test/exe/ImageLoad.exe";
-    //const char* psexe_path = "../test/exe/n00bdemo.exe";
-    //if (sp.pc == 0x80030000) Assert(sys->bus->LoadPsExe(psexe_path));
+    // TODO: find a better way to do this
+    if (sp.pc == 0x80030000) sys->bus->LoadPsExe();
 
     UpdatePC(next_pc);
     // at this point the pc contains the address of the delay slot instruction

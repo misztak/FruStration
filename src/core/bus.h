@@ -15,8 +15,8 @@ class BUS {
 public:
     BUS(System* system);
     void Reset();
-    bool LoadBIOS(const std::string& path);
-    bool LoadPsExe(const std::string& path);
+    bool LoadBIOS();
+    bool LoadPsExe();
 
     void DrawMemEditor(bool* open);
 

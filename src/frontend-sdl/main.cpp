@@ -1,3 +1,5 @@
+#include <string_view>
+
 #include <GL/gl3w.h>
 #include <SDL.h>
 
@@ -6,16 +8,53 @@
 #include "imgui_impl_sdl.h"
 
 #include "common/asserts.h"
+#include "common/config.h"
 #include "common/log.h"
 #include "display.h"
 #include "emulator.h"
 
 LOG_CHANNEL(MAIN);
 
-constexpr bool RUN_HEADLESS = false;
-int RunHeadless();
+void PrintUsageAndExit(int exit_code);
 
 int main(int argc, char* argv[]) {
+
+    // parse command line arguments
+
+    if (argc < 1 || argc > 7) PrintUsageAndExit(1);
+
+    std::string arg_bios_path, arg_bin_path, arg_psexe_path;
+
+    for (int i = 1; i < argc; i++) {
+        std::string_view arg(argv[i]);
+
+        if (arg == "-h" || arg == "--help") PrintUsageAndExit(0);
+
+        if (arg == "-d" || arg == "--debug") {
+            // TODO
+            continue;
+        }
+
+        if (arg == "-B" || arg == "--bios") {
+            if (i + 1 >= argc) PrintUsageAndExit(1);
+            arg_bios_path = std::string(argv[i++ + 1]);
+            continue;
+        }
+        if (arg == "-b" || arg == "--bin") {
+            if (i + 1 >= argc) PrintUsageAndExit(1);
+            arg_bin_path = std::string(argv[i++ + 1]);
+            continue;
+        }
+        if (arg == "-e" || arg == "--psexe") {
+            if (i + 1 >= argc) PrintUsageAndExit(1);
+            arg_psexe_path = std::string(argv[i++ + 1]);
+            continue;
+        }
+
+        printf("Unknown argument '%s'\n", arg.data());
+        PrintUsageAndExit(1);
+    }
+
     // initialize logger
 #ifndef NDEBUG
     Log::Init(spdlog::level::trace);
@@ -23,11 +62,33 @@ int main(int argc, char* argv[]) {
     Log::Init(spdlog::level::info);
 #endif
 
-    // TODO: proper argument parsing
+    Config::LoadConfig();
 
-    if constexpr (RUN_HEADLESS) {
-        return RunHeadless();
-    }
+    Config::ps_bin_file_path = arg_bin_path;
+    Config::psexe_file_path = arg_psexe_path;
+
+    // use BIOS path from args if specified (overwrites config file value)
+    if (!arg_bios_path.empty()) Config::bios_path.Set(arg_bios_path);
+
+    // psexe overwrites
+    //Config::psexe_file_path = "../test/exe/hello_world.exe";
+    //Config::psexe_file_path = "../test/exe/timer.exe";
+    //Config::psexe_file_path = "../test/exe/n00bdemo.exe";
+    //Config::psexe_file_path = "../test/exe/amidog/psxtest_cpu.exe";
+    //Config::psexe_file_path = "../test/exe/amidog/psxtest_cpx.exe";
+    //Config::psexe_file_path = "../test/exe/avocado/HelloWorld16BPP.exe";
+    //Config::psexe_file_path = "../test/exe/avocado/HelloWorld24BPP.exe";
+    //Config::psexe_file_path = "../test/exe/avocado/ImageLoad.exe";
+
+    Emulator emulator;
+
+    if (!emulator.LoadBIOS()) return 1;
+
+    emulator.StartGDBServer();
+
+    emulator.SetHalt(true);
+
+    // init display
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         LogCrit("Error: {}", SDL_GetError());
@@ -72,15 +133,6 @@ int main(int argc, char* argv[]) {
         LogCrit("Failed to initialize OpenGL loader");
         return 1;
     }
-
-    Emulator emulator;
-
-    if (argc >= 2) emulator.bios_path = std::string(argv[1]);
-
-    if (!emulator.LoadBIOS(emulator.bios_path)) return 1;
-    //if (!emulator.LoadBIOS(emulator.bios_path)) return 1;
-
-    emulator.StartGDBServer();
 
     Display display;
     if (!display.Init(&emulator, window, gl_context, glsl_version)) {
@@ -129,12 +181,14 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-int RunHeadless() {
-    Emulator emulator;
-    if (!emulator.LoadBIOS(emulator.bios_path)) return 1;
+void PrintUsageAndExit(int exit_code) {
+    printf("Usage: frustration [OPTIONS]\n\n");
+    printf("Options:\n");
+    printf("    -h, --help          Display this message\n");
+    printf("    -d, --debug         Start emulator with debug tools enabled\n");
+    printf("    -B, --bios FILE     Set the BIOS source (overwrites config file)\n");
+    printf("    -b, --bin FILE      Execute the PSX binary \n");
+    printf("    -e, --psexe FILE    Inject and run the PSEXE file\n\n");
 
-    while (true) emulator.Tick();
-
-    // unreachable
-    return 0;
+    std::exit(exit_code);
 }

@@ -10,8 +10,8 @@
 
 LOG_CHANNEL(Emulator);
 
-bool Emulator::LoadBIOS(const std::string& bios_path) {
-    return sys.bus->LoadBIOS(bios_path);
+bool Emulator::LoadBIOS() {
+    return sys.bus->LoadBIOS();
 }
 
 void Emulator::Tick() {
@@ -57,24 +57,24 @@ u16* Emulator::GetVRAM() {
 }
 
 void Emulator::StartGDBServer() {
-    if (!cfg_gdb_server_enabled) return;
+    if (!Config::gdb_server_enabled.Get()) return;
 
     SetHalt(true);
 
     Assert(sys.debugger.get());
-    GDB::Init(42069, sys.debugger.get());
+    GDB::Init(Config::gdb_server_port.Get(), sys.debugger.get());
 }
 
 void Emulator::HandleGDBClientRequest() {
-    if (!cfg_gdb_server_enabled) return;
+    if (!Config::gdb_server_enabled.Get()) return;
 
     GDB::HandleClientRequest();
 }
 
 void Emulator::DrawDebugWindows() {
-    if (draw_mem_viewer) sys.bus->DrawMemEditor(&draw_mem_viewer);
-    if (draw_cpu_state) sys.cpu->DrawCpuState(&draw_cpu_state);
-    if (draw_gpu_state) sys.gpu->DrawGpuState(&draw_gpu_state);
-    if (draw_debugger) sys.debugger->DrawDebugger(&draw_debugger);
-    if (draw_timer_state) sys.timers->DrawTimerState(&draw_timer_state);
+    if (Config::draw_mem_viewer) sys.bus->DrawMemEditor(&Config::draw_mem_viewer);
+    if (Config::draw_cpu_state) sys.cpu->DrawCpuState(&Config::draw_cpu_state);
+    if (Config::draw_gpu_state) sys.gpu->DrawGpuState(&Config::draw_gpu_state);
+    if (Config::draw_debugger) sys.debugger->DrawDebugger(&Config::draw_debugger);
+    if (Config::draw_timer_state) sys.timers->DrawTimerState(&Config::draw_timer_state);
 }
