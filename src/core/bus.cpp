@@ -331,16 +331,16 @@ void BUS::DrawMemEditor(bool* open) {
     ImGui::Begin("Memory Editor", open);
 
     if (ImGui::BeginTabBar("__mem_editor_tabs")) {
-        if (ImGui::BeginTabItem("RAM")) {
+        if (ImGui::BeginTabItem("RAM (2 MiB)")) {
             mem_editor.DrawContents(ram.data(), ram.size(), 0);
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("BIOS")) {
+        if (ImGui::BeginTabItem("BIOS (512 KiB)")) {
             mem_editor.DrawContents(bios.data(), bios.size(), 0);
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("VRAM")) {
-            mem_editor.DrawContents(sys->gpu->GetVRAM(), GPU::VRAM_SIZE * 2, 0);
+        if (ImGui::BeginTabItem("VRAM (1 MiB)")) {
+            mem_editor.DrawContents((u8*)sys->gpu->GetVRAM(), GPU::VRAM_SIZE * 2, 0);
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

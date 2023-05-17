@@ -35,7 +35,7 @@ std::string psexe_file_path;
 std::string ps_bin_file_path;
 
 // ImGUI
-bool draw_mem_viewer = false;
+bool draw_mem_viewer = true;
 bool draw_cpu_state = true;
 bool draw_gpu_state = true;
 bool draw_debugger = true;

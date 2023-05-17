@@ -14,7 +14,6 @@ void LoadConfig();
 template<typename T>
 struct ConfigEntry {
 public:
-    ConfigEntry() = delete;
     explicit ConfigEntry(T entry) : entry(entry) {};
 
     void Set(T value) {
@@ -26,6 +25,9 @@ public:
         return entry;
     }
 
+    ConfigEntry() = delete;
+    ConfigEntry(const ConfigEntry&) = delete;
+    ConfigEntry& operator= (const ConfigEntry&) = delete;
 private:
     T entry;
 };

@@ -1,6 +1,7 @@
 #include "cdrom.h"
 
 #include "common/asserts.h"
+#include "common/config.h"
 #include "common/log.h"
 #include "interrupt.h"
 #include "system.h"
@@ -148,13 +149,17 @@ void CDROM::ExecCommand(Command command) {
         case Command::GetID:
             LogDebug("GetID");
             PushResponse(INT3, stat.value);
-            // no disc
-            //ScheduleSecondResponse([this] {
-            //    PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
-            //});
 
-            // licensed disc (NTSC)
-            ScheduleSecondResponse([this] { PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'}); });
+            if (!Config::ps_bin_file_path.empty()) {
+                // licensed disc (NTSC)
+                ScheduleSecondResponse([this] { PushResponse(INT2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'}); });
+            } else {
+                // no disc
+                ScheduleSecondResponse([this] {
+                    PushResponse(INT5, {0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+                });
+            }
+
             break;
         default: Panic("Unimplemented CDROM command 0x%02X", static_cast<u8>(command));
     }

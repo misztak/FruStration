@@ -41,22 +41,23 @@ void Debugger::DrawDebugger(bool* open) {
     ImGui::Checkbox("Single Step", &single_step);
     ImGui::SameLine();
 
-    if (ImGui::Button("Next Frame") || ImGui::IsKeyReleased(63)) {
+    if (ImGui::Button("Continue") || ImGui::IsKeyReleased(ImGuiKey_F5)) {
+        sys->cpu->halt = false;
+        single_step = false;
+        single_frame = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Next Frame") || ImGui::IsKeyReleased(ImGuiKey_F6)) {
         if (single_frame) {
             sys->cpu->halt = false;
             LogInfo("Next Frame");
         }
     }
     ImGui::SameLine();
-    if (ImGui::Button("Step") || ImGui::IsKeyReleased(65)) {
+    if (ImGui::Button("Next Step") || ImGui::IsKeyReleased(ImGuiKey_F7)) {
         if (single_step) sys->cpu->halt = false;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Continue") || ImGui::IsKeyReleased(66)) {
-        sys->cpu->halt = false;
-        single_step = false;
-        single_frame = false;
-    }
+
     ImGui::Separator();
 
     ImGui::PushID("__bp_view");
@@ -152,7 +153,7 @@ void Debugger::DrawDebugger(bool* open) {
                     ImGui::TextUnformatted(
                         sys->cpu->disassembler.InstructionAt(instr.first, instr.second, false).c_str());
                 }
-                if (locked_to_bottom) ImGui::SetScrollHere(1.f);
+                if (locked_to_bottom) ImGui::SetScrollHereY(1.f);
             }
         }
         ImGui::EndChild();

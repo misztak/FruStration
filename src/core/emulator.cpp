@@ -31,6 +31,8 @@ void Emulator::ResetDrawFrame() {
 }
 
 void Emulator::Reset() {
+    SetPaused(true);
+
     sys.Reset();
 }
 

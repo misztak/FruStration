@@ -4,6 +4,7 @@
 #include <SDL.h>
 
 #include <chrono>
+#include <string>
 
 #include "util/types.h"
 
@@ -23,8 +24,11 @@ public:
 
     bool vsync_enabled = true;
 private:
+    void DrawDragAndDropPopup();
+
+    std::string dropped_file;
+
     bool show_demo_window = false;
-    bool show_stats_window = true;
 
     GLuint vram_tex_handler = 0;
 
