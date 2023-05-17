@@ -44,6 +44,7 @@ if (WIN32)
     set(SDL2_DLL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/windows/sdl2/bin/SDL2.dll")
 else()
     find_package(SDL2 REQUIRED)
+    message("SDL: ${SDL2_VERSION} ${SDL2_INCLUDE_DIRS} ${SDL2_LIBRARIES}")
 endif()
 
 # put executable in root of build directory
