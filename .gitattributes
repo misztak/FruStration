@@ -1,0 +1,2 @@
+# Tell GitHub to ignore this directory when generating language statistics
+libs/* linguist-vendored
