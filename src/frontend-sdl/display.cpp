@@ -120,8 +120,8 @@ void Display::Draw() {
                 }
             }
             ImGui::Separator();
-            bool emu_paused = emu->IsHalted();
-            if (ImGui::MenuItem("Pause", "H", &emu_paused)) emu->SetHalt(emu_paused);
+            bool emu_paused = emu->IsPaused();
+            if (ImGui::MenuItem("Pause", "H", &emu_paused)) emu->SetPaused(emu_paused);
             if (ImGui::MenuItem("Reset")) emu->Reset();
             ImGui::Separator();
             if (ImGui::MenuItem("Quit")) emu->done = true;
@@ -214,7 +214,7 @@ void Display::Update() {
             event.window.windowID == SDL_GetWindowID(window))
             emu->done = true;
         if (event.type == SDL_KEYUP) {
-            if (event.key.keysym.scancode == SDL_SCANCODE_H) emu->SetHalt(!emu->IsHalted());
+            if (event.key.keysym.scancode == SDL_SCANCODE_H) emu->SetPaused(!emu->IsPaused());
         }
     }
 

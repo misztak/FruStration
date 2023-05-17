@@ -1,4 +1,3 @@
-
 add_subdirectory(nfd)
 
 add_subdirectory(spdlog)

@@ -39,13 +39,13 @@ std::tuple<u32, u32, bool> Emulator::DisplayInfo() {
     return {sys.gpu->HorizontalRes(), sys.gpu->VerticalRes(), in_24_bpp_mode};
 }
 
-bool Emulator::IsHalted() {
+bool Emulator::IsPaused() {
     return sys.cpu->halt;
 }
 
-void Emulator::SetHalt(bool halt) {
+void Emulator::SetPaused(bool halt) {
     sys.cpu->halt = halt;
-    LogInfo("Emulator {} execution", halt ? "paused" : "resumed");
+    LogInfo("{} execution", halt ? "Pausing" : "Resuming");
 }
 
 u8* Emulator::GetVideoOutput() {
@@ -57,9 +57,7 @@ u16* Emulator::GetVRAM() {
 }
 
 void Emulator::StartGDBServer() {
-    if (!Config::gdb_server_enabled.Get()) return;
-
-    SetHalt(true);
+    SetPaused(true);
 
     Assert(sys.debugger.get());
     GDB::Init(Config::gdb_server_port.Get(), sys.debugger.get());

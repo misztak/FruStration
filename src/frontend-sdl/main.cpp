@@ -84,9 +84,9 @@ int main(int argc, char* argv[]) {
 
     if (!emulator.LoadBIOS()) return 1;
 
-    emulator.StartGDBServer();
+    if (Config::gdb_server_enabled.Get()) emulator.StartGDBServer();
 
-    emulator.SetHalt(true);
+    emulator.SetPaused(true);
 
     // init display
 
@@ -144,12 +144,12 @@ int main(int argc, char* argv[]) {
     SDL_GL_SetSwapInterval(static_cast<s32>(display.vsync_enabled));
 
     while (!emulator.done) {
-        if (!emulator.IsHalted()) {
+        if (!emulator.IsPaused()) {
 
             while (!emulator.DrawNextFrame()) {
                 emulator.Tick();
                 // cpu reached a breakpoint
-                if (unlikely(emulator.IsHalted())) break;
+                if (unlikely(emulator.IsPaused())) break;
             }
 
             // check if ready to draw next frame again because the cpu could have hit a breakpoint

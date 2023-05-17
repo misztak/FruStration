@@ -14,8 +14,8 @@ public:
     bool DrawNextFrame();
     void ResetDrawFrame();
 
-    bool IsHalted();
-    void SetHalt(bool halt);
+    bool IsPaused();
+    void SetPaused(bool halt);
     void Reset();
 
     std::tuple<u32, u32, bool> DisplayInfo();
