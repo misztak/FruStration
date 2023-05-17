@@ -2,7 +2,7 @@
 
 simpleini - v.4.19
 gl3w -
-imgui - v1.77
+imgui - v1.89.5
 nativefiledialog - v116 (@67345b8)
 spdlog - v1.11
 sdl2 (bundled) - v2.0.12
