@@ -30,7 +30,7 @@ static std::optional<std::string> OpenFileDialog(const char* filter_list = nullp
         LogInfo("Selected file {}", out_path);
         return { fs::path(out_path).string() };
     } else {
-        LogWarn("Failed to open file: {}", NFD_GetError());
+        if (result == NFD_ERROR) LogWarn("Failed to open file: {}", NFD_GetError());
         return std::nullopt;
     }
 }
@@ -79,6 +79,8 @@ bool Display::Init(Emulator* system, SDL_Window* win, SDL_GLContext context, con
     LogDebug("Current display: {}", SDL_GetWindowDisplayIndex(window));
     LogDebug("DPI: {} (default=96.0f)", dpi);
     LogDebug("Scale factor: {:.2}", scale_factor);
+    LogDebug("SDL2 version {}.{}.{}", SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL);
+    LogDebug("OpenGL version {} (Vendor: {})", (char*)glGetString(GL_VERSION), (char*)glGetString(GL_VENDOR));
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
