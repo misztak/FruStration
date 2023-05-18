@@ -1,4 +1,4 @@
-#include "sw_renderer.h"
+#include "renderer_sw.h"
 
 #include <algorithm>
 #include <tuple>
@@ -9,7 +9,9 @@
 
 LOG_CHANNEL(Renderer);
 
-Renderer::Renderer(GPU* gpu) : gpu(gpu) {}
+Renderer_SW::Renderer_SW(GPU* gpu) : gpu(gpu) {
+    LogInfo("Graphics backend: Software Renderer (SW)");
+}
 
 static constexpr s32 EdgeFunction(Vertex* v0, Vertex* v1, Vertex* v2) {
     return (s32)((v1->x - v0->x) * (v2->y - v0->y) - (v1->y - v0->y) * (v2->x - v0->x));
@@ -20,7 +22,7 @@ static constexpr s32 EdgeFunction(Vertex* v0, Vertex* v1, s16 px, s16 py) {
 }
 
 template<u32 draw_flags>
-void Renderer::DrawTriangle() {
+void Renderer_SW::DrawTriangle() {
 #define DRAW_FLAGS_SET(flags) ((draw_flags & (flags)) != 0)
 
     // Unimplemented
@@ -124,7 +126,7 @@ void Renderer::DrawTriangle() {
 }
 
 template<u32 draw_flags>
-void Renderer::Draw4PointPolygon() {
+void Renderer_SW::Draw4PointPolygon() {
     // build 4-point polygon using two calls to DrawTriangle
     DrawTriangle<draw_flags>();
     DrawTriangle<draw_flags | SECOND_TRIANGLE>();
@@ -145,7 +147,7 @@ static constexpr std::tuple<u16, u16> GetSize(Rectangle& rect) {
 }
 
 template<RectSize size, u32 draw_flags>
-void Renderer::DrawRectangle() {
+void Renderer_SW::DrawRectangle() {
 #define DRAW_FLAGS_SET(flags) ((draw_flags & (flags)) != 0)
 
     auto& rect = gpu->rectangle;
@@ -178,7 +180,7 @@ void Renderer::DrawRectangle() {
 #undef DRAW_FLAGS_SET
 }
 
-u16 Renderer::GetTexel(u8 tex_x, u8 tex_y) {
+u16 Renderer_SW::GetTexel(u8 tex_x, u8 tex_y) {
     tex_x = (tex_x & ~(gpu->tex_window_x_mask * 8)) | ((gpu->tex_window_x_offset & gpu->tex_window_x_mask) * 8);
     tex_y = (tex_y & ~(gpu->tex_window_y_mask * 8)) | ((gpu->tex_window_y_offset & gpu->tex_window_y_mask) * 8);
 
@@ -197,8 +199,8 @@ u16 Renderer::GetTexel(u8 tex_x, u8 tex_y) {
             u16 palette_value = gpu->vram[tx + GPU::VRAM_WIDTH * ty];
             u16 palette_index = (palette_value >> ((tex_x % 4) * 4)) & 0xFu;
 
-            u16 texel_x = std::min<u32>((palette & 0x3F) * 16 + palette_index, 1023u);
-            u16 texel_y = (palette >> 6) & 0x1FF;
+            u16 texel_x = std::min<u32>((gpu->clut & 0x3F) * 16 + palette_index, 1023u);
+            u16 texel_y = (gpu->clut >> 6) & 0x1FF;
 
             texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
             break;
@@ -211,8 +213,8 @@ u16 Renderer::GetTexel(u8 tex_x, u8 tex_y) {
             u16 palette_value = gpu->vram[tx + GPU::VRAM_WIDTH * ty];
             u16 palette_index = (palette_value >> ((tex_x % 2) * 8)) & 0xFFu;
 
-            u16 texel_x = std::min<u32>((palette & 0x3F) * 16 + palette_index, 1023u);
-            u16 texel_y = (palette >> 6) & 0x1FF;
+            u16 texel_x = std::min<u32>((gpu->clut & 0x3F) * 16 + palette_index, 1023u);
+            u16 texel_y = (gpu->clut >> 6) & 0x1FF;
 
             texel = gpu->vram[texel_x + GPU::VRAM_WIDTH * texel_y];
             break;
@@ -233,7 +235,7 @@ u16 Renderer::GetTexel(u8 tex_x, u8 tex_y) {
     return texel;
 }
 
-void Renderer::Draw(u32 cmd) {
+void Renderer_SW::Draw(u32 cmd) {
     // clang-format off
 
     switch ((cmd >> 24)) {

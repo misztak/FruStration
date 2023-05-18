@@ -1,22 +1,24 @@
 #pragma once
 
+#include <array>
+#include <memory>
 #include <vector>
 
-#include "sw_renderer.h"
+#include "renderer/renderer.h"
 #include "util/bitfield.h"
 #include "util/types.h"
 
 class System;
 
 class GPU {
-    friend class Renderer;
+    friend class Renderer_SW;
 
 public:
     static constexpr u32 VRAM_WIDTH = 1024;
     static constexpr u32 VRAM_HEIGHT = 512;
     static constexpr u32 VRAM_SIZE = 1024 * 512;
 
-    GPU(System* system);
+    explicit GPU(System* system);
     void Reset();
 
     ALWAYS_INLINE u32 VerticalRes() const { return status.vertical_res ? 480 : 240; }
@@ -206,9 +208,11 @@ private:
     std::array<Vertex, 4> vertices = {};
     Rectangle rectangle = {};
 
+    u16 clut = 0;
+
     System* sys = nullptr;
 
-    Renderer renderer;
+    std::unique_ptr<Renderer> renderer;
 
     // TODO: is VRAM filled with garbage at boot?
     std::vector<u16> vram;

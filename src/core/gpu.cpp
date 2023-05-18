@@ -4,18 +4,22 @@
 
 #include "common/log.h"
 #include "common/asserts.h"
+#include "renderer/renderer_sw.h"
 #include "interrupt.h"
 #include "system.h"
 #include "timer/timers.h"
 
 LOG_CHANNEL(GPU);
 
-GPU::GPU(System* system) : sys(system), renderer(this), vram(VRAM_SIZE, 0), output(VRAM_SIZE * 2, 0) {
+GPU::GPU(System* system) : sys(system), vram(VRAM_SIZE, 0), output(VRAM_SIZE * 2, 0) {
     status.display_disabled = true;
     // pretend that everything is ok
     status.can_receive_cmd_word = true;
     status.can_send_vram_to_cpu = true;
     status.can_receive_dma_block = true;
+
+    // load default renderer backend
+    renderer = std::make_unique<Renderer_SW>(this);
 
     // register timed event
     sys->RegisterEvent(
@@ -362,7 +366,7 @@ void GPU::DrawTriangleShaded() {
         vertices[i].c.SetColor(command_buffer[(i * 2)]);
         vertices[i].SetTextPoint(0);
     }
-    renderer.Draw(command_buffer[0]);
+    renderer->Draw(command_buffer[0]);
 }
 
 void GPU::DrawTriangleTextured() {
@@ -384,7 +388,7 @@ void GPU::DrawQuadMono() {
         vertices[i].c.SetColor(command_buffer[0]);
         vertices[i].SetTextPoint(0);
     }
-    renderer.Draw(command_buffer[0]);
+    renderer->Draw(command_buffer[0]);
 }
 
 void GPU::DrawQuadShaded() {
@@ -394,12 +398,12 @@ void GPU::DrawQuadShaded() {
         vertices[i].c.SetColor(command_buffer[(i * 2)]);
         vertices[i].SetTextPoint(0);
     }
-    renderer.Draw(command_buffer[0]);
+    renderer->Draw(command_buffer[0]);
 }
 
 void GPU::DrawQuadTextured() {
     //LOG_DEBUG << "DrawQuadTextureBlendOpaque";
-    renderer.palette = command_buffer[2] >> 16;
+    clut = command_buffer[2] >> 16;
 
     u16 texpage_attribute = command_buffer[4] >> 16;
     status.tex_page_x_base = texpage_attribute & 0xF;
@@ -416,7 +420,7 @@ void GPU::DrawQuadTextured() {
     }
     //printf("\n");
 
-    renderer.Draw(command_buffer[0]);
+    renderer->Draw(command_buffer[0]);
 }
 
 void GPU::DrawQuadTexturedShaded() {
@@ -434,7 +438,7 @@ void GPU::DrawRectangleMono() {
     rectangle.SetStart(command_buffer[1]);
     rectangle.SetSize(command_buffer[2]);
 
-    renderer.Draw(command_buffer[0]);
+    renderer->Draw(command_buffer[0]);
 }
 
 void GPU::DrawRectangleTexture() {
@@ -446,9 +450,9 @@ void GPU::DrawRectangleTexture() {
     rectangle.SetSize(command_buffer[3]);
 
     // Texpage gets set up separately via GP0(0xE1)
-    renderer.palette = command_buffer[2] >> 16;
+    clut = command_buffer[2] >> 16;
 
-    renderer.Draw(command_buffer[0]);
+    renderer->Draw(command_buffer[0]);
 }
 
 void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
@@ -669,7 +673,7 @@ void GPU::Reset() {
     std::fill(output.begin(), output.end(), 0);
 
     for (auto& v : vertices) v.Reset();
-    renderer.palette = 0;
+    clut = 0;
 }
 
 void GPU::DrawGpuState(bool* open) {

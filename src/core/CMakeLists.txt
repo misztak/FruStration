@@ -1,16 +1,17 @@
 add_library(core STATIC
         emulator.cpp
         system.cpp
-        cpu/cpu.cpp
-        cpu/cpu_disasm.cpp
-        cpu/gte.cpp
         bus.cpp
         dma.cpp
         gpu.cpp
         cdrom.cpp
-        sw_renderer.cpp
         bios.cpp
         interrupt.cpp
+        cpu/cpu.cpp
+        cpu/cpu_disasm.cpp
+        cpu/gte.cpp
+        renderer/renderer.h
+        renderer/renderer_sw.cpp
         timer/timers.cpp
         timer/timer.cpp
         timer/timer_blank.cpp
