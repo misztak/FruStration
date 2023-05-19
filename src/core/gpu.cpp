@@ -37,7 +37,9 @@ void GPU::Step(u32 cpu_cycles) {
     while (accumulated_dots >= dots_per_scanline) {
         accumulated_dots -= dots_per_scanline;
         scanline = (scanline + 1) % Scanlines();
-        // TODO: even/odd bit
+        // if vertical interlace is on AND the vertical resolution is set to 240
+        // the even_odd_bit needs to be toggled every scanline
+        if (InterlacedAnd240Vres()) status.interlace_even_or_odd_line ^= 1;
     }
 
     auto& dot_timer = sys->timers->dot_timer;
@@ -73,7 +75,10 @@ void GPU::Step(u32 cpu_cycles) {
 
         draw_frame = true;
 
-        // TODO: interlaced even/odd stuff
+        // flip the interlace bit once every frame if vres is 480
+        // we do not need to flip the bit again here in 240 vres 'mode'
+        // because it reaches the same state after flipping 240 times
+        if (!InterlacedAnd240Vres()) status.interlace_even_or_odd_line ^= 1;
     }
 
     was_in_vblank = currently_in_vblank;
@@ -205,7 +210,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
             break;
         case 0x40: case 0x42: case 0x48: case 0x4A:
         case 0x50: case 0x52: case 0x58: case 0x5A:
-            Panic("Received render line command 0x%2X [Unimplemented]", command.gp0_op.GetValue());
+            Panic("Received render line command 0x{:02X} [Unimplemented]", command.gp0_op.GetValue());
             break;
         case 0x60: case 0x62: // mono rectangle with variable size
             CommandAfterCount(2, [this]() { DrawRectangleMono(); });
@@ -596,11 +601,16 @@ void GPU::ResetCommand() {
 }
 
 u32 GPU::ReadStat() {
-    u32 hack = status.value;
-    hack &= ~(1u << 19);
-    return hack;
-    //return status.value;
-    //return 0b01011110100000000000000000000000;
+    // the even_odd_bit might flip again between now and the next timed event (e.g. a timer reaching its target)
+    // TODO: make this a config? performance vs accuracy...
+    const auto dots_until_next_event = accumulated_dots + sys->GetCyclesUntilNextEvent() * DotsPerGpuCycle();
+    if (dots_until_next_event >= DotsPerScanline()) {
+        sys->ForceUpdateComponents();
+        sys->RecalculateCyclesUntilNextEvent();
+    }
+
+    // even_odd_bit is always 0 during vblank
+    return status.value & ~(static_cast<u32>(was_in_vblank) << 31);
 }
 
 u16* GPU::GetVRAM() {
@@ -712,7 +722,7 @@ void GPU::DrawGpuState(bool* open) {
         ImGui::Text("Ready to send VRAM: %u", status.can_send_vram_to_cpu.GetValue());
         ImGui::Text("Ready to receive DMA block: %u", status.can_receive_dma_block.GetValue());
         ImGui::Text("DMA direction: %u", static_cast<u32>(status.dma_direction.GetValue()));
-        ImGui::Text("Interlace line: %s", status.interlace_line_mode ? "Odd" : "Even");
+        ImGui::Text("Interlace line: %s", status.interlace_even_or_odd_line ? "Odd" : "Even");
 
         ImGui::TreePop();
     }

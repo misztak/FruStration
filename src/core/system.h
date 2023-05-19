@@ -31,6 +31,7 @@ public:
     void AddCycles(u32 cycles);
     void ForceUpdateComponents();
     void RecalculateCyclesUntilNextEvent();
+    u32 GetCyclesUntilNextEvent() const { return cycles_until_next_event; }
 
     std::unique_ptr<CPU::CPU> cpu;
     std::unique_ptr<BUS> bus;
@@ -54,7 +55,6 @@ public:
                        std::function<u32()>&& cycles_until_event_fn) {
         timed_events[static_cast<u32>(event_index)] = {add_cycles_fn, cycles_until_event_fn};
     }
-
 private:
     void UpdateComponents(u32 cycles);
 

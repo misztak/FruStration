@@ -21,7 +21,7 @@ public:
     explicit GPU(System* system);
     void Reset();
 
-    ALWAYS_INLINE u32 VerticalRes() const { return status.vertical_res ? 480 : 240; }
+    ALWAYS_INLINE u32 VerticalRes() const { return (status.vertical_res && status.vertical_interlace) ? 480 : 240; }
 
     u32 HorizontalRes() const {
         if (status.horizontal_res_2) return 368;
@@ -35,6 +35,8 @@ public:
         // unreachable
         return 0;
     }
+
+    bool In24BPPMode() const { return static_cast<bool>(status.display_area_color_depth); }
 
     u32 ReadStat();
     void SendGP0Cmd(u32 cmd);
@@ -78,6 +80,8 @@ private:
         const float dots = gpu_cycles * DotsPerGpuCycle();
         return std::make_pair(gpu_cycles, dots);
     }
+
+    bool InterlacedAnd240Vres() const { return !status.vertical_res && status.vertical_interlace; }
 
     void Step(u32 cycles);
     u32 CyclesUntilNextEvent();
@@ -137,7 +141,7 @@ private:
         BitField<u32, bool, 27, 1> can_send_vram_to_cpu;
         BitField<u32, bool, 28, 1> can_receive_dma_block;
         BitField<u32, DmaDirection, 29, 2> dma_direction;
-        BitField<u32, bool, 31, 1> interlace_line_mode;
+        BitField<u32, u32, 31, 1> interlace_even_or_odd_line;
     } status;
 
     bool tex_rectangle_xflip = false;

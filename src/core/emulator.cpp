@@ -37,8 +37,7 @@ void Emulator::Reset() {
 }
 
 std::tuple<u32, u32, bool> Emulator::DisplayInfo() {
-    bool in_24_bpp_mode = (sys.gpu->ReadStat() & (1u << 21)) != 0;
-    return {sys.gpu->HorizontalRes(), sys.gpu->VerticalRes(), in_24_bpp_mode};
+    return {sys.gpu->HorizontalRes(), sys.gpu->VerticalRes(), sys.gpu->In24BPPMode()};
 }
 
 bool Emulator::IsPaused() {
