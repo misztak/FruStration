@@ -12,8 +12,8 @@ LOG_CHANNEL(CPU);
 
 namespace CPU {
 
-bool DISASM_INSTRUCTION = false;
-bool TRACE_BIOS_CALLS = false;
+constexpr bool DISASM_INSTRUCTION = false;
+constexpr bool TRACE_BIOS_CALLS = false;
 
 CPU::CPU(System* system) : sys(system), bios(system), disassembler(this) {
     cp.prid = 0x2;
@@ -69,10 +69,15 @@ void CPU::Step() {
     sys->debugger->StoreLastInstruction(sp.pc, instr.value);
 
 #ifndef NDEBUG
-    if (TRACE_BIOS_CALLS && sp.pc <= 0xC0) bios.TraceFunction(sp.pc, Get(9));
-    if (DISASM_INSTRUCTION) LogDebug(disassembler.InstructionAt(sp.pc, instr.value));
-    static u64 instr_counter = 0;
-    instr_counter++;
+    if (TRACE_BIOS_CALLS && (sp.pc & 0x3FFFFFFF) <= 0xC0) {
+        u32 masked_pc = sp.pc & 0x3FFFFFFF;
+        if (masked_pc == 0xA0 || masked_pc == 0xB0 || masked_pc == 0xC0) [[unlikely]] bios.TraceFunction(sp.pc, Get(9));
+    }
+    if (DISASM_INSTRUCTION) {
+        LogDebug(disassembler.InstructionAt(sp.pc, instr.value));
+    }
+    //static u64 instr_counter = 0;
+    //instr_counter++;
 #endif
 
     // bios put_char calls
