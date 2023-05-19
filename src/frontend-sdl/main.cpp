@@ -154,7 +154,7 @@ int main(int argc, char* argv[]) {
             while (!emulator.DrawNextFrame()) {
                 emulator.Tick();
                 // cpu reached a breakpoint
-                if (unlikely(emulator.IsPaused())) break;
+                if (emulator.IsPaused()) [[unlikely]] break;
             }
 
             // check if ready to draw next frame again because the cpu could have hit a breakpoint

@@ -93,7 +93,7 @@ void CPU::Step() {
     // next_pc points to the instruction right after the delay slot
 
     // TODO: at what point should this be called/checked?
-    if (unlikely(current_pc & 0x3)) {
+    if (current_pc & 0x3) [[unlikely]] {
         LogCrit("Invalid program counter");
         Exception(ExceptionCode::LoadAddress);
         return;

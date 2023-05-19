@@ -10,12 +10,16 @@ class System;
 class Debugger {
 public:
     ALWAYS_INLINE bool IsBreakpoint(u32 address) {
-        return unlikely(breakpoints.size() != 0 && breakpoints.count(address));
+        if (!breakpoints.empty() && breakpoints.count(address)) [[unlikely]] return true;
+        else return false;
     }
 
     ALWAYS_INLINE bool IsBreakpointEnabled(u32 address) { return breakpoints.find(address)->second.enabled; }
 
-    ALWAYS_INLINE bool IsWatchpoint(u32 address) { return unlikely(watchpoints.count(address)); }
+    ALWAYS_INLINE bool IsWatchpoint(u32 address) {
+        if (!watchpoints.empty() && watchpoints.count(address)) [[unlikely]] return true;
+        else return false;
+    }
 
     ALWAYS_INLINE bool WatchpointEnabledOnStore(u32 address) {
         auto& wp = watchpoints.find(address)->second;
