@@ -244,45 +244,45 @@ void Disassembler::Disassemble(u32 address, u32 value) {
 }
 
 void Disassembler::PrintInstruction(const char* name, u32 r1, u32 r2, u32 r3) {
-    result.append(fmt::format("{} ${}", name, rnames[r1]));
-    if (r2 != 32) result.append(fmt::format(" ${}", rnames[r2]));
-    if (r3 != 32) result.append(fmt::format(" ${}", rnames[r3]));
+    result.append(fmt::format("{} ${}", name, REG_NAMES[r1]));
+    if (r2 != 32) result.append(fmt::format(" ${}", REG_NAMES[r2]));
+    if (r3 != 32) result.append(fmt::format(" ${}", REG_NAMES[r3]));
 
     if (!with_current_value) return;
     result.append(fmt::format("{:>{}}# ", " ", 40 - result.size()));
 
-    result.append(fmt::format("{}=0x{:X}", rnames[r1], cpu->gp.r[r1]));
-    if (r2 != 32) result.append(fmt::format(", {}=0x{:X}", rnames[r2], cpu->gp.r[r2]));
-    if (r3 != 32) result.append(fmt::format(", {}=0x{:X}", rnames[r3], cpu->gp.r[r3]));
+    result.append(fmt::format("{}=0x{:X}", REG_NAMES[r1], cpu->gp.r[r1]));
+    if (r2 != 32) result.append(fmt::format(", {}=0x{:X}", REG_NAMES[r2], cpu->gp.r[r2]));
+    if (r3 != 32) result.append(fmt::format(", {}=0x{:X}", REG_NAMES[r3], cpu->gp.r[r3]));
 }
 
 void Disassembler::PrintInstructionWithConstant(const char* name, u32 constant, u32 r1, u32 r2) {
     result.append(fmt::format("{}", name));
-    if (r1 != 32) result.append(fmt::format(" ${}", rnames[r1]));
-    if (r2 != 32) result.append(fmt::format(" ${}", rnames[r2]));
+    if (r1 != 32) result.append(fmt::format(" ${}", REG_NAMES[r1]));
+    if (r2 != 32) result.append(fmt::format(" ${}", REG_NAMES[r2]));
     result.append(fmt::format(" 0x{:08X}", constant));
 
     if (!with_current_value) return;
     result.append(fmt::format("{:>{}}# ", " ", 40 - result.size()));
 
-    if (r1 != 32) result.append(fmt::format("{}=0x{:X}", rnames[r1], cpu->gp.r[r1]));
-    if (r2 != 32) result.append(fmt::format(", {}=0x{:X}", rnames[r2], cpu->gp.r[r2]));
+    if (r1 != 32) result.append(fmt::format("{}=0x{:X}", REG_NAMES[r1], cpu->gp.r[r1]));
+    if (r2 != 32) result.append(fmt::format(", {}=0x{:X}", REG_NAMES[r2], cpu->gp.r[r2]));
 }
 
 void Disassembler::PrintLoadStoreInstruction(const char* name, u32 rt, u32 base, s32 offset) {
-    result.append(fmt::format("{} ${} {}(${})", name, rnames[rt], offset, rnames[base]));
+    result.append(fmt::format("{} ${} {}(${})", name, REG_NAMES[rt], offset, REG_NAMES[base]));
 
     if (!with_current_value) return;
-    result.append(fmt::format("{:>{}}# {}=0x{:X}, address=0x{:08X}", " ", 40 - result.size(), rnames[rt], cpu->gp.r[rt],
+    result.append(fmt::format("{:>{}}# {}=0x{:X}, address=0x{:08X}", " ", 40 - result.size(), REG_NAMES[rt], cpu->gp.r[rt],
                               cpu->gp.r[base] + offset));
 }
 
 void Disassembler::PrintCP0Instruction(const char* name, u32 reg1, u32 reg2) {
-    result.append(fmt::format("{} ${} ${}", name, rnames[reg1], coprnames[reg2]));
+    result.append(fmt::format("{} ${} ${}", name, REG_NAMES[reg1], COP0_REG_NAMES[reg2]));
 
     if (!with_current_value) return;
-    result.append(fmt::format("{:>{}}# {}(GPR)=0x{:08X}, {}(COP0)=0x{:08X}", " ", 40 - result.size(), rnames[reg1],
-                              cpu->gp.r[reg1], coprnames[reg2], cpu->cp.cpr[reg2]));
+    result.append(fmt::format("{:>{}}# {}(GPR)=0x{:08X}, {}(COP0)=0x{:08X}", " ", 40 - result.size(), REG_NAMES[reg1],
+                              cpu->gp.r[reg1], COP0_REG_NAMES[reg2], cpu->cp.cpr[reg2]));
 }
 
 }    // namespace CPU

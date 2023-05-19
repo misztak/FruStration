@@ -615,9 +615,14 @@ void CPU::Exception(ExceptionCode cause) {
     // TODO: bad vaddr
     //if (cause == ExceptionCode::LoadAddress || cause == ExceptionCode::StoreAddress) cp.bad_vaddr = bad_vaddr;
 
+    LogDebug("EXCEPTION - Cause: {} (0x{:02X}) - in delay slot: {} - in branch: {}", EXCEPT_NAMES[(u32)cause],
+             (u32)cause, was_in_delay_slot, was_branch_taken);
+    LogDebug("    Interrupted at 0x{:08X} - jumping to handler at 0x{:08X}", current_pc, handler);
+    if (cause == ExceptionCode::Syscall)
+        LogDebug("    Syscall Type: {}", gp.a0 < 5 ? SYSCALL_NAMES[gp.a0] : SYSCALL_NAMES[4]);
+
     sp.pc = handler;
     next_pc = handler + 4;
-    LogDebug("CPU Exception {:#04x}", (u32)cause);
 }
 
 u32 CPU::Load32(u32 address) {
@@ -710,7 +715,7 @@ void CPU::DrawCpuState(bool* open) {
         static int curr_gp_reg = 0;
         ImGui::Text("GP Registers ");
         ImGui::SameLine();
-        ImGui::Combo("##gp_reg_list", &curr_gp_reg, rnames, GP_REG_COUNT, 10);
+        ImGui::Combo("##gp_reg_list", &curr_gp_reg, REG_NAMES, GP_REG_COUNT, 10);
         ImGui::SameLine();
         ImGui::InputScalar("##gp_reg_edit", ImGuiDataType_U32, &gp.r[curr_gp_reg], nullptr, nullptr, "%08X",
                            ImGuiInputTextFlags_CharsHexadecimal);
@@ -718,7 +723,7 @@ void CPU::DrawCpuState(bool* open) {
         static int curr_sp_reg = 0;
         ImGui::Text("SP Registers ");
         ImGui::SameLine();
-        ImGui::Combo("##sp_reg_list", &curr_sp_reg, spnames, SP_REG_COUNT);
+        ImGui::Combo("##sp_reg_list", &curr_sp_reg, SP_REG_NAMES, SP_REG_COUNT);
         ImGui::SameLine();
         ImGui::InputScalar("##sp_reg_edit", ImGuiDataType_U32, &sp.spr[curr_sp_reg], nullptr, nullptr, "%08X",
                            ImGuiInputTextFlags_CharsHexadecimal);
@@ -726,7 +731,7 @@ void CPU::DrawCpuState(bool* open) {
         static int curr_cop_reg = 0;
         ImGui::Text("COP0 Registers ");
         ImGui::SameLine();
-        ImGui::Combo("##cop_reg_list", &curr_cop_reg, coprnames, COP_REG_COUNT, 10);
+        ImGui::Combo("##cop_reg_list", &curr_cop_reg, COP0_REG_NAMES, COP_REG_COUNT, 10);
         ImGui::SameLine();
         ImGui::InputScalar("##cop_reg_edit", ImGuiDataType_U32, &cp.cpr[curr_cop_reg], nullptr, nullptr, "%08X",
                            ImGuiInputTextFlags_CharsHexadecimal);
@@ -741,7 +746,7 @@ void CPU::DrawCpuState(bool* open) {
     for (u32 col = 0; col < 4; col++) {
         for (u32 row = 0; row < 8; row++) {
             const u32 index = row + col * 8;
-            ImGui::Text(" $%-3s %08X", rnames[index], gp.r[row + col * 8]);
+            ImGui::Text(" $%-3s %08X", REG_NAMES[index], gp.r[row + col * 8]);
         }
         ImGui::NextColumn();
     }
@@ -763,7 +768,7 @@ void CPU::DrawCpuState(bool* open) {
     for (u32 col = 0; col < 4; col++) {
         for (u32 row = 0; row < 4; row++) {
             const u32 index = row + col * 4;
-            ImGui::Text(" $%-10s %08X", coprnames[index], cp.cpr[row + col * 4]);
+            ImGui::Text(" $%-10s %08X", COP0_REG_NAMES[index], cp.cpr[row + col * 4]);
         }
         ImGui::NextColumn();
     }

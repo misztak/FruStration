@@ -187,32 +187,6 @@ union CP0_Registers {
     };
 };
 
-// clang-format off
-
-const char* const rnames[GP_REG_COUNT] = {
-    "0", "at", "v0", "v1",
-    "a0", "a1", "a2", "a3",
-    "t0", "t1", "t2", "t3",
-    "t4", "t5", "t6", "t7",
-    "s0", "s1", "s2", "s3",
-    "s4", "s5", "s6", "s7",
-    "t8", "t9", "k0", "k1",
-    "gp", "sp", "fp", "ra"
-};
-
-const char* const spnames[SP_REG_COUNT] = {
-    "pc", "hi", "lo"
-};
-
-const char* const coprnames[COP_REG_COUNT] = {
-    "0", "1", "2", "bpc",
-    "4", "bda", "jumpdest", "dcic",
-    "bad_vaddr", "bdam", "10", "bpcm",
-    "sr", "cause", "epc", "prid"
-};
-
-// clang-format on
-
 union Instruction {
     u32 value = 0;
 
@@ -250,5 +224,42 @@ struct LoadDelayEntry {
     u32 reg = 0;
     u32 value = 0;
 };
+
+// clang-format off
+
+static const char* const REG_NAMES[GP_REG_COUNT] = {
+    "0", "at", "v0", "v1",
+    "a0", "a1", "a2", "a3",
+    "t0", "t1", "t2", "t3",
+    "t4", "t5", "t6", "t7",
+    "s0", "s1", "s2", "s3",
+    "s4", "s5", "s6", "s7",
+    "t8", "t9", "k0", "k1",
+    "gp", "sp", "fp", "ra"
+};
+
+static const char* const SP_REG_NAMES[SP_REG_COUNT] = {
+    "pc", "hi", "lo"
+};
+
+static const char* const COP0_REG_NAMES[COP_REG_COUNT] = {
+    "0", "1", "2", "bpc",
+    "4", "bda", "jumpdest", "dcic",
+    "bad_vaddr", "bdam", "10", "bpcm",
+    "sr", "cause", "epc", "prid"
+};
+
+static const char* const SYSCALL_NAMES[5] = {
+    "NoFunction()", "EnterCriticalSection()",
+    "ExitCriticalSection()", "ChangeThreadSubFunction(addr)",
+    "DeliverEvent(0xF0000010,0x4000)"
+};
+
+static const char* const EXCEPT_NAMES[13] = {
+    "Interrupt", "", "", "", "LoadAddress", "StoreAddress", "",
+    "", "Syscall", "Break", "ReservedInstr", "COPError", "Overflow"
+};
+
+// clang-format on
 
 }    // namespace CPU
