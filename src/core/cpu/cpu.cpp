@@ -368,7 +368,7 @@ void CPU::Step() {
                     break;
                 case CoprocessorOpcode::rfe:
                 {
-                    if ((instr.value & 0x3F) != 0b010000) Panic("Invalid CP0 instruction 0x%08X!", instr.value);
+                    if ((instr.value & 0x3F) != 0b010000) Panic("Invalid CP0 instruction 0x{:08X}!", instr.value);
                     // restore the interrupt/user pairs that we changed before jumping into the exception handler
                     const u32 mode = cp.sr.value & 0x3C;
                     cp.sr.value &= ~0xFu;    // bits 4-5 are left unchanged
@@ -376,16 +376,20 @@ void CPU::Step() {
                     break;
                 }
                 default:
-                    Panic("Invalid coprocessor opcode 0x%02X!", (u32) instr.cop.cop_op.GetValue());
+                    Panic("Invalid coprocessor opcode 0x{:02X}!", (u32) instr.cop.cop_op.GetValue());
             }
             break;
         case PrimaryOpcode::cop2:
+            if ((instr.value >> 25) == COP2_IMM_OPCODE) {
+                gte.ExecuteCommand(instr.value);
+                break;
+            }
             switch (instr.cop.cop_op) {
                 case CoprocessorOpcode::mf:
-                    LogDebug("GTE: MFC [Unimplemented]");
+                    Set(instr.cop.rt, gte.GetReg(instr.cop.rd));
                     break;
                 case CoprocessorOpcode::mcf:
-                    LogDebug("GTE: MCFC [Unimplemented]");
+                    Set(instr.cop.rt, gte.GetReg(instr.cop.rd + 32));
                     break;
                 case CoprocessorOpcode::mt:
                     gte.SetReg(instr.cop.rd, Get(instr.cop.rt));
@@ -394,7 +398,7 @@ void CPU::Step() {
                     gte.SetReg(instr.cop.rd + 32, Get(instr.cop.rt));
                     break;
                 default:
-                    Panic("Invalid GTE coprocessor opcode 0x%02X!", (u32) instr.cop.cop_op.GetValue());
+                    Panic("Invalid GTE coprocessor opcode 0x{:02X}!", (u32) instr.cop.cop_op.GetValue());
             }
             break;
         case PrimaryOpcode::cop1:
@@ -541,13 +545,13 @@ void CPU::Step() {
         {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u32 value = Load32(address);
-            LogDebug("LWC2: 0x{:08X}", value);
-            Panic("LWC2 (GTE) not implemented");
+            LogDebug("LWC2: [0x{:08X} @ 0x{:08X}] [Unimplemented]", value, address);
             break;
         }
         case PrimaryOpcode::swc2:
         {
-            Panic("SWC2 (GTE) not implemented");
+            u32 address = Get(instr.n.rs) + instr.imm_se();
+            LogDebug("SWC2: [0x{:08X}] [Unimplemented]", address);
             break;
         }
         case PrimaryOpcode::lwc0:

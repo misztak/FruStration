@@ -158,15 +158,15 @@ union CP0_Registers {
         u32 cop0r0;
         u32 cop0r1;
         u32 cop0r2;
-        u32 bpc;    // breakpoint on execute (R/W)
+        u32 bpc;            // breakpoint on execute (R/W)
         u32 cop0r4;
-        u32 bda;          // breakpoint on data access (R/W)
-        u32 jumpdest;     // randomly memorized jump address (R)
-        u32 dcic;         // breakpoint control (R/W)
-        u32 bad_vaddr;    // bad virtual address (R)
-        u32 bdam;         // data access breakpoint mask (R/W)
+        u32 bda;            // breakpoint on data access (R/W)
+        u32 jumpdest;       // randomly memorized jump address (R)
+        u32 dcic;           // breakpoint control (R/W)
+        u32 bad_vaddr;      // bad virtual address (R)
+        u32 bdam;           // data access breakpoint mask (R/W)
         u32 cop0r10;
-        u32 bpcm;    // execute breakpoint mask (R/W)
+        u32 bpcm;           // execute breakpoint mask (R/W)
         // system status register (R/W)
         union {
             u32 value;
@@ -243,6 +243,8 @@ union Instruction {
 
     ALWAYS_INLINE u32 imm_se() { return static_cast<s16>(n.imm); }
 };
+
+constexpr u32 COP2_IMM_OPCODE = 0b0100101;
 
 struct LoadDelayEntry {
     u32 reg = 0;
