@@ -38,9 +38,9 @@ static std::optional<std::string> OpenFileDialog(const char* filter_list = nullp
 static void UpdateWindowTitle(SDL_Window* window) {
     std::string file_name = "no file";
     if (!Config::ps_bin_file_path.empty())
-        file_name = fs::path(Config::ps_bin_file_path).stem().string();
+        file_name = fs::path(Config::ps_bin_file_path).filename().string();
     else if (!Config::psexe_file_path.empty())
-        file_name = fs::path(Config::psexe_file_path).stem().string();
+        file_name = fs::path(Config::psexe_file_path).filename().string();
 
     std::string new_window_title = fmt::format("frustration - [{}]", file_name);
     SDL_SetWindowTitle(window, new_window_title.c_str());
