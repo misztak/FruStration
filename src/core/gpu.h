@@ -32,7 +32,6 @@ public:
             case 2: return 512;
             case 3: return 640;
         }
-
         // unreachable
         return 0;
     }

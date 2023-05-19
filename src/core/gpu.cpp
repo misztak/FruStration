@@ -161,11 +161,11 @@ void GPU::SendGP0Cmd(u32 cmd) {
         case 0x00: // nop
             break;
         case 0x01: // clear cache
-            // TODO: implement me
+            LogWarn("Clear cache [Unimplemented]");
             break;
         case 0x02: // fill vram
             CommandAfterCount(2, [this]{
-                Rectangle r;
+                Rectangle r = {};
                 r.c.SetColor(command_buffer[0]);
                 r.SetStart(command_buffer[1]);
                 r.SetSize(command_buffer[2]);
