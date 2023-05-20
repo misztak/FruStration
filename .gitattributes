@@ -1,2 +1,6 @@
-# Tell GitHub to ignore this directory when generating language statistics
-libs/* linguist-vendored
+# Tell linguist to ignore external libs when generating language statistics
+libs/**/* linguist-vendored
+
+# Tell linguist to reclassify all header files in src/ as C++ files
+src/**/*.h linguist-language=C++
+
