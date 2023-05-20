@@ -15,13 +15,14 @@ enum class IRQ : u32 {
     SIO = (1 << 8),
     SPU = (1 << 9),
     CONTROLLER = (1 << 10),
+    NONE = (1 << 11),
 };
 
 class System;
 
 class InterruptController {
 public:
-    InterruptController(System* system);
+    explicit InterruptController(System* system);
     void Reset();
     void Request(IRQ irq);
 
@@ -30,6 +31,25 @@ public:
     void StoreMask(u32 value);
     u32 LoadMask();
 
+    static const char* GetInterruptName(IRQ irq) {
+        switch (irq) {
+            case IRQ::VBLANK: return "Vblank";
+            case IRQ::GPU: return "GPU (GP0)";
+            case IRQ::CDROM: return "CDROM";
+            case IRQ::DMA: return "DMA";
+            case IRQ::TIMER0: return "Timer 0";
+            case IRQ::TIMER1: return "Timer 1";
+            case IRQ::TIMER2: return "Timer 2";
+            case IRQ::MEM_CARD: return "Mem Card";
+            case IRQ::SIO: return "SIO";
+            case IRQ::SPU: return "SPU";
+            case IRQ::CONTROLLER: return "Controller";
+            case IRQ::NONE: return "None";
+            default: return "Invalid IRQ";
+        }
+    }
+
+    IRQ last_irq = IRQ::NONE;
 private:
     void UpdateCP0Interrupt();
 

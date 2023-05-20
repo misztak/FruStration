@@ -6,6 +6,7 @@
 #include "common/asserts.h"
 #include "common/log.h"
 #include "cpu_common.h"
+#include "interrupt.h"
 #include "system.h"
 
 LOG_CHANNEL(CPU);
@@ -618,6 +619,8 @@ void CPU::Exception(ExceptionCode cause) {
     LogDebug("EXCEPTION - Cause: {} (0x{:02X}) - in delay slot: {} - in branch: {}", EXCEPT_NAMES[(u32)cause],
              (u32)cause, was_in_delay_slot, was_branch_taken);
     LogDebug("    Interrupted at 0x{:08X} - jumping to handler at 0x{:08X}", current_pc, handler);
+    if (cause == ExceptionCode::Interrupt)
+        LogDebug("    IRQ Source: {}", InterruptController::GetInterruptName(sys->interrupt->last_irq));
     if (cause == ExceptionCode::Syscall)
         LogDebug("    Syscall Type: {}", gp.a0 < 5 ? SYSCALL_NAMES[gp.a0] : SYSCALL_NAMES[4]);
 

@@ -12,9 +12,13 @@ InterruptController::InterruptController(System* system) : sys(system) {}
 void InterruptController::Reset() {
     stat.value = 0;
     mask.value = 0;
+
+    last_irq = IRQ::NONE;
 }
 
 void InterruptController::Request(IRQ irq) {
+    last_irq = irq;
+
     stat.value |= (u32)irq;
     UpdateCP0Interrupt();
 }
