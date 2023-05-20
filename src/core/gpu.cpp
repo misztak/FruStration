@@ -37,8 +37,9 @@ void GPU::Step(u32 cpu_cycles) {
     while (accumulated_dots >= dots_per_scanline) {
         accumulated_dots -= dots_per_scanline;
         scanline = (scanline + 1) % Scanlines();
+
         // if vertical interlace is on AND the vertical resolution is set to 240
-        // the even_odd_bit needs to be toggled every scanline
+        // the even_odd_bit needs to be flipped every scanline
         if (InterlacedAnd240Vres()) status.interlace_even_or_odd_line ^= 1;
     }
 
@@ -151,8 +152,8 @@ void GPU::SendGP0Cmd(u32 cmd) {
     DebugAssert(command_counter < 12);
     command_buffer[command_counter] = cmd;
 
-    auto CommandAfterCount = [this](u32 count, auto function) {
-        if (command_counter == count) {
+    auto CommandAfterCount = [&](u32 count, auto function) {
+        if (command_counter == count || (count == UNTIL_TERM_CODE && (cmd & TERM_CODE_MASK) == TERM_CODE)) {
             function();
             command_counter = 0;
         } else {
@@ -185,32 +186,40 @@ void GPU::SendGP0Cmd(u32 cmd) {
             LogWarn("Interrupt request [Unimplemented]");
             break;
         case 0x20: case 0x22: // mono triangle
-            CommandAfterCount(3, [this]() { DrawTriangleMono(); });
+            CommandAfterCount(3, [this]() { DrawPolygonMono<Three_Point>(); });
             break;
         case 0x28: case 0x2A: // mono quad
-            CommandAfterCount(4, [this]() { DrawQuadMono(); });
+            CommandAfterCount(4, [this]() { DrawPolygonMono<Four_Point>(); });
             break;
         case 0x24: case 0x25: case 0x26: case 0x27:  // textured triangle
-            CommandAfterCount(6, [this]() { DrawTriangleTextured(); });
+            CommandAfterCount(6, [this]() { DrawPolygonTextured<Three_Point>(); });
             break;
         case 0x2C: case 0x2D: case 0x2E: case 0x2F: // textured quad
-            CommandAfterCount(8, [this]() { DrawQuadTextured(); });
+            CommandAfterCount(8, [this]() { DrawPolygonTextured<Four_Point>(); });
             break;
         case 0x30: case 0x32: // shaded triangle
-            CommandAfterCount(5, [this]() { DrawTriangleShaded(); });
+            CommandAfterCount(5, [this]() { DrawPolygonShaded<Three_Point>(); });
             break;
         case 0x38: case 0x3A: // shaded quad
-            CommandAfterCount(7, [this]() { DrawQuadShaded(); });
+            CommandAfterCount(7, [this]() { DrawPolygonShaded<Four_Point>(); });
             break;
         case 0x34: case 0x36: // textured and shaded triangle
-            CommandAfterCount(8, [this]() { DrawTriangleTexturedShaded(); });
+            CommandAfterCount(8, [this]() { DrawPolygonTexturedShaded<Three_Point>(); });
             break;
         case 0x3C: case 0x3E: // textured and shaded quad
-            CommandAfterCount(11, [this]() { DrawQuadTexturedShaded(); });
+            CommandAfterCount(11, [this]() { DrawPolygonTexturedShaded<Four_Point>(); });
             break;
-        case 0x40: case 0x42: case 0x48: case 0x4A:
-        case 0x50: case 0x52: case 0x58: case 0x5A:
-            Panic("Received render line command 0x{:02X} [Unimplemented]", command.gp0_op.GetValue());
+        case 0x40: case 0x42: // mono single line
+            CommandAfterCount(2, [this]() { DrawLineMono(false); });
+            break;
+        case 0x48: case 0x4A: // mono poly line
+            CommandAfterCount(UNTIL_TERM_CODE, [this]() { DrawLineMono(true); });
+            break;
+        case 0x50: case 0x52: // shaded single line
+            CommandAfterCount(3, [this]() { DrawLineShaded(false); });
+            break;
+        case 0x58: case 0x5A: // shaded poly line
+            CommandAfterCount(UNTIL_TERM_CODE, [this]() { DrawLineShaded(true); });
             break;
         case 0x60: case 0x62: // mono rectangle with variable size
             CommandAfterCount(2, [this]() { DrawRectangleMono(); });
@@ -220,11 +229,11 @@ void GPU::SendGP0Cmd(u32 cmd) {
             CommandAfterCount(1, [this]() { DrawRectangleMono(); });
             break;
         case 0x64: case 0x65: case 0x66: case 0x67: // textured rectangle with variable size
-            CommandAfterCount(3, [this]() { DrawRectangleTexture(); });
+            CommandAfterCount(3, [this]() { DrawRectangleTextured(); });
             break;
         case 0x74: case 0x75: case 0x76: case 0x77: // textured rectangle with fixed size
         case 0x7C: case 0x7D: case 0x7E: case 0x7F:
-            CommandAfterCount(2, [this]() { DrawRectangleTexture(); });
+            CommandAfterCount(2, [this]() { DrawRectangleTextured(); });
             break;
         case 0x80: // copy rectangle from vram to vram
             Panic("Copy rectangle from VRAM to VRAM [Unimplemented]");
@@ -276,7 +285,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
             status.draw_pixels = (cmd >> 1) & 0x1;
             break;
         default:
-            Panic("Invalid GP0 command 0x%08X", cmd);
+            LogWarn("Invalid GP0 command 0x{:08X}", cmd);
     }
 
     // clang-format on
@@ -356,39 +365,16 @@ void GPU::SendGP1Cmd(u32 cmd) {
 }
 
 //              //
-//  TRIANGLES   //
+//  POLYGONS    //
 //              //
 
-void GPU::DrawTriangleMono() {
-    Panic("Unimplemented");
-}
+template<GPU::PolygonType type>
+void GPU::DrawPolygonMono() {
+    static_assert(type == Three_Point || type == Four_Point);
 
-void GPU::DrawTriangleShaded() {
-    //LOG_DEBUG << "DrawTriangleShadedOpaque";
+    //LOG_DEBUG << "DrawPolygonMono";
 
-    for (u8 i = 0; i < 3; i++) {
-        vertices[i].SetPoint(command_buffer[(i * 2) + 1]);
-        vertices[i].c.SetColor(command_buffer[(i * 2)]);
-        vertices[i].SetTextPoint(0);
-    }
-    renderer->Draw(command_buffer[0]);
-}
-
-void GPU::DrawTriangleTextured() {
-    Panic("Unimplemented");
-}
-
-void GPU::DrawTriangleTexturedShaded() {
-    Panic("Unimplemented");
-}
-
-//              //
-//    QUADS     //
-//              //
-
-void GPU::DrawQuadMono() {
-    //LOG_DEBUG << "DrawQuadMonoOpaque";
-    for (u8 i = 0; i < 4; i++) {
+    for (u8 i = 0; i < static_cast<u8>(type); i++) {
         vertices[i].SetPoint(command_buffer[i + 1]);
         vertices[i].c.SetColor(command_buffer[0]);
         vertices[i].SetTextPoint(0);
@@ -396,9 +382,13 @@ void GPU::DrawQuadMono() {
     renderer->Draw(command_buffer[0]);
 }
 
-void GPU::DrawQuadShaded() {
-    //LOG_DEBUG << "DrawQuadShadedOpaque";
-    for (u8 i = 0; i < 4; i++) {
+template<GPU::PolygonType type>
+void GPU::DrawPolygonShaded() {
+    static_assert(type == Three_Point || type == Four_Point);
+
+    //LOG_DEBUG << "DrawPolygonShaded";
+
+    for (u8 i = 0; i < static_cast<u8>(type); i++) {
         vertices[i].SetPoint(command_buffer[(i * 2) + 1]);
         vertices[i].c.SetColor(command_buffer[(i * 2)]);
         vertices[i].SetTextPoint(0);
@@ -406,10 +396,15 @@ void GPU::DrawQuadShaded() {
     renderer->Draw(command_buffer[0]);
 }
 
-void GPU::DrawQuadTextured() {
-    //LOG_DEBUG << "DrawQuadTextureBlendOpaque";
+template<GPU::PolygonType type>
+void GPU::DrawPolygonTextured() {
+    static_assert(type == Three_Point || type == Four_Point);
+
+    //LOG_DEBUG << "DrawPolygonTextured";
+
     clut = command_buffer[2] >> 16;
 
+    // TODO: does this actually modify the status register?
     u16 texpage_attribute = command_buffer[4] >> 16;
     status.tex_page_x_base = texpage_attribute & 0xF;
     status.tex_page_y_base = (texpage_attribute >> 4) & 0x1;
@@ -417,19 +412,20 @@ void GPU::DrawQuadTextured() {
     status.tex_page_colors = (texpage_attribute >> 7) & 0x3;
     status.tex_disable = (texpage_attribute >> 11) & 0x1;
 
-    for (u8 i = 0; i < 4; i++) {
+    for (u8 i = 0; i < static_cast<u8>(type); i++) {
         vertices[i].SetPoint(command_buffer[(i * 2) + 1]);
         vertices[i].c.SetColor(command_buffer[0]);
         vertices[i].SetTextPoint(command_buffer[(i * 2) + 2]);
-        //printf("(x=%d, y=%d) ", vertices[i].x, vertices[i].y);
     }
-    //printf("\n");
 
     renderer->Draw(command_buffer[0]);
 }
 
-void GPU::DrawQuadTexturedShaded() {
-    Panic("Unimplemented");
+template<GPU::PolygonType type>
+void GPU::DrawPolygonTexturedShaded() {
+    static_assert(type == Three_Point || type == Four_Point);
+
+    Panic("DrawPolygonTexturedShaded unimplemented");
 }
 
 //              //
@@ -446,7 +442,7 @@ void GPU::DrawRectangleMono() {
     renderer->Draw(command_buffer[0]);
 }
 
-void GPU::DrawRectangleTexture() {
+void GPU::DrawRectangleTextured() {
     //LOG_DEBUG << "DrawRectangleTexture";
 
     rectangle.c.SetColor(command_buffer[0]);
@@ -456,6 +452,48 @@ void GPU::DrawRectangleTexture() {
 
     // Texpage gets set up separately via GP0(0xE1)
     clut = command_buffer[2] >> 16;
+
+    renderer->Draw(command_buffer[0]);
+}
+
+//              //
+//  LINES       //
+//              //
+
+void GPU::DrawLineMono(bool is_poly_line) {
+    line_buffer.clear();
+    LogDebug("DrawLineMono (is_poly_line={})", is_poly_line);
+
+    if (is_poly_line) DebugAssert((command_buffer[command_counter] & TERM_CODE_MASK) == TERM_CODE);
+
+    u32 num_points = is_poly_line ? (command_counter - 1) : 2;
+
+    for (u32 i = 0; i < num_points; i++) {
+        Vertex p = {};
+        p.SetPoint(command_buffer[i+1]);
+        p.c.SetColor(command_buffer[0]);
+
+        line_buffer.emplace_back(p);
+    }
+
+    renderer->Draw(command_buffer[0]);
+}
+
+void GPU::DrawLineShaded(bool is_poly_line) {
+    line_buffer.clear();
+    LogDebug("DrawLineShaded (is_poly_line={})", is_poly_line);
+
+    if (is_poly_line) DebugAssert((command_buffer[command_counter] & TERM_CODE_MASK) == TERM_CODE);
+
+    u32 num_points = is_poly_line ? (command_counter / 2) : 2;
+
+    for (u32 i = 0; i < num_points; i++) {
+        Vertex p = {};
+        p.SetPoint(command_buffer[i * 2 + 1]);
+        p.c.SetColor(command_buffer[i * 2]);
+
+        line_buffer.emplace_back(p);
+    }
 
     renderer->Draw(command_buffer[0]);
 }
@@ -683,6 +721,9 @@ void GPU::Reset() {
     std::fill(output.begin(), output.end(), 0);
 
     for (auto& v : vertices) v.Reset();
+
+    line_buffer.clear();
+
     clut = 0;
 }
 

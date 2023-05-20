@@ -59,6 +59,10 @@ private:
     static constexpr float REFRESH_RATE_NTSC = 60;
     static constexpr float REFRESH_RATE_PAL = 50;
 
+    static constexpr u32 TERM_CODE = 0x50005000;
+    static constexpr u32 TERM_CODE_MASK = 0xF000F000;
+    static constexpr u32 UNTIL_TERM_CODE = 0xFFFFFFFF;
+
     ALWAYS_INLINE float RefreshRate() const {
         return status.video_mode == VideoMode::NTSC ? REFRESH_RATE_NTSC : REFRESH_RATE_PAL;
     }
@@ -86,18 +90,28 @@ private:
     void Step(u32 cycles);
     u32 CyclesUntilNextEvent();
 
-    void DrawQuadMono();
-    void DrawQuadShaded();
-    void DrawQuadTextured();
-    void DrawQuadTexturedShaded();
+    enum PolygonType : u8 {
+        Three_Point = 3, Four_Point = 4
+    };
 
-    void DrawTriangleMono();
-    void DrawTriangleShaded();
-    void DrawTriangleTextured();
-    void DrawTriangleTexturedShaded();
+    template<GPU::PolygonType type>
+    void DrawPolygonMono();
+
+    template<GPU::PolygonType type>
+    void DrawPolygonShaded();
+
+    template<GPU::PolygonType type>
+    void DrawPolygonTextured();
+
+    template<GPU::PolygonType type>
+    void DrawPolygonTexturedShaded();
 
     void DrawRectangleMono();
-    void DrawRectangleTexture();
+    void DrawRectangleTextured();
+
+
+    void DrawLineMono(bool is_poly_line);
+    void DrawLineShaded(bool is_poly_line);
 
     void CopyRectCpuToVram(u32 data = 0);
     void CopyRectVramToCpu();
@@ -210,6 +224,8 @@ private:
 
     std::array<Vertex, 4> vertices = {};
     Rectangle rectangle = {};
+
+    std::vector<Vertex> line_buffer;
 
     u16 clut = 0;
 

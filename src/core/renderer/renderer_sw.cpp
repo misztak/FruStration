@@ -21,10 +21,10 @@ static constexpr s32 EdgeFunction(Vertex* v0, Vertex* v1, s16 px, s16 py) {
     return (s32)((v1->x - v0->x) * (py - v0->y) - (v1->y - v0->y) * (px - v0->x));
 }
 
-template<u32 draw_flags>
-void Renderer_SW::DrawTriangle() {
 #define DRAW_FLAGS_SET(flags) ((draw_flags & (flags)) != 0)
 
+template<u32 draw_flags>
+void Renderer_SW::DrawTriangle() {
     // Unimplemented
     Assert((draw_flags & (TEXTURED | SHADED)) != (TEXTURED | SHADED));
 
@@ -122,7 +122,6 @@ void Renderer_SW::DrawTriangle() {
         w20_row += B20;
     }
 
-#undef DRAW_FLAGS_SET
 }
 
 template<u32 draw_flags>
@@ -148,8 +147,6 @@ static constexpr std::tuple<u16, u16> GetSize(Rectangle& rect) {
 
 template<RectSize size, u32 draw_flags>
 void Renderer_SW::DrawRectangle() {
-#define DRAW_FLAGS_SET(flags) ((draw_flags & (flags)) != 0)
-
     auto& rect = gpu->rectangle;
 
     auto [size_x, size_y] = GetSize<size>(rect);
@@ -177,8 +174,56 @@ void Renderer_SW::DrawRectangle() {
         }
     }
 
-#undef DRAW_FLAGS_SET
 }
+
+template<u32 draw_flags>
+void Renderer_SW::DrawLine() {
+    if (gpu->line_buffer.size() < 2) {
+        LogWarn("Trying to draw a line without 2 or more points");
+        return;
+    }
+
+    for (usize i = 0; i < gpu->line_buffer.size() - 1; i++) {
+        Vertex& p0 = gpu->line_buffer[i];
+        Vertex& p1 = gpu->line_buffer[i+1];
+
+        s32 x0 = std::clamp<s32>(p0.x + gpu->drawing_x_offset, gpu->drawing_area_left, gpu->drawing_area_right);
+        s32 y0 = std::clamp<s32>(p0.y + gpu->drawing_y_offset, gpu->drawing_area_top, gpu->drawing_area_bottom);
+
+        s32 x1 = std::clamp<s32>(p1.x + gpu->drawing_x_offset, gpu->drawing_area_left, gpu->drawing_area_right);
+        s32 y1 = std::clamp<s32>(p1.y + gpu->drawing_y_offset, gpu->drawing_area_top, gpu->drawing_area_bottom);
+
+        s32 dx = std::abs(x1 - x0);
+        s32 sx = x0 < x1 ? 1 : -1;
+        s32 dy = -std::abs(y1 - y0);
+        s32 sy = y0 < y1 ? 1 : -1;
+        s32 error = dx + dy;
+
+        while (true) {
+            if constexpr (DRAW_FLAGS_SET(draw_flags & SHADED)) {
+                // TODO
+                gpu->vram[x0 + GPU::VRAM_WIDTH * y0] = 0x7FFF;
+            } else {
+                gpu->vram[x0 + GPU::VRAM_WIDTH * y0] = p0.c.To5551();
+            }
+
+            if (x0 == x1 && y0 == y1) break;
+            s32 e2 = 2 * error;
+            if (e2 >= dy) {
+                if (x0 == x1) break;
+                error = error + dy;
+                x0 = x0 + sx;
+            }
+            if (e2 <= dx) {
+                if (y0 == y1) break;
+                error = error + dx;
+                y0 = y0 + sy;
+            }
+        }
+    }
+}
+
+#undef DRAW_FLAGS_SET
 
 u16 Renderer_SW::GetTexel(u8 tex_x, u8 tex_y) {
     tex_x = (tex_x & ~(gpu->tex_window_x_mask * 8)) | ((gpu->tex_window_x_offset & gpu->tex_window_x_mask) * 8);
@@ -260,6 +305,12 @@ void Renderer_SW::Draw(u32 cmd) {
         case 0x3A: Draw4PointPolygon<SHADED>(); break;
         case 0x3C: Draw4PointPolygon<TEXTURED | SHADED | OPAQUE | BLENDING>(); break;
         case 0x3E: Draw4PointPolygon<TEXTURED | SHADED | BLENDING>(); break;
+
+        case 0x40: case 0x48: DrawLine<OPAQUE>(); break;
+        case 0x42: case 0x4A: DrawLine<NO_FLAGS>(); break;
+
+        case 0x50: case 0x58: DrawLine<SHADED | OPAQUE>(); break;
+        case 0x52: case 0x5A: DrawLine<SHADED>(); break;
 
         case 0x60: DrawRectangle<RectSize::VARIABLE, OPAQUE>(); break;
         case 0x62: DrawRectangle<RectSize::VARIABLE, NO_FLAGS>(); break;
