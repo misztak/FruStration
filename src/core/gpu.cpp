@@ -170,17 +170,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
             LogWarn("Clear cache [Unimplemented]");
             break;
         case 0x02: // fill vram
-            CommandAfterCount(2, [this]{
-                Rectangle r = {};
-                r.c.SetColor(command_buffer[0]);
-                r.SetStart(command_buffer[1]);
-                r.SetSize(command_buffer[2]);
-                for (u32 y = r.start_y; y < r.start_y + r.size_y; y++) {
-                    for (u32 x = r.start_x; x < r.start_x + r.size_x; x++) {
-                        vram[y * VRAM_WIDTH + x] = r.c.To5551();
-                    }
-                }
-            });
+            CommandAfterCount(2, [this]() { FillVram(); });
             break;
         case 0x1F: // interrupt request
             LogWarn("Interrupt request [Unimplemented]");
@@ -236,7 +226,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
             CommandAfterCount(2, [this]() { DrawRectangleTextured(); });
             break;
         case 0x80: // copy rectangle from vram to vram
-            Panic("Copy rectangle from VRAM to VRAM [Unimplemented]");
+            CommandAfterCount(3, [this]() { CopyRectVramToVram(); });
             break;
         case 0xA0: // copy rectangle from ram to vram
             CommandAfterCount(2, [this]() { CopyRectCpuToVram(); });
@@ -354,11 +344,11 @@ void GPU::SendGP1Cmd(u32 cmd) {
             // TODO: remaining options
             switch (cmd & 0xFFFFFF) {
                 case 7: break;
-                default: Panic("Unimplemented GPU info option %u", cmd & 0xFFFFFF);
+                default: Panic("Unimplemented GPU info option {}", cmd & 0xFFFFFF);
             }
             break;
         default:
-            Panic("Unimplemented GP1 command 0x%08X", cmd);
+            Panic("Unimplemented GP1 command 0x{:08X}", cmd);
     }
 
     // clang-format on
@@ -462,7 +452,7 @@ void GPU::DrawRectangleTextured() {
 
 void GPU::DrawLineMono(bool is_poly_line) {
     line_buffer.clear();
-    LogDebug("DrawLineMono (is_poly_line={})", is_poly_line);
+    //LogDebug("DrawLineMono (is_poly_line={})", is_poly_line);
 
     if (is_poly_line) DebugAssert((command_buffer[command_counter] & TERM_CODE_MASK) == TERM_CODE);
 
@@ -481,7 +471,7 @@ void GPU::DrawLineMono(bool is_poly_line) {
 
 void GPU::DrawLineShaded(bool is_poly_line) {
     line_buffer.clear();
-    LogDebug("DrawLineShaded (is_poly_line={})", is_poly_line);
+    //LogDebug("DrawLineShaded (is_poly_line={})", is_poly_line);
 
     if (is_poly_line) DebugAssert((command_buffer[command_counter] & TERM_CODE_MASK) == TERM_CODE);
 
@@ -521,24 +511,24 @@ void GPU::CopyRectCpuToVram(u32 data /* = 0 */) {
         x_pos_max = x_pos + width;
 
         mode = Mode::DataFromCPU;
-        //LOG_DEBUG << fmt::format("CopyCPUtoVram: {} words from (x={}, y={}) to (x={}, y={})",
+        //LogDebug("CopyCPUtoVram: {} words from (x={}, y={}) to (x={}, y={})",
         //                         words_remaining, x_pos, y_pos, x_pos + width - 1, y_pos + height - 1);
     } else if (mode == Mode::DataFromCPU) {
         // first halfword
         vram[(x_pos % VRAM_WIDTH) + VRAM_WIDTH * y_pos] = data & 0xFFFF;
         // increment and check for overflow
-        auto increment = [&] {
+        auto Increment = [&] {
             x_pos++;
             if (x_pos >= x_pos_max) {
                 y_pos = (y_pos + 1) % 512;
                 x_pos = command_buffer[1] & 0x3FF;
             }
         };
-        increment();
+        Increment();
 
         // second halfword
         vram[(x_pos % VRAM_WIDTH) + VRAM_WIDTH * y_pos] = data >> 16;
-        increment();
+        Increment();
     } else {
         Panic("Invalid GPU transfer mode during CopyRectCpuToVram");
     }
@@ -567,28 +557,81 @@ void GPU::CopyRectVramToCpu() {
         x_pos_max = x_pos + width;
 
         mode = Mode::DataToCPU;
-        LogDebug("CopyVramToCPU: {} words from (x={}, y={}) to (x={}, y={})", words_remaining, x_pos,
-                                 y_pos, x_pos + width - 1, y_pos + height - 1);
+        //LogDebug("CopyVramToCPU: {} words from (x={}, y={}) to (x={}, y={})", words_remaining, x_pos,
+        //                         y_pos, x_pos + width - 1, y_pos + height - 1);
     } else if (mode == Mode::DataToCPU) {
         // first halfword
         u32 word1 = vram[(x_pos % VRAM_WIDTH) + VRAM_WIDTH * y_pos];
         // increment and check for overflow
-        auto increment = [&] {
+        auto Increment = [&] {
             x_pos++;
             if (x_pos >= x_pos_max) {
                 y_pos = (y_pos + 1) % 512;
                 x_pos = command_buffer[1] & 0x3FF;
             }
         };
-        increment();
+        Increment();
 
         // second halfword
         u32 word2 = vram[(x_pos % VRAM_WIDTH) + VRAM_WIDTH * y_pos];
-        increment();
+        Increment();
 
         gpu_read = (word2 << 16) | word1;
     } else {
         Panic("Invalid GPU transfer mode during CopyRectVramToCpu");
+    }
+}
+
+void GPU::CopyRectVramToVram() {
+    const u32 src_coords = command_buffer[1];
+    const u32 src_start_x = src_coords & 0x3FF;
+    const u32 src_start_y = (src_coords >> 16) & 0x1FF;
+
+    const u32 dst_coords = command_buffer[2];
+    const u32 dst_start_x = dst_coords & 0x3FF;
+    const u32 dst_start_y = (dst_coords >> 16) & 0x1FF;
+
+    const u32 size = command_buffer[3];
+    u32 size_x = size & 0x3FF;
+    size_x = size_x == 0 ? 0x400 : ((size_x - 1) & 0x3FF) + 1;
+    u32 size_y = (size >> 16) & 0x1FF;
+    size_y = size_y == 0 ? 0x200 : ((size_y - 1) & 0x1FF) + 1;
+
+    for (u32 src_y = src_start_y, dst_y = dst_start_y; src_y < src_start_y + size_y; src_y++, dst_y++) {
+        src_y &= 0x1FF;
+        dst_y &= 0x1FF;
+        for (u32 src_x = src_start_x, dst_x = dst_start_x; src_x < src_start_x + size_x; src_x++, dst_x++) {
+            src_x &= 0x3FF;
+            dst_x &= 0x3FF;
+            vram[dst_y * VRAM_WIDTH + dst_x] = vram[src_y * VRAM_WIDTH + src_x];
+        }
+    }
+}
+
+void GPU::FillVram() {
+    const u32 coords = command_buffer[1];
+    const u32 start_x = coords & 0x3F0;                     // range 0..0x3F0 (fill x works in steps of 0x10)
+    const u32 start_y = (coords >> 16) & 0x1FF;             // range 0..0x1FF
+
+    const u32 size = command_buffer[2];
+    const u32 size_x = ((size & 0x3FF) + 0xF) & ~0xF;     // range 0..0x400 (in steps of 0x10)
+    const u32 size_y = (size >> 16) & 0x1FF;              // range 0..0x1FF
+
+    if (size_x == 0 || size_y == 0) return;
+
+    Color c = {};
+    c.SetColor(command_buffer[0]);
+    const u16 color_15bit = c.To5551();
+
+    //LogDebug("FillRectVram: start_x={}, start_y={}, size_x={}, size_y={}, color=0x{:08x}", start_x, start_y, size_x, size_y,
+    //         command_buffer[0] & 0x00FFFFFF);
+
+    for (u32 y = start_y; y < start_y + size_y; y++) {
+        y &= 0x1FF;
+        for (u32 x = start_x; x < start_x + size_x; x++) {
+            x &= 0x3FF;
+            vram[y * VRAM_WIDTH + x] = color_15bit;
+        }
     }
 }
 

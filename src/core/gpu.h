@@ -115,6 +115,9 @@ private:
 
     void CopyRectCpuToVram(u32 data = 0);
     void CopyRectVramToCpu();
+    void CopyRectVramToVram();
+
+    void FillVram();
 
     void ResetCommand();
 

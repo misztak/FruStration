@@ -2,6 +2,8 @@
 
 #include "util/types.h"
 
+// TODO: improve the design of these structs
+
 struct Color {
     u8 r, g, b;
     ALWAYS_INLINE void SetColor(u32 value) { r = u8(value), g = u8(value >> 8), b = u8(value >> 16); }

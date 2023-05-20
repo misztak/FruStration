@@ -179,7 +179,7 @@ void Renderer_SW::DrawRectangle() {
 template<u32 draw_flags>
 void Renderer_SW::DrawLine() {
     if (gpu->line_buffer.size() < 2) {
-        LogWarn("Trying to draw a line without 2 or more points");
+        LogWarn("Trying to draw a line without at least 2 points");
         return;
     }
 
@@ -342,7 +342,7 @@ void Renderer_SW::Draw(u32 cmd) {
         case 0x7E: DrawRectangle<RectSize::VARIABLE, TEXTURED | BLENDING>(); break;
         case 0x7F: DrawRectangle<RectSize::VARIABLE, TEXTURED>(); break;
 
-        default: Panic("Invalid draw command 0x%08X", cmd);
+        default: Panic("Invalid draw command 0x{:08X}", cmd);
     }
 
     // clang-format on
