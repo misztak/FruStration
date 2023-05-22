@@ -7,7 +7,7 @@ project(FruStration)
 set(CMAKE_CXX_STANDARD 20)
 
 # verbose build script output
-#set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
+#set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON" FORCE)
 
 # generate compile_commands.json
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -44,7 +44,7 @@ if (WIN32)
     set(SDL2_DLL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/windows/sdl2/bin/SDL2.dll")
 else()
     find_package(SDL2 REQUIRED)
-    message("SDL: ${SDL2_VERSION} ${SDL2_INCLUDE_DIRS} ${SDL2_LIBRARIES}")
+    #message("SDL: ${SDL2_VERSION} ${SDL2_INCLUDE_DIRS} ${SDL2_LIBRARIES}")
 endif()
 
 # put executable in root of build directory

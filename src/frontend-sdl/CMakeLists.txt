@@ -2,6 +2,7 @@ add_executable(frustration
         main.cpp
         display.cpp)
 
+target_include_directories(frustration PRIVATE ${SDL2_INCLUDE_DIRS})
 target_link_libraries(frustration PRIVATE common core gl3w imgui nfd ${SDL2_LIBRARIES})
 
 if (WIN32)

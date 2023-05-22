@@ -17,6 +17,6 @@ add_library(imgui STATIC
         src/imgui_tables.cpp
         src/imgui_widgets.cpp)
 
-target_include_directories(imgui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(imgui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src ${SDL2_INCLUDE_DIRS})
 target_include_directories(imgui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(imgui PRIVATE gl3w ${SDL2_LIBRARIES})
