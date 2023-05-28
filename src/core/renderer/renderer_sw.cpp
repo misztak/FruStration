@@ -7,7 +7,7 @@
 #include "common/log.h"
 #include "gpu.h"
 
-LOG_CHANNEL(Renderer);
+LOG_CHANNEL(Renderer_SW);
 
 Renderer_SW::Renderer_SW(GPU* gpu) : gpu(gpu) {
     LogInfo("Graphics backend: Software Renderer (SW)");

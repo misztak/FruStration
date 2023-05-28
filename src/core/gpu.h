@@ -12,7 +12,7 @@ class System;
 
 class GPU {
     friend class Renderer_SW;
-
+    friend class Renderer_OpenGL;
 public:
     static constexpr u32 VRAM_WIDTH = 1024;
     static constexpr u32 VRAM_HEIGHT = 512;
@@ -235,6 +235,7 @@ private:
     System* sys = nullptr;
 
     std::unique_ptr<Renderer> renderer;
+    std::unique_ptr<Renderer> test;
 
     // TODO: is VRAM filled with garbage at boot?
     std::vector<u16> vram;

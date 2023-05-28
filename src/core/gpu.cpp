@@ -5,6 +5,7 @@
 #include "common/log.h"
 #include "common/asserts.h"
 #include "renderer/renderer_sw.h"
+#include "renderer/renderer_opengl.h"
 #include "interrupt.h"
 #include "system.h"
 #include "timer/timers.h"
@@ -20,6 +21,8 @@ GPU::GPU(System* system) : sys(system), vram(VRAM_SIZE, 0), output(VRAM_SIZE * 2
 
     // load default renderer backend
     renderer = std::make_unique<Renderer_SW>(this);
+
+    test = std::make_unique<Renderer_OpenGL>(this);
 
     // register timed event
     sys->RegisterEvent(

@@ -16,6 +16,8 @@
 LOG_CHANNEL(MAIN);
 
 void PrintUsageAndExit(int exit_code);
+void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message,
+                   const void* userParam);
 
 int main(int argc, char* argv[]) {
 
@@ -80,14 +82,6 @@ int main(int argc, char* argv[]) {
     //Config::psexe_file_path = "../test/exe/avocado/HelloWorld24BPP.exe";
     //Config::psexe_file_path = "../test/exe/avocado/ImageLoad.exe";
 
-    Emulator emulator;
-
-    if (!emulator.LoadBIOS()) return 1;
-
-    if (Config::gdb_server_enabled.Get()) emulator.StartGDBServer();
-
-    emulator.SetPaused(true);
-
     // init display
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -138,6 +132,18 @@ int main(int argc, char* argv[]) {
         LogCrit("Failed to initialize OpenGL loader");
         return 1;
     }
+
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(DebugCallback, 0);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, false);
+
+    Emulator emulator;
+
+    if (!emulator.LoadBIOS()) return 1;
+
+    if (Config::gdb_server_enabled.Get()) emulator.StartGDBServer();
+
+    emulator.SetPaused(true);
 
     Display display;
     if (!display.Init(&emulator, window, gl_context, glsl_version)) {
@@ -196,4 +202,15 @@ void PrintUsageAndExit(int exit_code) {
     printf("    -e, --psexe FILE    Inject and run the PSEXE file\n\n");
 
     std::exit(exit_code);
+}
+
+void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message,
+                          const void* userParam) {
+    if (severity == GL_DEBUG_SEVERITY_HIGH) {
+        Panic("GL CALLBACK: {} type = 0x{:x}, severity = 0x{:x}, message = {}\n",
+              (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, severity, message);
+    } else {
+        LogDebug("GL CALLBACK: {} type = 0x{:x}, severity = 0x{:x}, message = {}\n",
+                 (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, severity, message);
+    }
 }
