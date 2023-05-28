@@ -132,6 +132,7 @@ u32 GPU::CyclesUntilNextEvent() {
 }
 
 void GPU::SendGP0Cmd(u32 cmd) {
+    // move all this logic into dma.cpp
     if (mode == Mode::DataToCPU || mode == Mode::DataFromCPU) {
         if (words_remaining == 0) {
             mode = Mode::Command;
@@ -152,8 +153,18 @@ void GPU::SendGP0Cmd(u32 cmd) {
     DebugAssert(command_counter < 12);
     command_buffer[command_counter] = cmd;
 
-    auto CommandAfterCount = [&](u32 count, auto function) {
-        if (command_counter == count || (count == UNTIL_TERM_CODE && (cmd & TERM_CODE_MASK) == TERM_CODE)) {
+    auto CommandAfterCount = [this](u32 count, auto function) {
+        if (command_counter == count) {
+            function();
+            command_counter = 0;
+        } else {
+            command_counter++;
+        }
+    };
+
+    // only used for poly-line draw commands
+    auto CommandAfterTerminationCode = [this](auto function) {
+        if ((command_buffer[command_counter] & TERM_CODE_MASK) == TERM_CODE) {
             function();
             command_counter = 0;
         } else {
@@ -167,7 +178,7 @@ void GPU::SendGP0Cmd(u32 cmd) {
         case 0x00: // nop
             break;
         case 0x01: // clear cache
-            LogWarn("Clear cache [Unimplemented]");
+            // unimplemented, clears the 2KiB texture cache which is also not implemented
             break;
         case 0x02: // fill vram
             CommandAfterCount(2, [this]() { FillVram(); });
@@ -203,13 +214,13 @@ void GPU::SendGP0Cmd(u32 cmd) {
             CommandAfterCount(2, [this]() { DrawLineMono(false); });
             break;
         case 0x48: case 0x4A: // mono poly line
-            CommandAfterCount(UNTIL_TERM_CODE, [this]() { DrawLineMono(true); });
+            CommandAfterTerminationCode([this]() { DrawLineMono(true); });
             break;
         case 0x50: case 0x52: // shaded single line
             CommandAfterCount(3, [this]() { DrawLineShaded(false); });
             break;
         case 0x58: case 0x5A: // shaded poly line
-            CommandAfterCount(UNTIL_TERM_CODE, [this]() { DrawLineShaded(true); });
+            CommandAfterTerminationCode([this]() { DrawLineShaded(true); });
             break;
         case 0x60: case 0x62: // mono rectangle with variable size
             CommandAfterCount(2, [this]() { DrawRectangleMono(); });
