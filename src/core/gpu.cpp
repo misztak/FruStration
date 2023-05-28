@@ -426,7 +426,25 @@ template<GPU::PolygonType type>
 void GPU::DrawPolygonTexturedShaded() {
     static_assert(type == Three_Point || type == Four_Point);
 
-    Panic("DrawPolygonTexturedShaded unimplemented");
+    //LOG_DEBUG << "DrawPolygonTexturedShaded";
+
+    clut = command_buffer[2] >> 16;
+
+    // TODO: does this actually modify the status register?
+    u16 texpage_attribute = command_buffer[5] >> 16;
+    status.tex_page_x_base = texpage_attribute & 0xF;
+    status.tex_page_y_base = (texpage_attribute >> 4) & 0x1;
+    status.semi_transparency = (texpage_attribute >> 5) & 0x3;
+    status.tex_page_colors = (texpage_attribute >> 7) & 0x3;
+    status.tex_disable = (texpage_attribute >> 11) & 0x1;
+
+    for (u8 i = 0; i < static_cast<u8>(type); i++) {
+        vertices[i].SetPoint(command_buffer[(i * 3) + 1]);
+        vertices[i].c.SetColor(command_buffer[i * 3]);
+        vertices[i].SetTextPoint(command_buffer[(i * 3) + 2]);
+    }
+
+    renderer->Draw(command_buffer[0]);
 }
 
 //              //

@@ -6,6 +6,13 @@
 
 struct Color {
     u8 r, g, b;
+    ALWAYS_INLINE static Color FromU16(u16 v) {
+        return {
+            .r = u8((v & 0x1F) << 3),
+            .g = u8(((v >> 5) & 0x1F) << 3),
+            .b = u8(((v >> 10) & 0x1F) << 3)
+        };
+    }
     ALWAYS_INLINE void SetColor(u32 value) { r = u8(value), g = u8(value >> 8), b = u8(value >> 16); }
     ALWAYS_INLINE u16 To5551() const { return (0x8000 | ((b >> 3) << 10) | ((g >> 3) << 5) | (r >> 3)); }
 };

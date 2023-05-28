@@ -21,13 +21,44 @@ static constexpr s32 EdgeFunction(Vertex* v0, Vertex* v1, s16 px, s16 py) {
     return (s32)((v1->x - v0->x) * (py - v0->y) - (v1->y - v0->y) * (px - v0->x));
 }
 
+static constexpr void BlendTexture(Color& tx_color, Color& blend_color) {
+    tx_color.r = u8((u32(tx_color.r) * u32(blend_color.r)) / 128);
+    tx_color.g = u8((u32(tx_color.g) * u32(blend_color.g)) / 128);
+    tx_color.b = u8((u32(tx_color.b) * u32(blend_color.b)) / 128);
+}
+
+static constexpr Color CalcSemiTransparency(u32 mode, Color& back, Color& front) {
+    Color c = {};
+
+    auto ApplyToChannels = [&](s32 back_div, s32 front_div, s32 sign){
+        c.r = u8(std::clamp((s32(back.r) / back_div) + (s32(front.r) / front_div) * sign, 0, 255));
+        c.g = u8(std::clamp((s32(back.g) / back_div) + (s32(front.g) / front_div) * sign, 0, 255));
+        c.b = u8(std::clamp((s32(back.b) / back_div) + (s32(front.b) / front_div) * sign, 0, 255));
+    };
+
+    switch (mode) {
+        case 0:
+            ApplyToChannels(2, 2, +1);
+            break;
+        case 1:
+            ApplyToChannels(1, 1, +1);
+            break;
+        case 2:
+            ApplyToChannels(1, 1, -1);
+            break;
+        case 3:
+            ApplyToChannels(1, 4, +1);
+            break;
+        default: break;
+    }
+
+    return c;
+}
+
 #define DRAW_FLAGS_SET(flags) ((draw_flags & (flags)) != 0)
 
 template<u32 draw_flags>
 void Renderer_SW::DrawTriangle() {
-    // Unimplemented
-    Assert((draw_flags & (TEXTURED | SHADED)) != (TEXTURED | SHADED));
-
     // made possible by Fabian Giesen's great series of articles about software rasterizers
     // starting with:
     // https://fgiesen.wordpress.com/2013/02/06/the-barycentric-conspirac/
@@ -85,28 +116,50 @@ void Renderer_SW::DrawTriangle() {
             // check if point is to the left of all edges
             // just use the sign bits
             if ((w01 | w12 | w20) >= 0) {
-                // draw the pixel
-                if constexpr (!DRAW_FLAGS_SET(TEXTURED | SHADED)) {
-                    // mono triangle
+                Color px_color = {};
+
+                if constexpr (DRAW_FLAGS_SET(MONO)) {
                     // all vertices store the same color value
-                    gpu->vram[px + GPU::VRAM_WIDTH * py] = v0->c.To5551();
+                    px_color = v0->c;
                 }
-                if constexpr (DRAW_FLAGS_SET(SHADED)) {
-                    Color color;
-                    // shading
-                    color.r = (s32(v0->c.r) * w12 + s32(v1->c.r) * w20 + s32(v2->c.r) * w01) / area;
-                    color.g = (s32(v0->c.g) * w12 + s32(v1->c.g) * w20 + s32(v2->c.g) * w01) / area;
-                    color.b = (s32(v0->c.b) * w12 + s32(v1->c.b) * w20 + s32(v2->c.b) * w01) / area;
-                    gpu->vram[px + GPU::VRAM_WIDTH * py] = color.To5551();
-                }
+
                 if constexpr (DRAW_FLAGS_SET(TEXTURED)) {
                     u8 tex_x = std::clamp((v0->tex_x * w12 + v1->tex_x * w20 + v2->tex_x * w01) / area, 0, 255);
                     u8 tex_y = std::clamp((v0->tex_y * w12 + v1->tex_y * w20 + v2->tex_y * w01) / area, 0, 255);
 
                     u16 texel = GetTexel(tex_x, tex_y);
                     if (texel & TEXEL_MASK) {
-                        gpu->vram[px + GPU::VRAM_WIDTH * py] = texel;
+                        px_color = Color::FromU16(texel);
+                        if constexpr (DRAW_FLAGS_SET(TEXTURE_BLENDING) && !DRAW_FLAGS_SET(SHADED)) {
+                            BlendTexture(px_color, v0->c);
+                        }
+                    } else {
+                        // leave early
+                        w01 += A01; w12 += A12; w20 += A20;
+                        continue;
                     }
+                }
+
+                if constexpr (DRAW_FLAGS_SET(SHADED)) {
+                    Color color;
+
+                    color.r = (s32(v0->c.r) * w12 + s32(v1->c.r) * w20 + s32(v2->c.r) * w01) / area;
+                    color.g = (s32(v0->c.g) * w12 + s32(v1->c.g) * w20 + s32(v2->c.g) * w01) / area;
+                    color.b = (s32(v0->c.b) * w12 + s32(v1->c.b) * w20 + s32(v2->c.b) * w01) / area;
+
+                    if constexpr (DRAW_FLAGS_SET(TEXTURE_BLENDING)) {
+                        BlendTexture(px_color, color);
+                    } else {
+                        px_color = color;
+                    }
+                }
+
+                if constexpr (DRAW_FLAGS_SET(SEMI_TRANSPARENT)) {
+                    Color old = Color::FromU16(gpu->vram[px + GPU::VRAM_WIDTH * py]);
+                    Color mix = CalcSemiTransparency(gpu->status.semi_transparency, old, px_color);
+                    gpu->vram[px + GPU::VRAM_WIDTH * py] = mix.To5551();
+                } else {
+                    gpu->vram[px + GPU::VRAM_WIDTH * py] = px_color.To5551();
                 }
             }
 
@@ -161,16 +214,31 @@ void Renderer_SW::DrawRectangle() {
 
     for (u16 y = start_y; y < end_y; y++) {
         for (u16 x = start_x; x < end_x; x++) {
+            Color px_color;
+
             if constexpr (DRAW_FLAGS_SET(TEXTURED)) {
                 // textured
                 u16 texel = GetTexel(rect.tex_x + (x - start_x), rect.tex_y + (y - start_y));
                 if (texel & TEXEL_MASK) {
-                    gpu->vram[x + GPU::VRAM_WIDTH * y] = texel;
+                    px_color = Color::FromU16(texel);
+                    if constexpr (DRAW_FLAGS_SET(TEXTURE_BLENDING)) {
+                        BlendTexture(px_color, rect.c);
+                    }
+                } else {
+                    continue;
                 }
             } else {
                 // mono
-                gpu->vram[x + GPU::VRAM_WIDTH * y] = rect.c.To5551();
+                px_color = rect.c;
             }
+
+            if constexpr (DRAW_FLAGS_SET(SEMI_TRANSPARENT)) {
+                Color old = Color::FromU16(gpu->vram[x + GPU::VRAM_WIDTH * y]);
+                Color mix = CalcSemiTransparency(gpu->status.semi_transparency, old, px_color);
+                px_color = mix;
+            }
+
+            gpu->vram[x + GPU::VRAM_WIDTH * y] = px_color.To5551();
         }
     }
 
@@ -200,12 +268,14 @@ void Renderer_SW::DrawLine() {
         s32 error = dx + dy;
 
         while (true) {
-            if constexpr (DRAW_FLAGS_SET(draw_flags & SHADED)) {
+            if constexpr (DRAW_FLAGS_SET(SHADED)) {
                 // TODO
                 gpu->vram[x0 + GPU::VRAM_WIDTH * y0] = 0x7FFF;
             } else {
                 gpu->vram[x0 + GPU::VRAM_WIDTH * y0] = p0.c.To5551();
             }
+
+            // TODO: semi transparency
 
             if (x0 == x1 && y0 == y1) break;
             s32 e2 = 2 * error;
@@ -284,47 +354,47 @@ void Renderer_SW::Draw(u32 cmd) {
     // clang-format off
 
     switch ((cmd >> 24)) {
-        case 0x20: DrawTriangle<OPAQUE>(); break;
-        case 0x22: DrawTriangle<NO_FLAGS>(); break;
-        case 0x24: DrawTriangle<TEXTURED | OPAQUE | BLENDING>(); break;
-        case 0x25: DrawTriangle<TEXTURED | OPAQUE>(); break;
-        case 0x26: DrawTriangle<TEXTURED | BLENDING>(); break;
-        case 0x27: DrawTriangle<TEXTURED>(); break;
+        case 0x20: DrawTriangle<MONO | OPAQUE>(); break;
+        case 0x22: DrawTriangle<MONO | SEMI_TRANSPARENT>(); break;
+        case 0x24: DrawTriangle<TEXTURED | OPAQUE | TEXTURE_BLENDING>(); break;
+        case 0x25: DrawTriangle<TEXTURED | OPAQUE | RAW_TEXTURE>(); break;
+        case 0x26: DrawTriangle<TEXTURED | SEMI_TRANSPARENT | TEXTURE_BLENDING>(); break;
+        case 0x27: DrawTriangle<TEXTURED | SEMI_TRANSPARENT | RAW_TEXTURE>(); break;
         case 0x30: DrawTriangle<SHADED | OPAQUE>(); break;
-        case 0x32: DrawTriangle<SHADED>(); break;
-        case 0x34: DrawTriangle<TEXTURED | SHADED | OPAQUE | BLENDING>(); break;
-        case 0x36: DrawTriangle<TEXTURED | SHADED | BLENDING>(); break;
+        case 0x32: DrawTriangle<SHADED | SEMI_TRANSPARENT>(); break;
+        case 0x34: DrawTriangle<SHADED | TEXTURED | OPAQUE | TEXTURE_BLENDING>(); break;
+        case 0x36: DrawTriangle<SHADED | TEXTURED | SEMI_TRANSPARENT | TEXTURE_BLENDING>(); break;
 
-        case 0x28: Draw4PointPolygon<OPAQUE>(); break;
-        case 0x2A: Draw4PointPolygon<NO_FLAGS>(); break;
-        case 0x2C: Draw4PointPolygon<TEXTURED | OPAQUE | BLENDING>(); break;
-        case 0x2D: Draw4PointPolygon<TEXTURED | OPAQUE>(); break;
-        case 0x2E: Draw4PointPolygon<TEXTURED | BLENDING>(); break;
-        case 0x2F: Draw4PointPolygon<TEXTURED>(); break;
+        case 0x28: Draw4PointPolygon<MONO | OPAQUE>(); break;
+        case 0x2A: Draw4PointPolygon<MONO | SEMI_TRANSPARENT>(); break;
+        case 0x2C: Draw4PointPolygon<TEXTURED | OPAQUE | TEXTURE_BLENDING>(); break;
+        case 0x2D: Draw4PointPolygon<TEXTURED | OPAQUE | RAW_TEXTURE>(); break;
+        case 0x2E: Draw4PointPolygon<TEXTURED | SEMI_TRANSPARENT | TEXTURE_BLENDING>(); break;
+        case 0x2F: Draw4PointPolygon<TEXTURED | SEMI_TRANSPARENT | RAW_TEXTURE>(); break;
         case 0x38: Draw4PointPolygon<SHADED | OPAQUE>(); break;
-        case 0x3A: Draw4PointPolygon<SHADED>(); break;
-        case 0x3C: Draw4PointPolygon<TEXTURED | SHADED | OPAQUE | BLENDING>(); break;
-        case 0x3E: Draw4PointPolygon<TEXTURED | SHADED | BLENDING>(); break;
+        case 0x3A: Draw4PointPolygon<SHADED | SEMI_TRANSPARENT>(); break;
+        case 0x3C: Draw4PointPolygon<SHADED | TEXTURED | OPAQUE | TEXTURE_BLENDING>(); break;
+        case 0x3E: Draw4PointPolygon<SHADED | TEXTURED | SEMI_TRANSPARENT | TEXTURE_BLENDING>(); break;
 
-        case 0x40: case 0x48: DrawLine<OPAQUE>(); break;
-        case 0x42: case 0x4A: DrawLine<NO_FLAGS>(); break;
+        case 0x40: case 0x48: DrawLine<MONO | OPAQUE>(); break;
+        case 0x42: case 0x4A: DrawLine<MONO | SEMI_TRANSPARENT>(); break;
 
         case 0x50: case 0x58: DrawLine<SHADED | OPAQUE>(); break;
-        case 0x52: case 0x5A: DrawLine<SHADED>(); break;
+        case 0x52: case 0x5A: DrawLine<SHADED | SEMI_TRANSPARENT>(); break;
 
-        case 0x60: DrawRectangle<RectSize::VARIABLE, OPAQUE>(); break;
-        case 0x62: DrawRectangle<RectSize::VARIABLE, NO_FLAGS>(); break;
-        case 0x68: DrawRectangle<RectSize::ONE, OPAQUE>(); break;
-        case 0x6A: DrawRectangle<RectSize::ONE, NO_FLAGS>(); break;
-        case 0x70: DrawRectangle<RectSize::EIGHT, OPAQUE>(); break;
-        case 0x72: DrawRectangle<RectSize::EIGHT, NO_FLAGS>(); break;
-        case 0x78: DrawRectangle<RectSize::SIXTEEN, OPAQUE>(); break;
-        case 0x7A: DrawRectangle<RectSize::SIXTEEN, NO_FLAGS>(); break;
+        case 0x60: DrawRectangle<RectSize::VARIABLE, MONO | OPAQUE>(); break;
+        case 0x62: DrawRectangle<RectSize::VARIABLE, MONO | SEMI_TRANSPARENT>(); break;
+        case 0x68: DrawRectangle<RectSize::ONE, MONO | OPAQUE>(); break;
+        case 0x6A: DrawRectangle<RectSize::ONE, MONO | SEMI_TRANSPARENT>(); break;
+        case 0x70: DrawRectangle<RectSize::EIGHT, MONO | OPAQUE>(); break;
+        case 0x72: DrawRectangle<RectSize::EIGHT, MONO | SEMI_TRANSPARENT>(); break;
+        case 0x78: DrawRectangle<RectSize::SIXTEEN, MONO | OPAQUE>(); break;
+        case 0x7A: DrawRectangle<RectSize::SIXTEEN, MONO | SEMI_TRANSPARENT>(); break;
 
-        case 0x64: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE | BLENDING>(); break;
-        case 0x65: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE>(); break;
-        case 0x66: DrawRectangle<RectSize::VARIABLE, TEXTURED | BLENDING>(); break;
-        case 0x67: DrawRectangle<RectSize::VARIABLE, TEXTURED>(); break;
+        case 0x64: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE | TEXTURE_BLENDING>(); break;
+        case 0x65: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE | RAW_TEXTURE>(); break;
+        case 0x66: DrawRectangle<RectSize::VARIABLE, TEXTURED | SEMI_TRANSPARENT | TEXTURE_BLENDING>(); break;
+        case 0x67: DrawRectangle<RectSize::VARIABLE, TEXTURED | SEMI_TRANSPARENT | RAW_TEXTURE>(); break;
 
         // textured dots make no sense, implement if used by a game?
         //case 0x6C: DrawRectangle<RectSize::ONE, TEXTURED | OPAQUE | BLENDING>(); break;
@@ -332,15 +402,15 @@ void Renderer_SW::Draw(u32 cmd) {
         //case 0x6E: DrawRectangle<RectSize::ONE, TEXTURED | BLENDING>(); break;
         //case 0x6F: DrawRectangle<RectSize::ONE, TEXTURED>(); break;
 
-        case 0x74: DrawRectangle<RectSize::EIGHT, TEXTURED | OPAQUE | BLENDING>(); break;
-        case 0x75: DrawRectangle<RectSize::EIGHT, TEXTURED | OPAQUE>(); break;
-        case 0x76: DrawRectangle<RectSize::EIGHT, TEXTURED | BLENDING>(); break;
-        case 0x77: DrawRectangle<RectSize::EIGHT, TEXTURED>(); break;
+        case 0x74: DrawRectangle<RectSize::EIGHT, TEXTURED | OPAQUE | TEXTURE_BLENDING>(); break;
+        case 0x75: DrawRectangle<RectSize::EIGHT, TEXTURED | OPAQUE | RAW_TEXTURE>(); break;
+        case 0x76: DrawRectangle<RectSize::EIGHT, TEXTURED | SEMI_TRANSPARENT | TEXTURE_BLENDING>(); break;
+        case 0x77: DrawRectangle<RectSize::EIGHT, TEXTURED | SEMI_TRANSPARENT | RAW_TEXTURE>(); break;
 
-        case 0x7C: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE | BLENDING>(); break;
-        case 0x7D: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE>(); break;
-        case 0x7E: DrawRectangle<RectSize::VARIABLE, TEXTURED | BLENDING>(); break;
-        case 0x7F: DrawRectangle<RectSize::VARIABLE, TEXTURED>(); break;
+        case 0x7C: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE | TEXTURE_BLENDING>(); break;
+        case 0x7D: DrawRectangle<RectSize::VARIABLE, TEXTURED | OPAQUE | RAW_TEXTURE>(); break;
+        case 0x7E: DrawRectangle<RectSize::VARIABLE, TEXTURED | SEMI_TRANSPARENT | TEXTURE_BLENDING>(); break;
+        case 0x7F: DrawRectangle<RectSize::VARIABLE, TEXTURED | SEMI_TRANSPARENT | RAW_TEXTURE>(); break;
 
         default: Panic("Invalid draw command 0x{:08X}", cmd);
     }

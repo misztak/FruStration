@@ -16,13 +16,15 @@ public:
 
 private:
     // draw flags
-    static constexpr u32 NO_FLAGS = 0u;
-    static constexpr u32 SHADED = (1u << 0);
-    static constexpr u32 TEXTURED = (1u << 1);
-    static constexpr u32 OPAQUE = (1u << 2);
-    static constexpr u32 BLENDING = (1u << 3);
+    static constexpr u32 MONO               = 1u << 0;
+    static constexpr u32 SHADED             = 1u << 1;
+    static constexpr u32 TEXTURED           = 1u << 2;
+    static constexpr u32 OPAQUE             = 1u << 3;
+    static constexpr u32 SEMI_TRANSPARENT   = 1u << 4;
+    static constexpr u32 TEXTURE_BLENDING   = 1u << 5;
+    static constexpr u32 RAW_TEXTURE        = 1u << 6;
     // second triangle during 4-point polygon draw call
-    static constexpr u32 SECOND_TRIANGLE = (1u << 4);
+    static constexpr u32 SECOND_TRIANGLE    = 1u << 7;
 
     static constexpr u16 TEXEL_MASK = 0x7FFF;
 
