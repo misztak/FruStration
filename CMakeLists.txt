@@ -7,7 +7,7 @@ project(FruStration)
 set(CMAKE_CXX_STANDARD 20)
 
 # verbose build script output
-#set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON" FORCE)
+set(CMAKE_VERBOSE_MAKEFILE OFF CACHE BOOL "ON" FORCE)
 
 # generate compile_commands.json
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
