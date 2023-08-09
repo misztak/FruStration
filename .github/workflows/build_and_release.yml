@@ -3,6 +3,11 @@ name: Automatic Builds
 on:
   push:
     branches: [ master ]
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.clang-format'
 
 jobs:
   build-linux:
