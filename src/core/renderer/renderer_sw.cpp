@@ -21,10 +21,12 @@ static constexpr s32 EdgeFunction(Vertex* v0, Vertex* v1, s16 px, s16 py) {
     return (s32)((v1->x - v0->x) * (py - v0->y) - (v1->y - v0->y) * (px - v0->x));
 }
 
-static constexpr void BlendTexture(Color& tx_color, Color& blend_color) {
-    tx_color.r = u8((u32(tx_color.r) * u32(blend_color.r)) / 128);
-    tx_color.g = u8((u32(tx_color.g) * u32(blend_color.g)) / 128);
-    tx_color.b = u8((u32(tx_color.b) * u32(blend_color.b)) / 128);
+static constexpr Color BlendTexture(Color& tx_color, Color& blend_color) {
+    Color blend = {};
+    blend.r = u8(std::min(((u32(tx_color.r) * u32(blend_color.r)) / 128u), 255u));
+    blend.g = u8(std::min(((u32(tx_color.g) * u32(blend_color.g)) / 128u), 255u));
+    blend.b = u8(std::min(((u32(tx_color.b) * u32(blend_color.b)) / 128u), 255u));
+    return blend;
 }
 
 static constexpr Color CalcSemiTransparency(u32 mode, Color& back, Color& front) {
@@ -123,15 +125,18 @@ void Renderer_SW::DrawTriangle() {
                     px_color = v0->c;
                 }
 
+                bool transparency_enabled = false;
+
                 if constexpr (DRAW_FLAGS_SET(TEXTURED)) {
                     u8 tex_x = std::clamp((v0->tex_x * w12 + v1->tex_x * w20 + v2->tex_x * w01) / area, 0, 255);
                     u8 tex_y = std::clamp((v0->tex_y * w12 + v1->tex_y * w20 + v2->tex_y * w01) / area, 0, 255);
 
                     u16 texel = GetTexel(tex_x, tex_y);
+                    transparency_enabled = gpu->status.tex_page_colors == 2 || (texel & 0x8000) != 0;
                     if (texel & TEXEL_MASK) {
                         px_color = Color::FromU16(texel);
                         if constexpr (DRAW_FLAGS_SET(TEXTURE_BLENDING) && !DRAW_FLAGS_SET(SHADED)) {
-                            BlendTexture(px_color, v0->c);
+                            px_color = BlendTexture(px_color, v0->c);
                         }
                     } else {
                         // leave early
@@ -148,19 +153,24 @@ void Renderer_SW::DrawTriangle() {
                     color.b = (s32(v0->c.b) * w12 + s32(v1->c.b) * w20 + s32(v2->c.b) * w01) / area;
 
                     if constexpr (DRAW_FLAGS_SET(TEXTURE_BLENDING)) {
-                        BlendTexture(px_color, color);
+                        px_color = BlendTexture(px_color, color);
                     } else {
                         px_color = color;
                     }
                 }
 
                 if constexpr (DRAW_FLAGS_SET(SEMI_TRANSPARENT)) {
-                    Color old = Color::FromU16(gpu->vram[px + GPU::VRAM_WIDTH * py]);
-                    Color mix = CalcSemiTransparency(gpu->status.semi_transparency, old, px_color);
-                    gpu->vram[px + GPU::VRAM_WIDTH * py] = mix.To5551();
+                    if (transparency_enabled) {
+                        Color old = Color::FromU16(gpu->vram[px + GPU::VRAM_WIDTH * py]);
+                        Color mix = CalcSemiTransparency(gpu->status.semi_transparency, old, px_color);
+                        gpu->vram[px + GPU::VRAM_WIDTH * py] = mix.To5551();
+                    } else {
+                        gpu->vram[px + GPU::VRAM_WIDTH * py] = px_color.To5551();
+                    }
                 } else {
                     gpu->vram[px + GPU::VRAM_WIDTH * py] = px_color.To5551();
                 }
+                //gpu->vram[px + GPU::VRAM_WIDTH * py] = px_color.To5551();
             }
 
             // increment weights by one in x direction
@@ -212,17 +222,27 @@ void Renderer_SW::DrawRectangle() {
     const s32 end_x = std::clamp<s32>(start_with_offset_x + size_x, gpu->drawing_area_left, gpu->drawing_area_right);
     const s32 end_y = std::clamp<s32>(start_with_offset_y + size_y, gpu->drawing_area_top, gpu->drawing_area_bottom);
 
-    for (u16 y = start_y; y < end_y; y++) {
-        for (u16 x = start_x; x < end_x; x++) {
-            Color px_color;
+    //LogTrace("Rect<{},{}> from (x={},y={}) to (x={},y={})", DRAW_FLAGS_SET(TEXTURED) ? "Textured" : "Mono",
+    //         DRAW_FLAGS_SET(OPAQUE) ? "Opaque" : "SemiTransparent", start_x, start_y, end_x, end_y);
+
+    for (s32 y = start_y; y < end_y; y++) {
+        for (s32 x = start_x; x < end_x; x++) {
+            Color px_color = {};
+
+            bool transparency_enabled = true;
 
             if constexpr (DRAW_FLAGS_SET(TEXTURED)) {
-                // textured
-                u16 texel = GetTexel(rect.tex_x + (x - start_x), rect.tex_y + (y - start_y));
+                const s32 tex_y_inc_dir = gpu->tex_rectangle_yflip ? -1 : +1;
+                const s32 tex_x_inc_dir = gpu->tex_rectangle_xflip ? -1 : +1;
+
+                u16 texel = GetTexel(rect.tex_x + (x - start_x) * tex_x_inc_dir, rect.tex_y + (y - start_y) * tex_y_inc_dir);
+
+                if (gpu->status.tex_page_colors != 2 && (texel & 0x8000) == 0) transparency_enabled = false;
+
                 if (texel & TEXEL_MASK) {
                     px_color = Color::FromU16(texel);
                     if constexpr (DRAW_FLAGS_SET(TEXTURE_BLENDING)) {
-                        BlendTexture(px_color, rect.c);
+                        px_color = BlendTexture(px_color, rect.c);
                     }
                 } else {
                     continue;
@@ -233,12 +253,16 @@ void Renderer_SW::DrawRectangle() {
             }
 
             if constexpr (DRAW_FLAGS_SET(SEMI_TRANSPARENT)) {
-                Color old = Color::FromU16(gpu->vram[x + GPU::VRAM_WIDTH * y]);
-                Color mix = CalcSemiTransparency(gpu->status.semi_transparency, old, px_color);
-                px_color = mix;
+                if (transparency_enabled) {
+                    Color old = Color::FromU16(gpu->vram[x + GPU::VRAM_WIDTH * y]);
+                    Color mix = CalcSemiTransparency(gpu->status.semi_transparency, old, px_color);
+                    gpu->vram[x + GPU::VRAM_WIDTH * y] = mix.To5551();
+                } else {
+                    gpu->vram[x + GPU::VRAM_WIDTH * y] = px_color.To5551();
+                }
+            } else {
+                gpu->vram[x + GPU::VRAM_WIDTH * y] = px_color.To5551();
             }
-
-            gpu->vram[x + GPU::VRAM_WIDTH * y] = px_color.To5551();
         }
     }
 
