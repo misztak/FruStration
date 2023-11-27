@@ -62,6 +62,14 @@ private:
         u32 value = 0;
     };
 
+    struct RGBVec32 {
+        s32 r, g, b;
+    };
+
+    ALWAYS_INLINE void ResetErrFlag() {
+        error_flags.bits = 0;
+    }
+
     template<u32 ir_id>
     s32 SaturateIR(s32 value, bool lm);
 
@@ -86,6 +94,12 @@ private:
 
     // translation vector
     Vector3<s32> tl_vec = {};
+
+    // background color
+    RGBVec32 background_color = {};
+
+    // far color
+    RGBVec32 far_color = {};
 
     // screen offset
     s32 sof_x = 0, sof_y = 0;

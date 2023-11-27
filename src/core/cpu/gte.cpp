@@ -88,6 +88,24 @@ void GTE::SetReg(u32 index, u32 value) {
         case 39:
             tl_vec.z = static_cast<s32>(value);
             break;
+        case 45:
+            background_color.r = static_cast<s32>(value);
+            break;
+        case 46:
+            background_color.g = static_cast<s32>(value);
+            break;
+        case 47:
+            background_color.b = static_cast<s32>(value);
+            break;
+        case 53:
+            far_color.r = static_cast<s32>(value);
+            break;
+        case 54:
+            far_color.g = static_cast<s32>(value);
+            break;
+        case 55:
+            far_color.b = static_cast<s32>(value);
+            break;
         case 56:
             sof_x = static_cast<s32>(value);
             break;
@@ -163,6 +181,24 @@ u32 GTE::GetReg(u32 index) {
             break;
         case 39:
             value = static_cast<u32>(tl_vec.z);
+            break;
+        case 45:
+            value = static_cast<u32>(background_color.r);
+            break;
+        case 46:
+            value = static_cast<u32>(background_color.g);
+            break;
+        case 47:
+            value = static_cast<u32>(background_color.b);
+            break;
+        case 53:
+            value = static_cast<u32>(far_color.r);
+            break;
+        case 54:
+            value = static_cast<u32>(far_color.g);
+            break;
+        case 55:
+            value = static_cast<u32>(far_color.b);
             break;
         case 56:
             value = static_cast<u32>(sof_x);
@@ -298,6 +334,10 @@ void GTE::Reset() {
     for (auto& row : rot_matrix.elems) row.fill(0);
 
     tl_vec.raw.fill(0);
+
+    background_color = {.r = 0, .g = 0, .b = 0};
+
+    far_color = {.r = 0, .g = 0, .b = 0};
 
     sof_x = 0;
     sof_y = 0;
