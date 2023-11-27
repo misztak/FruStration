@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        printf("Unknown argument '%s'\n", arg.data());
+        std::printf("Unknown argument '%s'\n", arg.data());
         PrintUsageAndExit(1);
     }
 
@@ -122,9 +122,9 @@ int main(int argc, char* argv[]) {
     SDL_Window* window = SDL_CreateWindow("FruStration", SDL_WINDOWPOS_CENTERED_DISPLAY(0), SDL_WINDOWPOS_CENTERED_DISPLAY(0),
                                           Display::WIDTH, Display::HEIGHT, window_flags);
 
-#ifdef SDL_HINT_IME_SHOW_UI
-    SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
-#endif
+//#ifdef SDL_HINT_IME_SHOW_UI
+//    SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
+//#endif
 
     if (!window) {
         LogCrit("Failed to create SDL_Window");
