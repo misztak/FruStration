@@ -58,6 +58,8 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j $(nproc)
 ```
 
+If you want to build the emulator without the GTK dependency disable the native file picker with `-DUSE_NATIVE_FILE_PICKER=OFF`.
+
 ## Disclaimer
 
 "PlayStation" and "PSX" are registered trademarks of Sony Interactive Entertainment Europe Limited. This project is not affiliated in any way with Sony Interactive Entertainment.

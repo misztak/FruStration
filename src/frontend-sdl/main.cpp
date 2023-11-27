@@ -79,6 +79,7 @@ int main(int argc, char* argv[]) {
     //Config::psexe_file_path = "../test/exe/avocado/HelloWorld16BPP.exe";
     //Config::psexe_file_path = "../test/exe/avocado/HelloWorld24BPP.exe";
     //Config::psexe_file_path = "../test/exe/avocado/ImageLoad.exe";
+    //Config::psexe_file_path = "/home/anon/Tools/psnoob/PSn00bSDK_examples/build/demos/n00bdemo/n00bdemo.exe";
 
     Emulator emulator;
 

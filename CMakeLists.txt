@@ -7,10 +7,12 @@ project(FruStration)
 set(CMAKE_CXX_STANDARD 20)
 
 # verbose build script output
-set(CMAKE_VERBOSE_MAKEFILE OFF CACHE BOOL "ON" FORCE)
+#set(CMAKE_VERBOSE_MAKEFILE OFF CACHE BOOL "ON" FORCE)
 
 # generate compile_commands.json
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+option(USE_NATIVE_FILE_PICKER "Enables the native file picker. Requires extra dependencies." ON)
 
 if (MSVC)
     # enable asserts in relwithdebinfo builds

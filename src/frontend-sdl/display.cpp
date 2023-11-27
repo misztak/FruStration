@@ -11,7 +11,10 @@
 #include "imgui_internal.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl2.h"
+
+#ifdef USE_NFD
 #include "nfd.h"
+#endif
 
 #include "common/asserts.h"
 #include "common/config.h"
@@ -22,6 +25,7 @@ namespace fs = std::filesystem;
 
 LOG_CHANNEL(Display);
 
+#ifdef USE_NFD
 static std::optional<std::string> OpenFileDialog(const char* filter_list = nullptr) {
     nfdchar_t* out_path = nullptr;
     nfdresult_t result = NFD_OpenDialog(filter_list, nullptr, &out_path);
@@ -34,6 +38,7 @@ static std::optional<std::string> OpenFileDialog(const char* filter_list = nullp
         return std::nullopt;
     }
 }
+#endif
 
 static void UpdateWindowTitle(SDL_Window* window) {
     std::string file_name = "no file";
@@ -139,6 +144,8 @@ void Display::Draw() {
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
+
+#ifdef USE_NFD
             if (ImGui::MenuItem("Open...", "CTRL-O")) {
                 auto open_result = OpenFileDialog("bin,BIN");
                 if (open_result.has_value()) {
@@ -159,6 +166,8 @@ void Display::Draw() {
                 auto open_result = OpenFileDialog("bin,BIN");
                 if (open_result.has_value()) Config::bios_path.Set(open_result.value());
             }
+#endif
+
             ImGui::Separator();
             if (ImGui::MenuItem("Quit")) emu->done = true;
             ImGui::EndMenu();
