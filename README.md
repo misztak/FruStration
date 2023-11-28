@@ -21,7 +21,7 @@ To run the emulator, a valid PS1 BIOS file needs to be provided (e.g. SCPH1001).
 
 The emulator will save the BIOS file location and other settings in a config file called `frustration.ini`.
 
-Game ISOs and PS-EXE files can be launched by dragging them into the emulator window or through command line arguments. Use `--help` to see all available options.
+Game ISOs and PS-EXE files can be launched by **dragging them into the emulator window** or by using the corresponding command line arguments. Use `--help` to see all available options.
 
 If no executable files are provided the emulator will launch the PS1 main menu.
 
@@ -48,7 +48,7 @@ Requirements (Debian/Ubuntu package names):
 * CMake (`cmake`)
 * pkgconfig (`pkg-config`)
 * SDL2 (`libsdl2-dev`)
-* Optional for native file picker: GTK3 (`gtk+-3.0`)
+* Optional for native file picker: GTK3 (`libgtk-3-dev`)
 
 1. Clone the repository: `https://github.com/misztak/FruStration.git`
 2. Run the following cmake commands inside the FruStration folder:
