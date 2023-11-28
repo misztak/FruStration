@@ -51,7 +51,7 @@ private:
     } error_flags;
 
     union Command {
-        BitField<u32, u32, 0, 5> real_opcode;
+        BitField<u32, u32, 0, 6> real_opcode;
         BitField<u32, bool, 10, 1> lm;
         BitField<u32, u32, 13, 2> mvmva_t_vec;
         BitField<u32, u32, 15, 2> mvmva_m_vec;
@@ -62,11 +62,11 @@ private:
         u32 value = 0;
     };
 
-    struct RGBVec32 {
-        s32 r, g, b;
+    struct Color32 {
+        u8 r, g, b, t;
     };
 
-    ALWAYS_INLINE void ResetErrFlag() {
+    ALWAYS_INLINE void ResetErrorFlag() {
         error_flags.bits = 0;
     }
 
@@ -82,24 +82,55 @@ private:
     template<u32 mac_id>
     void CheckMacOverflow(s64 value);
 
+    template<u32 mac_id>
+    s64 CheckMacAndSignExtend(s64 value);
+
+    template<u32 ir_id>
+    void SetIR(s32 value, bool lm);
+
+    template<u32 mac_id>
+    s64 SetMac(s64 value, u8 shift);
+
+    template<u32 id>
+    void SetMacAndIR(s64 value, u8 shift, bool lm);
+
     void MatrixVectorMultiplication(GTE::Command cmd);
 
+    void MVMVAKernel(const Matrix3x3* m, const Vector3<s16>* v, const Vector3<s32>* t, u8 shift, bool lm);
+    void MVMVAKernelBugged(const Matrix3x3* m, const Vector3<s16>* v, const Vector3<s32>* t, u8 shift, bool lm);
+
     // vectors 0, 1 and 2
-    Vector3<s16> vec0 = {};
-    Vector3<s16> vec1 = {};
-    Vector3<s16> vec2 = {};
+    Vector3<s16> vec0 {};
+    Vector3<s16> vec1 {};
+    Vector3<s16> vec2 {};
+
+    Color32 rgbc {};
+
+    // MAC accumulators
+    s32 mac0 = 0;
+    Vector3<s32> mac_vec {};
+
+    // IR accumulators
+    s16 ir0 = 0;
+    Vector3<s16> ir_vec {};
 
     // rotation matrix
-    Matrix3x3 rot_matrix = {};
+    Matrix3x3 rot_matrix {};
 
     // translation vector
-    Vector3<s32> tl_vec = {};
+    Vector3<s32> tl_vec {};
+
+    // light matrix
+    Matrix3x3 light_matrix {};
 
     // background color
-    RGBVec32 background_color = {};
+    Vector3<s32> background_color {};
+
+    // color matrix
+    Matrix3x3 color_matrix {};
 
     // far color
-    RGBVec32 far_color = {};
+    Vector3<s32> far_color {};
 
     // screen offset
     s32 sof_x = 0, sof_y = 0;

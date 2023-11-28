@@ -45,3 +45,11 @@ template<typename ValueType>
 ALWAYS_INLINE constexpr u64 ZeroExtend64(ValueType value) {
     return ZeroExtend<ValueType, u64>(value);
 }
+
+template<int Bits, typename T>
+ALWAYS_INLINE constexpr T SignExtendN(T value) {
+    static_assert(sizeof(T) * 8 >= Bits);
+
+    constexpr int SHIFT = sizeof(T) * 8 - Bits;
+    return static_cast<T>((static_cast<std::make_signed_t<T>>(value) << SHIFT) >> SHIFT);
+}

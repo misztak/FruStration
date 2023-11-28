@@ -7,17 +7,14 @@
 
 template<typename ValueType>
 struct Vector3 {
-    Vector3() = default;
-
     void SetXYFromU32(u32 value);
     u32 GetXYAsU32();
 
     union {
-        struct {
-            ValueType x, y, z;
-        };
-
-        std::array<ValueType, 3> raw = {};
+        struct { ValueType x, y, z; };
+        struct { ValueType r, g, b; };
+        struct { ValueType ir1, ir2, ir3; };
+        struct { ValueType mac1, mac2, mac3; };
     };
 };
 
@@ -25,8 +22,6 @@ struct Vector3 {
 
 template<u32 rows, u32 columns>
 struct Matrix {
-    Matrix() = default;
-
     using Column = std::array<s16, columns>;
     using Elements = std::array<Column, rows>;
 

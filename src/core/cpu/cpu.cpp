@@ -546,13 +546,20 @@ void CPU::Step() {
         {
             u32 address = Get(instr.n.rs) + instr.imm_se();
             u32 value = Load32(address);
-            LogDebug("LWC2: [0x{:08X} @ 0x{:08X}] [Unimplemented]", value, address);
+
+            // TODO: wait until last GTE command is done before writing to the register
+            gte.SetReg(instr.n.rt, value);
+
             break;
         }
         case PrimaryOpcode::swc2:
         {
             u32 address = Get(instr.n.rs) + instr.imm_se();
-            LogDebug("SWC2: [0x{:08X}] [Unimplemented]", address);
+
+            // TODO: wait until last GTE command is done before reading from the register
+            u32 value = gte.GetReg(instr.n.rt);
+            Store32(address, value);
+
             break;
         }
         case PrimaryOpcode::lwc0:
