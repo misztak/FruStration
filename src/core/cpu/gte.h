@@ -32,7 +32,7 @@ private:
         BitField<u32, u32, 15, 1> mac0_underflow;
         BitField<u32, u32, 16, 1> mac0_overflow;
         BitField<u32, u32, 17, 1> div_overflow;
-        BitField<u32, u32, 18, 1> sz3_or_otz_saturated;
+        BitField<u32, u32, 18, 1> otz_saturated;
         BitField<u32, u32, 19, 1> fifo_blue_saturated;
         BitField<u32, u32, 20, 1> fifo_green_saturated;
         BitField<u32, u32, 21, 1> fifo_red_saturated;
@@ -45,7 +45,7 @@ private:
         BitField<u32, u32, 28, 1> mac3_overflow;
         BitField<u32, u32, 29, 1> mac2_overflow;
         BitField<u32, u32, 30, 1> mac1_overflow;
-        BitField<u32, u32, 31, 1> master_error;
+        BitField<u32, bool, 31, 1> master_error;
 
         u32 bits = 0;
     } error_flags;
@@ -66,9 +66,19 @@ private:
         u8 r, g, b, t;
     };
 
+    struct ScreenPointXY {
+        s16 x, y;
+    };
+
     ALWAYS_INLINE void ResetErrorFlag() {
         error_flags.bits = 0;
     }
+
+    ALWAYS_INLINE void UpdateErrMasterFlag() {
+        error_flags.master_error = bool(error_flags.bits & 0x7F87E000);
+    }
+
+    [[nodiscard]] u32 CountLeadingBits() const;
 
     template<u32 ir_id>
     s32 SaturateIR(s32 value, bool lm);
@@ -88,12 +98,18 @@ private:
     template<u32 ir_id>
     void SetIR(s32 value, bool lm);
 
+    s64 SetMac0(s64 value);
+
     template<u32 mac_id>
     s64 SetMac(s64 value, u8 shift);
 
     template<u32 id>
     void SetMacAndIR(s64 value, u8 shift, bool lm);
 
+    void SetOrderTableZ(s64 value);
+
+    void AVSZ3();
+    void AVSZ4();
     void MatrixVectorMultiplication(GTE::Command cmd);
 
     void MVMVAKernel(const Matrix3x3* m, const Vector3<s16>* v, const Vector3<s32>* t, u8 shift, bool lm);
@@ -105,6 +121,21 @@ private:
     Vector3<s16> vec2 {};
 
     Color32 rgbc {};
+    Color32 rgb[3] {};
+
+    // unused r/w register
+    u32 unused_reg = 0;
+
+    s32 leading_bit_source = 0;
+
+    // average z value
+    u16 otz = 0;
+
+    // screen points xy (3 stage FIFO)
+    ScreenPointXY screen_xy[3] {};
+
+    // screen points z (4 stage FIFO)
+    u16 screen_z[4] {};
 
     // MAC accumulators
     s32 mac0 = 0;

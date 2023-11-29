@@ -22,6 +22,13 @@ u32 Vector3<s16>::GetXYAsU32() {
 void GTE::SetReg(u32 index, u32 value) {
     DebugAssert(index < 64);
 
+    auto ColorFromU32 = [](u32 val, Color32& target) {
+        target.r = val >> 0;
+        target.g = val >> 8;
+        target.b = val >> 16;
+        target.t = val >> 24;
+    };
+
     switch (index) {
         case 0:
             vec0.SetXYFromU32(value);
@@ -42,10 +49,10 @@ void GTE::SetReg(u32 index, u32 value) {
             vec2.z = static_cast<s16>(value);
             break;
         case 6:
-            rgbc.r = value >> 0;
-            rgbc.g = value >> 8;
-            rgbc.b = value >> 16;
-            rgbc.t = value >> 24;
+            ColorFromU32(value, rgbc);
+            break;
+        case 7:
+            otz = static_cast<u16>(value);
             break;
         case 8:
             ir0 = static_cast<s16>(value);
@@ -59,6 +66,47 @@ void GTE::SetReg(u32 index, u32 value) {
         case 11:
             ir_vec.ir3 = static_cast<s16>(value);
             break;
+        case 12:
+            screen_xy[0].x = static_cast<s16>(value);
+            screen_xy[0].y = static_cast<s16>(value >> 16);
+            break;
+        case 13:
+            screen_xy[1].x = static_cast<s16>(value);
+            screen_xy[1].y = static_cast<s16>(value >> 16);
+            break;
+        case 14:
+            screen_xy[2].x = static_cast<s16>(value);
+            screen_xy[2].y = static_cast<s16>(value >> 16);
+            break;
+        case 15:
+            screen_xy[0].x = screen_xy[1].x; screen_xy[0].y = screen_xy[1].y;
+            screen_xy[1].x = screen_xy[2].x; screen_xy[1].y = screen_xy[2].y;
+            screen_xy[2].x = static_cast<s16>(value); screen_xy[2].y = static_cast<s16>(value >> 16);
+            break;
+        case 16:
+            screen_z[0] = static_cast<u16>(value);
+            break;
+        case 17:
+            screen_z[1] = static_cast<u16>(value);
+            break;
+        case 18:
+            screen_z[2] = static_cast<u16>(value);
+            break;
+        case 19:
+            screen_z[3] = static_cast<u16>(value);
+            break;
+        case 20:
+            ColorFromU32(value, rgb[0]);
+            break;
+        case 21:
+            ColorFromU32(value, rgb[1]);
+            break;
+        case 22:
+            ColorFromU32(value, rgb[2]);
+            break;
+        case 23:
+            unused_reg = value;
+            break;
         case 24:
             mac0 = static_cast<s32>(value);
             break;
@@ -70,6 +118,18 @@ void GTE::SetReg(u32 index, u32 value) {
             break;
         case 27:
             mac_vec.mac3 = static_cast<s32>(value);
+            break;
+        case 28:
+            ir_vec.ir1 = static_cast<s16>((value >> 0 & 0x1F) * 0x80);
+            ir_vec.ir2 = static_cast<s16>((value >> 5 & 0x1F) * 0x80);
+            ir_vec.ir3 = static_cast<s16>((value >> 10 & 0x1F) * 0x80);
+            break;
+        case 29:
+            break;
+        case 30:
+            leading_bit_source = static_cast<s32>(value);
+            break;
+        case 31:
             break;
         case 32:
             rot_matrix.SetPairFromOffset(value, 0);
@@ -164,6 +224,9 @@ void GTE::SetReg(u32 index, u32 value) {
         case 62:
             z_scale_factor_4 = static_cast<s16>(value);
             break;
+        case 63:
+            error_flags.bits = (error_flags.bits & 0x80000FFF) | (value & ~0x80000FFF);
+            break;
         default:
             Panic("Unimplemented SetReg register index: {}", index);
     }
@@ -173,6 +236,10 @@ void GTE::SetReg(u32 index, u32 value) {
 
 u32 GTE::GetReg(u32 index) {
     DebugAssert(index < 64);
+
+    auto ColorToU32 = [](Color32& color) -> u32 {
+        return (u32(color.r) << 0 | u32(color.g) << 8 | u32(color.b) << 16 | u32(color.t) << 24);
+    };
 
     u32 value = 0;
 
@@ -196,7 +263,10 @@ u32 GTE::GetReg(u32 index) {
             value = SignExtend32(vec2.z);
             break;
         case 6:
-            value = (u32(rgbc.r) << 0 | u32(rgbc.g) << 8 | u32(rgbc.b) << 16 | u32(rgbc.t) << 24);
+            value = ColorToU32(rgbc);
+            break;
+        case 7:
+            value = ZeroExtend32(otz);
             break;
         case 8:
             value = SignExtend32(ir0);
@@ -210,6 +280,42 @@ u32 GTE::GetReg(u32 index) {
         case 11:
             value = SignExtend32(ir_vec.ir3);
             break;
+        case 12:
+            value = ZeroExtend32(screen_xy[0].x) | (ZeroExtend32(screen_xy[0].y) << 16);
+            break;
+        case 13:
+            value = ZeroExtend32(screen_xy[1].x) | (ZeroExtend32(screen_xy[1].y) << 16);
+            break;
+        case 14:
+            value = ZeroExtend32(screen_xy[2].x) | (ZeroExtend32(screen_xy[2].y) << 16);
+            break;
+        case 15:
+            value = ZeroExtend32(screen_xy[2].x) | (ZeroExtend32(screen_xy[2].y) << 16);
+            break;
+        case 16:
+            value = ZeroExtend32(screen_z[0]);
+            break;
+        case 17:
+            value = ZeroExtend32(screen_z[1]);
+            break;
+        case 18:
+            value = ZeroExtend32(screen_z[2]);
+            break;
+        case 19:
+            value = ZeroExtend32(screen_z[3]);
+            break;
+        case 20:
+            value = ColorToU32(rgb[0]);
+            break;
+        case 21:
+            value = ColorToU32(rgb[1]);
+            break;
+        case 22:
+            value = ColorToU32(rgb[2]);
+            break;
+        case 23:
+            value = unused_reg;
+            break;
         case 24:
             value = static_cast<u32>(mac0);
             break;
@@ -221,6 +327,21 @@ u32 GTE::GetReg(u32 index) {
             break;
         case 27:
             value = static_cast<u32>(mac_vec.mac3);
+            break;
+        case 28:
+        case 29:
+        {
+            u32 r = static_cast<u32>(std::clamp(ir_vec.ir1 / 0x80, 0x00, 0x1F));
+            u32 g = static_cast<u32>(std::clamp(ir_vec.ir2 / 0x80, 0x00, 0x1F));
+            u32 b = static_cast<u32>(std::clamp(ir_vec.ir3 / 0x80, 0x00, 0x1F));
+            value = r | (g << 5) | (b << 10);
+            break;
+        }
+        case 30:
+            value = static_cast<u32>(leading_bit_source);
+            break;
+        case 31:
+            value = static_cast<u32>(CountLeadingBits());
             break;
         case 32:
             value = rot_matrix.GetPairFromOffset(0);
@@ -315,6 +436,10 @@ u32 GTE::GetReg(u32 index) {
         case 62:
             value = SignExtend32(z_scale_factor_4);
             break;
+        case 63:
+            UpdateErrMasterFlag();
+            value = error_flags.bits;
+            break;
         default:
             Panic("Unimplemented GetReg register index: {}", index);
     }
@@ -327,14 +452,37 @@ u32 GTE::GetReg(u32 index) {
 void GTE::ExecuteCommand(u32 cmd_value) {
     LogDebug("COMMAND 0x{:02X}", cmd_value);
 
+    ResetErrorFlag();
+
     Command cmd { .value = cmd_value };
 
     switch (cmd.real_opcode) {
-        case 0x12: MatrixVectorMultiplication(cmd);
+        case 0x12:
+            MatrixVectorMultiplication(cmd);
+            break;
+        case 0x2D:
+            AVSZ3();
+            break;
+        case 0x2E:
+            AVSZ4();
+            break;
+        case 0x3D:
+            Panic("0x3D");
             break;
         default:
             Panic("Unimplemented Command: 0x{:02X}", cmd.real_opcode);
     }
+
+    UpdateErrMasterFlag();
+}
+
+u32 GTE::CountLeadingBits() const {
+    u32 value = static_cast<u32>(leading_bit_source);
+    u32 ones = 0;
+
+    if (!(value >> 31)) value = ~value;
+    while (value >> 31) value <<= 1, ones++;
+    return ones;
 }
 
 template<u32 ir_id>
@@ -420,6 +568,13 @@ void GTE::SetIR(s32 value, bool lm) {
     if constexpr (ir_id == 3) ir_vec.ir3 = static_cast<s16>(SaturateIR<ir_id>(value, lm));
 }
 
+s64 GTE::SetMac0(s64 value) {
+    CheckMacOverflow<0>(value);
+
+    mac0 = static_cast<s32>(value);
+    return value;
+}
+
 template<u32 mac_id>
 s64 GTE::SetMac(s64 value, u8 shift) {
     static_assert(mac_id > 0 && mac_id < 4);
@@ -442,12 +597,39 @@ void GTE::SetMacAndIR(s64 value, u8 shift, bool lm) {
     SetIR<id>(mac_shifted, lm);
 }
 
+void GTE::SetOrderTableZ(s64 value) {
+    static constexpr s64 MIN = 0x0000;
+    static constexpr s64 MAX = 0xFFFF;
+
+    value >>= 12; // div 0x1000
+
+    if (value < MIN) {
+        otz = static_cast<s16>(MIN);
+        error_flags.otz_saturated = 1;
+    } else if (value > MAX) {
+        otz = static_cast<s16>(MAX);
+        error_flags.otz_saturated = 1;
+    } else {
+        otz = static_cast<s16>(value);
+    }
+}
+
+void GTE::AVSZ3() {
+    s64 avg = s64(z_scale_factor_3) * (screen_z[1] + screen_z[2] + screen_z[3]);
+    SetMac0(avg);
+    SetOrderTableZ(avg);
+}
+
+void GTE::AVSZ4() {
+    s64 avg = s64(z_scale_factor_4) * (screen_z[0] + screen_z[1] + screen_z[2] + screen_z[3]);
+    SetMac0(avg);
+    SetOrderTableZ(avg);
+}
+
 void GTE::MatrixVectorMultiplication(GTE::Command cmd) {
     LogDebug("MVMVA: {} * {} + {}", cmd.mvmva_m_mat, cmd.mvmva_m_vec, cmd.mvmva_t_vec);
 
     static constexpr Vector3<s32> t_zero {};
-
-    ResetErrorFlag();
 
     // we deliberately keep this matrix uninitialized because it will *most likely* never be used
     // so don't waste time zero-initializing it during every invocation
@@ -537,13 +719,23 @@ void GTE::Reset() {
     vec1 = {.x = 0, .y = 0, .z = 0};
     vec2 = {.x = 0, .y = 0, .z = 0};
 
+    otz = 0;
+
     rgbc = {.r = 0, .g = 0, .b = 0, .t = 0};
+    for (auto& c: rgb) c = {.r = 0, .g = 0, .b = 0, .t = 0};
+
+    unused_reg = 0;
 
     mac0 = 0;
     mac_vec = {.mac1 = 0, .mac2 = 0, .mac3 = 0};
 
     ir0 = 0;
     ir_vec = {.x = 0, .y = 0, .z = 0};
+
+    for (auto& s: screen_xy) s = {.x = 0, .y = 0};
+    for (auto& s: screen_z) s = 0;
+
+    leading_bit_source = 0;
 
     rot_matrix = {};
 
