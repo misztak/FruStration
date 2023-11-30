@@ -153,14 +153,14 @@ ValueType BUS::Load(u32 address) {
             return 0b11;
         }
 
-        Panic("Tried to load from IO Ports [0x%08X]", address);
+        Panic("Tried to load from IO Ports [0x{:08X}]", address);
     }
     // BIOS
     if (InArea(BIOS_START, BIOS_SIZE, masked_addr))
         return *reinterpret_cast<ValueType*>(bios.data() + (masked_addr - BIOS_START));
     // Cache Control
     if (InArea(CACHE_CTRL_START, CACHE_CTRL_SIZE, masked_addr))
-        Panic("Tried to load from Cache Control [0x%08X]", address);
+        Panic("Tried to load from Cache Control [0x{:08X}]", address);
     // Expansion Region 1
     if (InArea(EXP_REG_1_START, EXP_REG_1_SIZE, masked_addr)) {
         LogWarn("Tried to load from Expansion Region 1 [0x{:08X}]", address);
@@ -168,14 +168,14 @@ ValueType BUS::Load(u32 address) {
     }
     // Expansion Region 2
     if (InArea(EXP_REG_2_START, EXP_REG_2_SIZE, masked_addr)) {
-        Panic("Tried to load from Expansion Region 2 [0x%08X]", address);
+        Panic("Tried to load from Expansion Region 2 [0x{:08X}]", address);
     }
     // Expansion Region 3
     if (InArea(EXP_REG_3_START, EXP_REG_3_SIZE, masked_addr)) {
-        Panic("Tried to load from Expansion Region 3 [0x%08X]", address);
+        Panic("Tried to load from Expansion Region 3 [0x{:08X}]", address);
     }
 
-    Panic("Tried to load from invalid address [0x%08X]", address);
+    Panic("Tried to load from invalid address [0x{:08X}]", address);
     return 0;
 }
 
@@ -249,7 +249,7 @@ void BUS::Store(u32 address, Value value) {
     }
     // Expansion Region 1
     if (InArea(EXP_REG_1_START, EXP_REG_1_SIZE, masked_addr)) {
-        Panic("Tried to store in Expansion Region 1 [0x%08X]", address);
+        Panic("Tried to store in Expansion Region 1 [0x{:08X}]", address);
     }
     // Expansion Region 2
     if (InArea(EXP_REG_2_START, EXP_REG_2_SIZE, masked_addr)) {
@@ -258,10 +258,10 @@ void BUS::Store(u32 address, Value value) {
     }
     // Expansion Region 3
     if (InArea(EXP_REG_3_START, EXP_REG_3_SIZE, masked_addr)) {
-        Panic("Tried to store in Expansion Region 3 [0x%08X]", address);
+        Panic("Tried to store in Expansion Region 3 [0x{:08X}]", address);
     }
 
-    Panic("Tried to store in invalid address [0x%08X]", address);
+    Panic("Tried to store in invalid address [0x{:08X}]", address);
 }
 
 u8 BUS::Peek(u32 address) {
