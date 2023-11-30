@@ -70,6 +70,10 @@ private:
         s16 x, y;
     };
 
+    struct MatrixMultResult {
+        s64 x, y, z;
+    };
+
     ALWAYS_INLINE void ResetErrorFlag() {
         error_flags.bits = 0;
     }
@@ -87,7 +91,9 @@ private:
     s32 SaturateColor(s32 value);
 
     template<u32 coord_id>
-    s32 SaturateScreenCoords(s32 value);
+    s32 SaturateScreenCoordsXY(s32 value);
+
+    s32 SaturateScreenCoordsZ(s32 value);
 
     template<u32 mac_id>
     void CheckMacOverflow(s64 value);
@@ -106,14 +112,41 @@ private:
     template<u32 id>
     void SetMacAndIR(s64 value, u8 shift, bool lm);
 
+    void PushScreenX(s32 sz);
+    void PushScreenY(s32 sz);
+    void PushScreenZ(s32 sz);
+
+    void PushColor(s32 r, s32 g, s32 b);
+    void PushColorFromMac();
+
     void SetOrderTableZ(s64 value);
 
+    void RTPSingle(const Vector3<s16>& v, u8 shift, bool lm, bool last_vertex);
+    void NCLIP();
+    void MatrixVectorMultiplication(GTE::Command cmd);
+    void NCCS(u8 shift, bool lm);
+    void NCS(u8 shift, bool lm);
+    void NCT(u8 shift, bool lm);
+    void SQR(u8 shift, bool lm);
     void AVSZ3();
     void AVSZ4();
-    void MatrixVectorMultiplication(GTE::Command cmd);
+    void RTPTriple(u8 shift, bool lm);
+    void GPF(u8 shift, bool lm);
+    void GPL(u8 shift, bool lm);
+    void NCCT(u8 shift, bool lm);
 
-    void MVMVAKernel(const Matrix3x3* m, const Vector3<s16>* v, const Vector3<s32>* t, u8 shift, bool lm);
-    void MVMVAKernelBugged(const Matrix3x3* m, const Vector3<s16>* v, const Vector3<s32>* t, u8 shift, bool lm);
+    template<u32 type>
+    void NC(const Vector3<s16>& v, u8 shift, bool lm);
+
+    MatrixMultResult MatrixMultiply(const Matrix3x3& m, const Vector3<s16>& v);
+    MatrixMultResult MatrixMultiply(const Matrix3x3& m, const Vector3<s16>& v, const Vector3<s32>& t);
+    void MVMVAKernelBugged(const Matrix3x3& m, const Vector3<s16>& v, const Vector3<s32>& t, u8 shift, bool lm);
+    s64 RTPKernel(const Vector3<s16>& v, u8 shift, bool lm);
+
+    u32 UNRDivide(u32 lhs, u32 rhs);
+
+    //u8 m_shift = 0;
+    //bool m_lm = 0;
 
     // vectors 0, 1 and 2
     Vector3<s16> vec0 {};
@@ -132,7 +165,7 @@ private:
     u16 otz = 0;
 
     // screen points xy (3 stage FIFO)
-    ScreenPointXY screen_xy[3] {};
+    ScreenPointXY screen[3] {};
 
     // screen points z (4 stage FIFO)
     u16 screen_z[4] {};
