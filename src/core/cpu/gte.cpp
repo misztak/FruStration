@@ -643,6 +643,16 @@ void GTE::SetOrderTableZ(s64 value) {
     }
 }
 
+void GTE::InterpolateColor(s32 mac1, s32 mac2, s32 mac3, u8 shift, bool lm) {
+    SetMacAndIR<1>((s64(far_color.r) << 12) - mac1, shift, false);
+    SetMacAndIR<2>((s64(far_color.g) << 12) - mac2, shift, false);
+    SetMacAndIR<3>((s64(far_color.b) << 12) - mac3, shift, false);
+
+    SetMacAndIR<1>(s64(ir_vec.ir1) * s64(ir0) + mac1, shift, lm);
+    SetMacAndIR<2>(s64(ir_vec.ir2) * s64(ir0) + mac2, shift, lm);
+    SetMacAndIR<3>(s64(ir_vec.ir3) * s64(ir0) + mac3, shift, lm);
+}
+
 void GTE::ExecuteCommand(u32 cmd_value) {
     LogDebug("COMMAND 0x{:02X}", cmd_value);
 
@@ -655,16 +665,37 @@ void GTE::ExecuteCommand(u32 cmd_value) {
 
     switch (cmd.real_opcode) {
         case 0x01:
-            RTPSingle(vec0, shift, lm, true);
+            RTPS(vec0, shift, lm, true);
             break;
         case 0x06:
             NCLIP();
             break;
+        case 0x0C:
+            OP(shift, lm);
+            break;
+        case 0x10:
+            DPCS(shift, lm);
+            break;
+        case 0x11:
+            INTPL(shift, lm);
+            break;
         case 0x12:
-            MatrixVectorMultiplication(cmd);
+            MVMVA(cmd);
+            break;
+        case 0x13:
+            NCDS(shift, lm);
+            break;
+        case 0x14:
+            CDP(shift, lm);
+            break;
+        case 0x16:
+            NCDT(shift, lm);
             break;
         case 0x1B:
             NCCS(shift, lm);
+            break;
+        case 0x1C:
+            CC(shift, lm);
             break;
         case 0x1E:
             NCS(shift, lm);
@@ -675,6 +706,12 @@ void GTE::ExecuteCommand(u32 cmd_value) {
         case 0x28:
             SQR(shift, lm);
             break;
+        case 0x29:
+            DCPL(shift, lm);
+            break;
+        case 0x2A:
+            DPCT(shift, lm);
+            break;
         case 0x2D:
             AVSZ3();
             break;
@@ -682,7 +719,7 @@ void GTE::ExecuteCommand(u32 cmd_value) {
             AVSZ4();
             break;
         case 0x30:
-            RTPTriple(shift, lm);
+            RTPT(shift, lm);
             break;
         case 0x3D:
             GPF(shift, lm);
@@ -700,7 +737,7 @@ void GTE::ExecuteCommand(u32 cmd_value) {
     UpdateErrMasterFlag();
 }
 
-void GTE::RTPSingle(const Vector3<s16>& v, u8 shift, bool lm, bool last_vertex) {
+void GTE::RTPS(const Vector3<s16>& v, u8 shift, bool lm, bool last_vertex) {
     s64 z = RTPKernel(v, shift, lm);
 
     PushScreenZ(static_cast<s32>(z >> 12));
@@ -718,10 +755,10 @@ void GTE::RTPSingle(const Vector3<s16>& v, u8 shift, bool lm, bool last_vertex) 
     }
 }
 
-void GTE::RTPTriple(u8 shift, bool lm) {
-    RTPSingle(vec0, shift, lm, false);
-    RTPSingle(vec1, shift, lm, false);
-    RTPSingle(vec2, shift, lm, true);
+void GTE::RTPT(u8 shift, bool lm) {
+    RTPS(vec0, shift, lm, false);
+    RTPS(vec1, shift, lm, false);
+    RTPS(vec2, shift, lm, true);
 }
 
 void GTE::NCLIP() {
@@ -748,7 +785,24 @@ void GTE::AVSZ4() {
     SetOrderTableZ(avg);
 }
 
-void GTE::MatrixVectorMultiplication(GTE::Command cmd) {
+void GTE::INTPL(u8 shift, bool lm) {
+    // 'IRn << 12' cannot overflow the 44bit MAC, so no need to check
+    InterpolateColor(s32(ir_vec.ir1) << 12, s32(ir_vec.ir2) << 12, s32(ir_vec.ir3) << 12, shift, lm);
+
+    PushColorFromMac();
+}
+
+void GTE::OP(u8 shift, bool lm) {
+    SetMac<1>(s64(rot_matrix[1][1]) * s64(ir_vec.ir3) - s64(rot_matrix[2][2] * ir_vec.ir2), shift);
+    SetMac<2>(s64(rot_matrix[2][2]) * s64(ir_vec.ir1) - s64(rot_matrix[0][0] * ir_vec.ir3), shift);
+    SetMac<3>(s64(rot_matrix[0][0]) * s64(ir_vec.ir2) - s64(rot_matrix[1][1] * ir_vec.ir1), shift);
+
+    SetIR<1>(mac_vec.mac1, lm);
+    SetIR<2>(mac_vec.mac2, lm);
+    SetIR<3>(mac_vec.mac3, lm);
+}
+
+void GTE::MVMVA(GTE::Command cmd) {
     LogDebug("MVMVA: {} * {} + {}", cmd.mvmva_m_mat, cmd.mvmva_m_vec, cmd.mvmva_t_vec);
 
     static constexpr Vector3<s32> t_zero {};
@@ -813,7 +867,7 @@ void GTE::MatrixVectorMultiplication(GTE::Command cmd) {
 }
 
 template<u32 type>
-void GTE::NC(const Vector3<s16>& v, u8 shift, bool lm) {
+void GTE::NCKernel(const Vector3<s16>& v, u8 shift, bool lm) {
     const auto [x1, y1, z1] = MatrixMultiply(light_matrix, v);
     SetMacAndIR<1>(x1, shift, lm);
     SetMacAndIR<2>(y1, shift, lm);
@@ -831,32 +885,102 @@ void GTE::NC(const Vector3<s16>& v, u8 shift, bool lm) {
     }
 
     if constexpr (type == 2) {
-        //const auto ir_vec_copy = ir_vec;
+        s32 mac1 = (s32(rgbc.r) * s32(ir_vec.ir1)) << 4;
+        s32 mac2 = (s32(rgbc.g) * s32(ir_vec.ir2)) << 4;
+        s32 mac3 = (s32(rgbc.b) * s32(ir_vec.ir3)) << 4;
 
-        //SetMacAndIR<1>((s64(far_color.r) << 12) - (s64(rgbc.r) << 4) );
+        InterpolateColor(mac1, mac2, mac3, shift, lm);
     }
 
     PushColorFromMac();
 }
 
 void GTE::NCS(u8 shift, bool lm) {
-    NC<0>(vec0, shift, lm);
+    NCKernel<0>(vec0, shift, lm);
 }
 
 void GTE::NCT(u8 shift, bool lm) {
-    NC<0>(vec0, shift, lm);
-    NC<0>(vec1, shift, lm);
-    NC<0>(vec2, shift, lm);
+    NCKernel<0>(vec0, shift, lm);
+    NCKernel<0>(vec1, shift, lm);
+    NCKernel<0>(vec2, shift, lm);
 }
 
 void GTE::NCCS(u8 shift, bool lm) {
-    NC<1>(vec0, shift, lm);
+    NCKernel<1>(vec0, shift, lm);
 }
 
 void GTE::NCCT(u8 shift, bool lm) {
-    NC<1>(vec0, shift, lm);
-    NC<1>(vec1, shift, lm);
-    NC<1>(vec2, shift, lm);
+    NCKernel<1>(vec0, shift, lm);
+    NCKernel<1>(vec1, shift, lm);
+    NCKernel<1>(vec2, shift, lm);
+}
+
+void GTE::NCDS(u8 shift, bool lm) {
+    NCKernel<2>(vec0, shift, lm);
+}
+
+void GTE::NCDT(u8 shift, bool lm) {
+    NCKernel<2>(vec0, shift, lm);
+    NCKernel<2>(vec1, shift, lm);
+    NCKernel<2>(vec2, shift, lm);
+}
+
+void GTE::CC(u8 shift, bool lm) {
+    const auto [x, y, z] = MatrixMultiply(color_matrix, ir_vec, background_color);
+    SetMacAndIR<1>(x, shift, lm);
+    SetMacAndIR<2>(y, shift, lm);
+    SetMacAndIR<3>(z, shift, lm);
+
+    SetMacAndIR<1>((s64(rgbc.r) * s64(ir_vec.ir1)) << 4, shift, lm);
+    SetMacAndIR<2>((s64(rgbc.g) * s64(ir_vec.ir2)) << 4, shift, lm);
+    SetMacAndIR<3>((s64(rgbc.b) * s64(ir_vec.ir3)) << 4, shift, lm);
+
+    PushColorFromMac();
+}
+
+void GTE::CDP(u8 shift, bool lm) {
+    const auto [x, y, z] = MatrixMultiply(color_matrix, ir_vec, background_color);
+    SetMacAndIR<1>(x, shift, lm);
+    SetMacAndIR<2>(y, shift, lm);
+    SetMacAndIR<3>(z, shift, lm);
+
+    s32 mac1 = (s32(rgbc.r) * s32(ir_vec.ir1)) << 4;
+    s32 mac2 = (s32(rgbc.g) * s32(ir_vec.ir2)) << 4;
+    s32 mac3 = (s32(rgbc.b) * s32(ir_vec.ir3)) << 4;
+
+    InterpolateColor(mac1, mac2, mac3, shift, lm);
+
+    PushColorFromMac();
+}
+
+void GTE::DPCKernel(const GTE::Color32& color, u8 shift, bool lm) {
+    SetMac<1>(s64(u64(color.r) << 16), 0);
+    SetMac<2>(s64(u64(color.g) << 16), 0);
+    SetMac<3>(s64(u64(color.b) << 16), 0);
+
+    InterpolateColor(mac_vec.mac1, mac_vec.mac2, mac_vec.mac3, shift, lm);
+
+    PushColorFromMac();
+}
+
+void GTE::DPCS(u8 shift, bool lm) {
+    DPCKernel(rgbc, shift, lm);
+}
+
+void GTE::DPCT(u8 shift, bool lm) {
+    DPCKernel(rgb[0], shift, lm);
+    DPCKernel(rgb[0], shift, lm);
+    DPCKernel(rgb[0], shift, lm);
+}
+
+void GTE::DCPL(u8 shift, bool lm) {
+    s32 mac1 = (s32(rgbc.r) * s32(ir_vec.ir1)) << 4;
+    s32 mac2 = (s32(rgbc.g) * s32(ir_vec.ir2)) << 4;
+    s32 mac3 = (s32(rgbc.b) * s32(ir_vec.ir3)) << 4;
+
+    InterpolateColor(mac1, mac2, mac3, shift, lm);
+
+    PushColorFromMac();
 }
 
 void GTE::GPF(u8 shift, bool lm) {

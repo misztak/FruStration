@@ -121,22 +121,35 @@ private:
 
     void SetOrderTableZ(s64 value);
 
-    void RTPSingle(const Vector3<s16>& v, u8 shift, bool lm, bool last_vertex);
+    void InterpolateColor(s32 mac1, s32 mac2, s32 mac3, u8 shift, bool lm);
+
+    void RTPS(const Vector3<s16>& v, u8 shift, bool lm, bool last_vertex);
     void NCLIP();
-    void MatrixVectorMultiplication(GTE::Command cmd);
+    void OP(u8 shift, bool lm);
+    void DPCS(u8 shift, bool lm);
+    void INTPL(u8 shift, bool lm);
+    void MVMVA(GTE::Command cmd);
+    void NCDS(u8 shift, bool lm);
+    void CDP(u8 shift, bool lm);
+    void NCDT(u8 shift, bool lm);
     void NCCS(u8 shift, bool lm);
+    void CC(u8 shift, bool lm);
     void NCS(u8 shift, bool lm);
     void NCT(u8 shift, bool lm);
     void SQR(u8 shift, bool lm);
+    void DCPL(u8 shift, bool lm);
+    void DPCT(u8 shift, bool lm);
     void AVSZ3();
     void AVSZ4();
-    void RTPTriple(u8 shift, bool lm);
+    void RTPT(u8 shift, bool lm);
     void GPF(u8 shift, bool lm);
     void GPL(u8 shift, bool lm);
     void NCCT(u8 shift, bool lm);
 
     template<u32 type>
-    void NC(const Vector3<s16>& v, u8 shift, bool lm);
+    void NCKernel(const Vector3<s16>& v, u8 shift, bool lm);
+
+    void DPCKernel(const Color32& color, u8 shift, bool lm);
 
     MatrixMultResult MatrixMultiply(const Matrix3x3& m, const Vector3<s16>& v);
     MatrixMultResult MatrixMultiply(const Matrix3x3& m, const Vector3<s16>& v, const Vector3<s32>& t);
@@ -144,9 +157,6 @@ private:
     s64 RTPKernel(const Vector3<s16>& v, u8 shift, bool lm);
 
     u32 UNRDivide(u32 lhs, u32 rhs);
-
-    //u8 m_shift = 0;
-    //bool m_lm = 0;
 
     // vectors 0, 1 and 2
     Vector3<s16> vec0 {};
