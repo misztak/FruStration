@@ -80,12 +80,12 @@ bool Display::Init(Emulator* system, SDL_Window* win, SDL_GLContext context, con
     Assert(scale_factor > 1.f);
 
     // print host display info
-    LogDebug("Number of displays: {}", SDL_GetNumVideoDisplays());
-    LogDebug("Current display: {}", SDL_GetWindowDisplayIndex(window));
-    LogDebug("DPI: {} (default=96.0f)", dpi);
-    LogDebug("Scale factor: {:.2}", scale_factor);
-    LogDebug("SDL2 version {}.{}.{}", SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL);
-    LogDebug("OpenGL version {} (Vendor: {})", (char*)glGetString(GL_VERSION), (char*)glGetString(GL_VENDOR));
+    LogInfo("Number of displays: {}", SDL_GetNumVideoDisplays());
+    LogInfo("Current display: {}", SDL_GetWindowDisplayIndex(window));
+    LogInfo("DPI: {} (default=96.0f)", dpi);
+    LogInfo("Scale factor: {:.2}", scale_factor);
+    LogInfo("SDL2 version {}.{}.{}", SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL);
+    LogInfo("OpenGL version {} (Vendor: {})", (char*)glGetString(GL_VERSION), (char*)glGetString(GL_VENDOR));
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -297,14 +297,14 @@ void Display::DrawDragAndDropPopup() {
         ImGui::Separator();
 
         static int type = 0;
-        ImGui::RadioButton("DISC IMAGE", &type, 0);
-        ImGui::RadioButton("PS EXE", &type, 1);
+        ImGui::RadioButton("PS EXE", &type, 0);
+        ImGui::RadioButton("DISC IMAGE", &type, 1);
         ImGui::RadioButton("BIOS BIN", &type, 2);
         ImGui::Separator();
 
         if (ImGui::Button("OK", ImVec2(120, 0))) {
-            if (type == 0) Config::ps_bin_file_path = dropped_file;
-            if (type == 1) Config::psexe_file_path = dropped_file;
+            if (type == 0) Config::psexe_file_path = dropped_file;
+            if (type == 1) Config::ps_bin_file_path = dropped_file;
             if (type == 2) Config::bios_path.Set(dropped_file);
 
             emu->Reset();
@@ -336,35 +336,16 @@ void Display::Render() {
 }
 
 void Display::Update() {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        ImGui_ImplSDL2_ProcessEvent(&event);
-        switch (event.type) {
-            case SDL_QUIT:
-                emu->done = true;
-                break ;
-            case SDL_WINDOWEVENT:
-                if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
-                    emu->done = true;
-                break;
-            case SDL_KEYUP:
-                if (event.key.keysym.scancode == SDL_SCANCODE_H) emu->SetPaused(!emu->IsPaused());
-                if (event.key.keysym.scancode == SDL_SCANCODE_R) emu->Reset();
-                break;
-            // drag and drop support
-            case SDL_DROPFILE:
-                // don't allow nested file drop popups
-                Assert(dropped_file.empty());
-                dropped_file = std::string(event.drop.file);
-
-                LogInfo("Dropped file '{}'", dropped_file);
-                SDL_free(event.drop.file);
-                break;
-        }
-    }
-
     Draw();
     Render();
+}
+
+void Display::HandleDroppedFile(std::string&& file) {
+    // don't allow nested file drop popups
+    Assert(dropped_file.empty());
+    dropped_file = file;
+
+    LogInfo("Dropped file '{}'", dropped_file);
 }
 
 void Display::Throttle(u32 fps) {

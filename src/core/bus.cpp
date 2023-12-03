@@ -14,6 +14,7 @@
 #include "dma.h"
 #include "gpu.h"
 #include "interrupt.h"
+#include "peripherals.h"
 #include "system.h"
 #include "timer/timers.h"
 
@@ -149,8 +150,7 @@ ValueType BUS::Load(u32 address) {
 
         // Joypad
         if (InArea(0x1F801040, 16, masked_addr)) {
-            //LOG_DEBUG << "Load from Joypad [Unimplemented]";
-            return 0b11;
+            return static_cast<ValueType>(sys->peripherals->Read(masked_addr));
         }
 
         Panic("Tried to load from IO Ports [0x{:08X}]", address);
@@ -212,6 +212,12 @@ void BUS::Store(u32 address, Value value) {
             case (0x1F801074): sys->interrupt->StoreMask(value); return;
             case (0x1F801810): sys->gpu->SendGP0Cmd(value); return;
             case (0x1F801814): sys->gpu->SendGP1Cmd(value); return;
+        }
+
+        // Controller / Memory Card
+        if (InArea(0x1F801040, 16, masked_addr)) {
+            sys->peripherals->Write(masked_addr, value);
+            return;
         }
 
         // DMA

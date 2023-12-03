@@ -36,6 +36,20 @@ Additionally, a built-in GDB server can be used to connect the emulator to a GDB
 - **H**: Pause or resume emulator execution (the emulator starts paused)
 - **R**: Reset the emulator
 
+### Default Controller Keybindings (Digital Pad)
+
+- **Start**: Enter
+- **Select**: Space
+- **Direction Keys**: Up, Down, Left, Right
+- **W**: Triangle
+- **A**: Square
+- **S**: X
+- **D**: Circle
+- **Q**: L1
+- **E**: R1
+- **Z**: L2
+- **C**: R2
+
 #### Debugger Keybindings
 
 - **F5**: Continue

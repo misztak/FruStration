@@ -9,6 +9,7 @@
 #include "dma.h"
 #include "gpu.h"
 #include "interrupt.h"
+#include "peripherals.h"
 #include "timer/timers.h"
 
 LOG_CHANNEL(System);
@@ -21,6 +22,7 @@ System::System() {
     cdrom = std::make_unique<CDROM>(this);
     interrupt = std::make_unique<InterruptController>(this);
     timers = std::make_unique<TimerController>(this);
+    peripherals = std::make_unique<Peripherals>(this);
     debugger = std::make_unique<Debugger>(this);
 
     RecalculateCyclesUntilNextEvent();

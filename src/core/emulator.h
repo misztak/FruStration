@@ -3,6 +3,7 @@
 #include <tuple>
 
 #include "common/config.h"
+#include "controller.h"
 #include "system.h"
 #include "util/types.h"
 
@@ -23,12 +24,13 @@ public:
 
     u16* GetVRAM();
 
-    bool done = false;
+    Controller& GetMainController();
 
     void DrawDebugWindows();
     void StartGDBServer();
     void HandleGDBClientRequest();
 
+    bool done = false;
 private:
     System sys;
 };

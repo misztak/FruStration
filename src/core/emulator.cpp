@@ -6,6 +6,7 @@
 #include "cpu/cpu.h"
 #include "debugger/gdb_stub.h"
 #include "gpu.h"
+#include "peripherals.h"
 #include "timer/timers.h"
 
 LOG_CHANNEL(Emulator);
@@ -55,6 +56,10 @@ u8* Emulator::GetVideoOutput() {
 
 u16* Emulator::GetVRAM() {
     return sys.gpu->GetVRAM();
+}
+
+Controller& Emulator::GetMainController() {
+    return sys.peripherals->GetController1();
 }
 
 void Emulator::StartGDBServer() {

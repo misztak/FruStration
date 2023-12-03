@@ -5,6 +5,8 @@ add_library(core STATIC
         dma.cpp
         gpu.cpp
         cdrom.cpp
+        controller.cpp
+        peripherals.cpp
         bios.cpp
         interrupt.cpp
         cpu/cpu.cpp

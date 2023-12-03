@@ -15,6 +15,7 @@
 
 LOG_CHANNEL(MAIN);
 
+void HandleInput(Emulator& emulator, Controller& controller, Display& display, SDL_Window* window);
 void PrintUsageAndExit(int exit_code);
 
 int main(int argc, char* argv[]) {
@@ -89,6 +90,25 @@ int main(int argc, char* argv[]) {
 
     emulator.SetPaused(true);
 
+    // configure controller (digital pad)
+    Controller& controller = emulator.GetMainController();
+    controller.SetKeyMap({
+        {static_cast<u32>(SDL_SCANCODE_RETURN), Controller::Button::Start},
+        {static_cast<u32>(SDL_SCANCODE_SPACE), Controller::Button::Select},
+        {static_cast<u32>(SDL_SCANCODE_UP), Controller::Button::Up},
+        {static_cast<u32>(SDL_SCANCODE_LEFT), Controller::Button::Left},
+        {static_cast<u32>(SDL_SCANCODE_DOWN), Controller::Button::Down},
+        {static_cast<u32>(SDL_SCANCODE_RIGHT), Controller::Button::Right},
+        {static_cast<u32>(SDL_SCANCODE_W), Controller::Button::Triangle},
+        {static_cast<u32>(SDL_SCANCODE_A), Controller::Button::Square},
+        {static_cast<u32>(SDL_SCANCODE_S), Controller::Button::X},
+        {static_cast<u32>(SDL_SCANCODE_D), Controller::Button::Circle},
+        {static_cast<u32>(SDL_SCANCODE_Q), Controller::Button::L1},
+        {static_cast<u32>(SDL_SCANCODE_E), Controller::Button::R1},
+        {static_cast<u32>(SDL_SCANCODE_Z), Controller::Button::L2},
+        {static_cast<u32>(SDL_SCANCODE_C), Controller::Button::R2},
+    });
+
     // init display
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -162,12 +182,14 @@ int main(int argc, char* argv[]) {
             // before reaching the next vblank
             if (emulator.DrawNextFrame()) {
                 emulator.ResetDrawFrame();
+                HandleInput(emulator, controller, display, window);
                 display.Update();
             }
 
             //display.Throttle(60);
 
         } else {
+            HandleInput(emulator, controller, display, window);
             display.Update();
             // if the GDB server is disabled this will do nothing
             emulator.HandleGDBClientRequest();
@@ -185,6 +207,43 @@ int main(int argc, char* argv[]) {
     Log::Shutdown();
 
     return 0;
+}
+
+void HandleInput(Emulator& emulator, Controller& controller, Display& display, SDL_Window* window) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        ImGui_ImplSDL2_ProcessEvent(&event);
+
+        switch (event.type) {
+            case SDL_QUIT:
+                emulator.done = true;
+                break ;
+            case SDL_WINDOWEVENT:
+                if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
+                    emulator.done = true;
+                break;
+            case SDL_KEYUP:
+            {
+                if (event.key.keysym.scancode == SDL_SCANCODE_H) emulator.SetPaused(!emulator.IsPaused());
+                if (event.key.keysym.scancode == SDL_SCANCODE_R) emulator.Reset();
+
+                auto& key_map = controller.GetKeyMap();
+                const u32 key = static_cast<u32>(event.key.keysym.scancode);
+
+                if (key_map.find(key) != key_map.end()) {
+                    controller.Press(key_map[key]);
+                    LogDebug("Pressed valid controller button {}", SDL_GetScancodeName(event.key.keysym.scancode));
+                }
+                break;
+            }
+            // drag and drop support
+            case SDL_DROPFILE:
+                display.HandleDroppedFile(std::string(event.drop.file));
+                SDL_free(event.drop.file);
+                break;
+        }
+
+    }
 }
 
 void PrintUsageAndExit(int exit_code) {

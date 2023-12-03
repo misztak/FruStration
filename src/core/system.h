@@ -18,6 +18,7 @@ class GPU;
 class CDROM;
 class InterruptController;
 class TimerController;
+class Peripherals;
 class Debugger;
 
 constexpr u32 MaxCycles = std::numeric_limits<u32>::max();
@@ -40,6 +41,7 @@ public:
     std::unique_ptr<CDROM> cdrom;
     std::unique_ptr<InterruptController> interrupt;
     std::unique_ptr<TimerController> timers;
+    std::unique_ptr<Peripherals> peripherals;
     std::unique_ptr<Debugger> debugger;
 
     enum class TimedEvent : u32 { Timer = 0, GPU = 1, CDROM = 2, Count = 3 };
