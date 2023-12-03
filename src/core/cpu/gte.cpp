@@ -236,7 +236,7 @@ void GTE::SetReg(u32 index, u32 value) {
             Panic("Unimplemented SetReg register index: {}", index);
     }
 
-    LogDebug("Set register {} to 0x{:08X}", index, value);
+    //LogTrace("Set register {} to 0x{:08X}", index, value);
 }
 
 u32 GTE::GetReg(u32 index) {
@@ -449,7 +449,7 @@ u32 GTE::GetReg(u32 index) {
             Panic("Unimplemented GetReg register index: {}", index);
     }
 
-    LogDebug("Load from register {}: 0x{:08X}", index, value);
+    //LogTrace("Load from register {}: 0x{:08X}", index, value);
 
     return value;
 }
@@ -654,7 +654,7 @@ void GTE::InterpolateColor(s32 mac1, s32 mac2, s32 mac3, u8 shift, bool lm) {
 }
 
 void GTE::ExecuteCommand(u32 cmd_value) {
-    LogDebug("COMMAND 0x{:02X}", cmd_value);
+    //LogTrace("COMMAND 0x{:02X}", cmd_value);
 
     ResetErrorFlag();
 
@@ -731,7 +731,7 @@ void GTE::ExecuteCommand(u32 cmd_value) {
             NCCT(shift, lm);
             break;
         default:
-            Panic("Unimplemented Command: 0x{:02X}", cmd.real_opcode);
+            Panic("Invalid GTE Command: 0x{:02X}", cmd.real_opcode);
     }
 
     UpdateErrMasterFlag();
@@ -803,8 +803,6 @@ void GTE::OP(u8 shift, bool lm) {
 }
 
 void GTE::MVMVA(GTE::Command cmd) {
-    LogDebug("MVMVA: {} * {} + {}", cmd.mvmva_m_mat, cmd.mvmva_m_vec, cmd.mvmva_t_vec);
-
     static constexpr Vector3<s32> t_zero {};
 
     // we deliberately keep this matrix uninitialized because it will *most likely* never be used
@@ -1035,6 +1033,10 @@ void GTE::MVMVAKernelBugged(const Matrix3x3& m, const Vector3<s16>& v, const Vec
     SetMacAndIR<3>(z, shift, lm);
 }
 
+#undef CMASE1
+#undef CMASE2
+#undef CMASE3
+
 s64 GTE::RTPKernel(const Vector3<s16>& v, u8 shift, bool lm) {
     MatrixMultResult rtp_vec = MatrixMultiply(rot_matrix, v, tl_vec);
 
@@ -1051,10 +1053,6 @@ s64 GTE::RTPKernel(const Vector3<s16>& v, u8 shift, bool lm) {
 
     return rtp_vec.z;
 }
-
-#undef CMASE1
-#undef CMASE2
-#undef CMASE3
 
 u32 GTE::UNRDivide(u32 lhs, u32 rhs) {
     // table from https://problemkaputt.de/psx-spx.htm#gtedivisioninaccuracy
