@@ -5,8 +5,6 @@
 #include "debugger/debugger.h"
 #include "gte.h"
 
-#include "bios.h"
-
 class BUS;
 class System;
 class Debugger;
@@ -20,7 +18,7 @@ class CPU {
     friend class ::BUS;
 
 public:
-    CPU(System* system);
+    explicit CPU(System* system);
     void Reset();
 
     void Step();
@@ -61,7 +59,6 @@ private:
 
     GTE gte;
 
-    BIOS bios;
     Disassembler disassembler;
 };
 

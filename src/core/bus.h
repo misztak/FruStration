@@ -25,6 +25,10 @@ public:
     template<typename Value>
     void Store(u32 address, Value value);
 
+    std::vector<u8>& BiosImage() {
+        return bios;
+    }
+
     // read from memory without causing side effects (i.e. MMIO state changes)
     u8 Peek(u32 address);
     u32 Peek32(u32 address);

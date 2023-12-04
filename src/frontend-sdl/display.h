@@ -22,7 +22,7 @@ public:
     void Update();
     void Throttle(u32 fps);
 
-    void HandleDroppedFile(std::string&& file);
+    void HandleDroppedFile(std::string file);
 
     bool vsync_enabled = true;
 private:

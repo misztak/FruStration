@@ -8,26 +8,76 @@
 
 LOG_CHANNEL(BIOS);
 
-BIOS::BIOS(System* system) : sys(system) {}
+namespace BIOS {
+namespace {
 
-void BIOS::PutChar(s8 value) {
-    if (value == '\n') {
+constexpr u32 A_FUNCTION_COUNT = 181;
+constexpr u32 B_FUNCTION_COUNT = 94;
+constexpr u32 C_FUNCTION_COUNT = 30;
+
+std::string stdout_buffer;
+
+bool patched = false;
+}
+
+bool IsPatched() {
+    return patched;
+}
+
+static void Patch(std::vector<u8>& bios_image, u32 address, u32 value) {
+    Assert(address >= 0xBFC00000);
+    const u32 img_addr = address - 0xBFC00000;
+    Assert(img_addr + sizeof(value) <= bios_image.size());
+
+    std::memcpy(&bios_image[img_addr], &value, sizeof(value));
+}
+
+bool PatchBIOSForPSEXEInjection(std::vector<u8>& bios_image, u32 pc, u32 gp, u32 sp, u32 fp) {
+    if (bios_image.empty()) return false;
+
+    // injection point (address copied from duckstation)
+    static constexpr u32 PATCH_START_ADDR = 0xBFC06FF0;
+
+    // start with the psexe entry point address and the new gp register value
+    Patch(bios_image, PATCH_START_ADDR + 0, u32(0x3C080000) | pc >> 16);                // lui $t0, (pc >> 16)
+    Patch(bios_image, PATCH_START_ADDR + 4, u32(0x35080000) | (pc & u32(0xFFFF)));      // ori $t0, (pc & 0xFFFF)
+    Patch(bios_image, PATCH_START_ADDR + 8, u32(0x3C1C0000) | gp >> 16);                // lui $gp, (gp >> 16)
+    Patch(bios_image, PATCH_START_ADDR + 12, u32(0x379C0000) | (gp & u32(0xFFFF)));     // ori $gp, (gp & 0xFFFF)
+
+    // only update sp and fp if they aren't set to zero
+    // some psexe files will break otherwise
+    if (sp != 0) {
+        Patch(bios_image, PATCH_START_ADDR + 16, u32(0x3C1D0000) | sp >> 16);           // lui $sp, (sp >> 16)
+        Patch(bios_image, PATCH_START_ADDR + 20, u32(0x37BD0000) | (sp & u32(0xFFFF))); // ori $sp, (sp & 0xFFFF)
+    } else {
+        Patch(bios_image, PATCH_START_ADDR + 16, u32(0x00000000));                      // nop
+        Patch(bios_image, PATCH_START_ADDR + 20, u32(0x00000000));                      // nop
+    }
+
+    // jump to $t0 (entry point) after updating fp register
+    // second part of assignment is in branch delay slot
+    if (fp != 0) {
+        Patch(bios_image, PATCH_START_ADDR + 24, u32(0x3C1E0000) | fp >> 16);           // lui $fp, (fp >> 16)
+        Patch(bios_image, PATCH_START_ADDR + 28, u32(0x01000008));                      // jr $t0
+        Patch(bios_image, PATCH_START_ADDR + 32, u32(0x37DE0000) | (fp & u32(0xFFFF))); // ori $fp, (fp & 0xFFFF)
+    } else {
+        Patch(bios_image, PATCH_START_ADDR + 24, u32(0x00000000));                      // nop
+        Patch(bios_image, PATCH_START_ADDR + 28, u32(0x01000008));                      // jr $t0
+        Patch(bios_image, PATCH_START_ADDR + 32, u32(0x00000000));                      // nop
+    }
+
+    patched = true;
+
+    return true;
+}
+
+void PutChar(u8 value) {
+    s8 character = static_cast<s8>(value);
+    if (character == '\n') {
         LogInfo("TTY: {}", stdout_buffer);
         stdout_buffer.clear();
     } else {
-        stdout_buffer.push_back(value);
-    }
-}
-
-void BIOS::TraceFunction(u32 address, u32 index) {
-    if (address == 0xA0 && index < A_FUNCTION_COUNT) {
-        TraceAFunction(index);
-    } else if (address == 0xB0 && index < B_FUNCTION_COUNT) {
-        TraceBFunction(index);
-    } else if (address == 0xC0 && index < C_FUNCTION_COUNT) {
-        TraceCFunction(index);
-    } else {
-        LogWarn("Invalid BIOS function 0x{:02X}:{}", address, index);
+        stdout_buffer.push_back(character);
     }
 }
 
@@ -40,15 +90,11 @@ void BIOS::TraceFunction(u32 address, u32 index) {
 #define FN_WITH_ARGS_2(format) LogTrace(format, sys->cpu->gp.a0, sys->cpu->gp.a1)
 #define FN_WITH_ARGS_3(format) LogTrace(format, sys->cpu->gp.a0, sys->cpu->gp.a1, sys->cpu->gp.a2)
 #define FN_WITH_ARGS_4(format) LogTrace(format, sys->cpu->gp.a0, sys->cpu->gp.a1, sys->cpu->gp.a2, sys->cpu->gp.a3)
-#define FN_WITH_ARGS_5(format) \
-    LogTrace(format, sys->cpu->gp.a0, sys->cpu->gp.a1, sys->cpu->gp.a2, sys->cpu->gp.a3, arg_5)
-#define FN_WITH_ARGS_6(format) \
-    LogTrace(format, sys->cpu->gp.a0, sys->cpu->gp.a1, sys->cpu->gp.a2, sys->cpu->gp.a3, arg_5, arg_6)
+#define FN_WITH_ARGS_5(format) LogTrace(format, sys->cpu->gp.a0, sys->cpu->gp.a1, sys->cpu->gp.a2, sys->cpu->gp.a3, arg_5)
 
-
-void BIOS::TraceAFunction(u32 index) {
+static void TraceAFunction(System* sys, u32 index) {
     const u32 arg_5 = sys->bus->Peek32(sys->cpu->gp.sp + 16);
-    
+
     switch (index) {
         case 0x00: FN_WITH_ARGS_2("open(filename=0x{:08x},accessmode=0x{:8x})"); break;
         case 0x01: FN_WITH_ARGS_3("lseek(fd={},offset={},seektype={})"); break;
@@ -111,7 +157,7 @@ void BIOS::TraceAFunction(u32 index) {
         case 0x3A: FN_WITH_ARGS_1("_exit(exitcode={})"); break;
         case 0x3B: FN_WITH_ARGS_0("getchar()"); break;
         //case 0x3C: FN_WITH_ARGS_1("putchar(char={:c})"); break;
-        case 0x3C: break; // ignore putchar calls because we trace TTY output separately
+        case 0x3C: break;    // ignore putchar calls because we trace TTY output separately
         case 0x3D: FN_WITH_ARGS_1("gets(dst=0x{:08x})"); break;
         case 0x3E: FN_WITH_ARGS_1("puts(src=0x{:08x})"); break;
         case 0x3F: FN_WITH_ARGS_2("printf(txt=0x{:08x},arg1=0x{:08x},args...)"); break;
@@ -161,7 +207,9 @@ void BIOS::TraceAFunction(u32 index) {
         case 0x6B: FN_WITH_ARGS_2("dev_card_erase(fcb=0x{:08x},'path/name'=0x{:08x})"); break;
         case 0x6C: FN_WITH_ARGS_2("dev_card_undelete(fcb=0x{:08x},'path/name'=0x{:08x})"); break;
         case 0x6D: FN_WITH_ARGS_1("dev_card_format(fcb=0x{:08x})"); break;
-        case 0x6E: FN_WITH_ARGS_4("dev_card_rename(fcb1=0x{:08x},'path/name1'=0x{:08x},fcb2=0x{:08x},'path/name2'=0x{:08x})"); break;
+        case 0x6E:
+            FN_WITH_ARGS_4("dev_card_rename(fcb1=0x{:08x},'path/name1'=0x{:08x},fcb2=0x{:08x},'path/name2'=0x{:08x})");
+            break;
         case 0x6F: FN_WITH_ARGS_1("card_clear_error(fcb=0x{:08x})"); break;
         case 0x70: FN_WITH_ARGS_0("_bu_init()"); break;
         case 0x71: FN_WITH_ARGS_0("_96_init()"); break;
@@ -236,7 +284,7 @@ void BIOS::TraceAFunction(u32 index) {
     }
 }
 
-void BIOS::TraceBFunction(u32 index) {
+static void TraceBFunction(System* sys, u32 index) {
     switch (index) {
         case 0x00: FN_WITH_ARGS_1("alloc_kernel_memory(size=0x{:0x})"); break;
         case 0x01: FN_WITH_ARGS_1("free_kernel_memory(buf=0x{:08x})"); break;
@@ -337,7 +385,7 @@ void BIOS::TraceBFunction(u32 index) {
     }
 }
 
-void BIOS::TraceCFunction(u32 index) {
+static void TraceCFunction(System* sys, u32 index) {
     switch (index) {
         case 0x00: FN_WITH_ARGS_1("EnqueueTimerAndVblankIrqs(priority={})"); break;
         case 0x01: FN_WITH_ARGS_1("EnqueueSyscallHandler(priority={})"); break;
@@ -380,3 +428,17 @@ void BIOS::TraceCFunction(u32 index) {
 #undef FN_WITH_ARGS_4
 #undef FN_WITH_ARGS_5
 #undef FN_WITH_ARGS_6
+
+void TraceFunction(System* sys, u32 address, u32 index) {
+    if (address == 0xA0 && index < A_FUNCTION_COUNT) {
+        TraceAFunction(sys, index);
+    } else if (address == 0xB0 && index < B_FUNCTION_COUNT) {
+        TraceBFunction(sys, index);
+    } else if (address == 0xC0 && index < C_FUNCTION_COUNT) {
+        TraceCFunction(sys, index);
+    } else {
+        LogWarn("Invalid BIOS function 0x{:02X}:{}", address, index);
+    }
+}
+
+}    //namespace BIOS

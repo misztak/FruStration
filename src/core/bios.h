@@ -1,28 +1,20 @@
 #pragma once
 
-#include <string>
+#include <vector>
 
 #include "util/types.h"
 
 class System;
 
-class BIOS {
-public:
-    explicit BIOS(System* system);
-    void TraceFunction(u32 address, u32 index);
+namespace BIOS {
 
-    void PutChar(s8 value);
+void PutChar(u8 value);
 
-private:
-    static constexpr u32 A_FUNCTION_COUNT = 181;
-    static constexpr u32 B_FUNCTION_COUNT = 94;
-    static constexpr u32 C_FUNCTION_COUNT = 30;
+bool IsPatched();
 
-    void TraceAFunction(u32 index);
-    void TraceBFunction(u32 index);
-    void TraceCFunction(u32 index);
+bool PatchBIOSForPSEXEInjection(std::vector<u8>& bios_image, u32 pc, u32 gp, u32 sp, u32 fp);
 
-    std::string stdout_buffer;
+void TraceFunction(System* sys, u32 address, u32 index);
 
-    System* sys = nullptr;
-};
+}    //namespace BIOS
+

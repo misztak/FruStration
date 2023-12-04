@@ -2,6 +2,7 @@
 
 #include "imgui.h"
 
+#include "bios.h"
 #include "bus.h"
 #include "common/asserts.h"
 #include "common/log.h"
@@ -16,7 +17,7 @@ namespace CPU {
 constexpr bool DISASM_INSTRUCTION = false;
 constexpr bool TRACE_BIOS_CALLS = false;
 
-CPU::CPU(System* system) : sys(system), bios(system), disassembler(this) {
+CPU::CPU(System* system) : sys(system), disassembler(this) {
     cp.prid = 0x2;
     UpdatePC(0xBFC00000);
 }
@@ -72,7 +73,9 @@ void CPU::Step() {
 #ifndef NDEBUG
     if (TRACE_BIOS_CALLS && (sp.pc & 0x3FFFFFFF) <= 0xC0) {
         u32 masked_pc = sp.pc & 0x3FFFFFFF;
-        if (masked_pc == 0xA0 || masked_pc == 0xB0 || masked_pc == 0xC0) [[unlikely]] bios.TraceFunction(sp.pc, Get(9));
+        if (masked_pc == 0xA0 || masked_pc == 0xB0 || masked_pc == 0xC0) [[unlikely]] {
+            BIOS::TraceFunction(sys, sp.pc, Get(9));
+        }
     }
     if (DISASM_INSTRUCTION) {
         LogDebug(disassembler.InstructionAt(sp.pc, instr.value));
@@ -82,12 +85,8 @@ void CPU::Step() {
 #endif
 
     // bios put_char calls
-    if (sp.pc == 0xA0 && Get(9) == 0x3C) bios.PutChar(Get(4));
-    if (sp.pc == 0xB0 && Get(9) == 0x3D) bios.PutChar(Get(4));
-
-    // psexe inject point
-    // TODO: find a better way to do this
-    if (sp.pc == 0x80030000) sys->bus->LoadPsExe();
+    if (sp.pc == 0xA0 && Get(9) == 0x3C) BIOS::PutChar(static_cast<u8>(Get(4)));
+    if (sp.pc == 0xB0 && Get(9) == 0x3D) BIOS::PutChar(static_cast<u8>(Get(4)));
 
     UpdatePC(next_pc);
     // at this point the pc contains the address of the delay slot instruction
@@ -95,7 +94,7 @@ void CPU::Step() {
 
     // TODO: at what point should this be called/checked?
     if (current_pc & 0x3) [[unlikely]] {
-        LogCrit("Invalid program counter");
+        LogCrit("Invalid pc address");
         Exception(ExceptionCode::LoadAddress);
         return;
     }

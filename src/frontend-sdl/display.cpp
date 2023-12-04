@@ -303,9 +303,20 @@ void Display::DrawDragAndDropPopup() {
         ImGui::Separator();
 
         if (ImGui::Button("OK", ImVec2(120, 0))) {
-            if (type == 0) Config::psexe_file_path = dropped_file;
-            if (type == 1) Config::ps_bin_file_path = dropped_file;
-            if (type == 2) Config::bios_path.Set(dropped_file);
+            if (type == 0) {
+                std::string old_file = Config::psexe_file_path;
+                Config::psexe_file_path = dropped_file;
+                bool success = emu->LoadPsExe();
+                if (!success) Config::psexe_file_path = old_file;
+            }
+            if (type == 1) {
+                Config::ps_bin_file_path = dropped_file;
+                // TODO: load the actual file
+            }
+            if (type == 2) {
+                Config::bios_path.Set(dropped_file);
+                emu->LoadBIOS();
+            }
 
             emu->Reset();
             UpdateWindowTitle(window);
@@ -340,10 +351,10 @@ void Display::Update() {
     Render();
 }
 
-void Display::HandleDroppedFile(std::string&& file) {
+void Display::HandleDroppedFile(std::string file) {
     // don't allow nested file drop popups
     Assert(dropped_file.empty());
-    dropped_file = file;
+    dropped_file = std::move(file);
 
     LogInfo("Dropped file '{}'", dropped_file);
 }

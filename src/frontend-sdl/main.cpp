@@ -88,6 +88,12 @@ int main(int argc, char* argv[]) {
 
     if (Config::gdb_server_enabled.Get()) emulator.StartGDBServer();
 
+    // load the selected psexe file
+    if (!Config::psexe_file_path.empty()) {
+        bool success = emulator.LoadPsExe();
+        if (!success) LogWarn("Failed to load PS-EXE file");
+    }
+
     emulator.SetPaused(true);
 
     // configure controller (digital pad)

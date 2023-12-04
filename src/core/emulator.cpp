@@ -15,6 +15,10 @@ bool Emulator::LoadBIOS() {
     return sys.bus->LoadBIOS();
 }
 
+bool Emulator::LoadPsExe() {
+    return sys.bus->LoadPsExe();
+}
+
 void Emulator::Tick() {
     sys.cpu->Step();
 }

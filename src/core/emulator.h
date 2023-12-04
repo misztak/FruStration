@@ -10,6 +10,7 @@
 class Emulator {
 public:
     bool LoadBIOS();
+    bool LoadPsExe();
 
     void Tick();
     bool DrawNextFrame();

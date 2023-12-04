@@ -5,6 +5,7 @@
 #include "imgui.h"
 #include "imgui_memory_editor.h"
 
+#include "bios.h"
 #include "cdrom.h"
 #include "common/asserts.h"
 #include "common/config.h"
@@ -45,12 +46,6 @@ bool BUS::LoadBIOS() {
 }
 
 bool BUS::LoadPsExe() {
-    // Called at the injection address (0x80030000) during BIOS setup
-    // Do not load the psexe if:
-    //  1. no psexe file was specified
-    //  2. a game file was specified (regardless of whether a psexe file was specified)
-    //  3. the psexe file is invalid/malformed
-    // If one of the conditions is met the emulator resumes normal BIOS setup
     if (Config::psexe_file_path.empty() || !Config::ps_bin_file_path.empty()) return false;
 
     std::string path = Config::psexe_file_path;
@@ -75,7 +70,7 @@ bool BUS::LoadPsExe() {
 
     std::string magic(buffer.begin(), buffer.begin() + 8);
     if (magic != "PS-X EXE") {
-        LogWarn("PS-EXE: Invalid header {}", magic);
+        LogWarn("PS-EXE: Invalid header");
         return false;
     }
 
@@ -84,25 +79,42 @@ bool BUS::LoadPsExe() {
 
     // physical start address of TEXT segment (always the first segment in a psexe file)
     u32 text_segment_start = *reinterpret_cast<u32*>(buffer.data() + 0x18) & 0x1FFFFFFF;
-    u32 text_segment_size = *reinterpret_cast<u32*>(buffer.data() + 0x1C);
+    u32 file_size = *reinterpret_cast<u32*>(buffer.data() + 0x1C);
     Assert(text_segment_start + length - PSEXE_HEADER_SIZE < RAM_SIZE);
+    Assert(file_size == length - PSEXE_HEADER_SIZE);
 
-    std::memcpy(ram.data() + text_segment_start, buffer.data() + PSEXE_HEADER_SIZE, length - PSEXE_HEADER_SIZE);
+    // memory fill info (currently unimplemented)
+    u32 memfill_start = *reinterpret_cast<u32*>(buffer.data() + 0x28);
+    u32 memfill_size = *reinterpret_cast<u32*>(buffer.data() + 0x2C);
+    Assert(memfill_start == 0 && memfill_size == 0);
 
-    sys->cpu->sp.pc = execution_start_addr;
-    sys->cpu->next_pc = execution_start_addr + 4;
-    sys->cpu->instr.value = Load<u32>(execution_start_addr);
+    // new gp value
+    u32 gp_value = *reinterpret_cast<u32*>(buffer.data() + 0x14);
 
-    // new stack pointer value (ignore if 0)
-    u32 stack_start_addr = *reinterpret_cast<u32*>(buffer.data() + 0x30);
-    if (stack_start_addr != 0) sys->cpu->gp.sp = stack_start_addr;
+    // new value for stack pointer and frame pointer (will be ignored if 0)
+    u32 sp_base = *reinterpret_cast<u32*>(buffer.data() + 0x30);
+    u32 sp_offset = *reinterpret_cast<u32*>(buffer.data() + 0x34);
+    u32 sp_value = sp_base + sp_offset;
+    u32 fp_value = sp_value;
 
-    LogInfo("PSEXE file injected at:");
-    LogInfo("    pc=0x{:08x}", execution_start_addr);
-    LogInfo("    text=[0x{:08x}, 0x{:x}]", text_segment_start, text_segment_size);
-    LogInfo("    sp=0x{:08x}", sys->cpu->gp.sp);
+    // inject the trampoline
+    bool patch_success = BIOS::PatchBIOSForPSEXEInjection(bios, execution_start_addr, gp_value, sp_value, fp_value);
 
-    return true;
+    if (patch_success) {
+        // copy the executable into memory
+        std::memcpy(ram.data() + text_segment_start, buffer.data() + PSEXE_HEADER_SIZE, file_size);
+
+        LogInfo("PSEXE file injected at:");
+        LogInfo("    pc=0x{:08x}", execution_start_addr);
+        LogInfo("    gp=0x{:08x}", gp_value);
+        if (sp_value != 0) LogInfo("    sp=0x{:08x}", sp_value);
+        if (fp_value != 0) LogInfo("    fp=0x{:08x}", fp_value);
+        LogInfo("    text=[0x{:08x}, 0x{:x}]", text_segment_start, file_size);
+    } else {
+        LogWarn("Failed to inject PSEXE trampoline into BIOS image");
+    }
+
+    return patch_success;
 }
 
 static constexpr bool InArea(u32 start, u32 length, u32 address) {
@@ -175,7 +187,7 @@ ValueType BUS::Load(u32 address) {
         Panic("Tried to load from Expansion Region 3 [0x{:08X}]", address);
     }
 
-    Panic("Tried to load from invalid address [0x{:08X}]", address);
+    LogCrit("Tried to load from invalid address [0x{:08X}]", address);
     return 0;
 }
 
@@ -267,7 +279,7 @@ void BUS::Store(u32 address, Value value) {
         Panic("Tried to store in Expansion Region 3 [0x{:08X}]", address);
     }
 
-    Panic("Tried to store in invalid address [0x{:08X}]", address);
+    LogCrit("Tried to store in invalid address [0x{:08X}]", address);
 }
 
 u8 BUS::Peek(u32 address) {
@@ -327,7 +339,6 @@ u32 BUS::Peek32(u32 address) {
 }
 
 void BUS::Reset() {
-    // TODO: add ability to change bios file during reset
     std::fill(ram.begin(), ram.end(), 0xCA);
 }
 

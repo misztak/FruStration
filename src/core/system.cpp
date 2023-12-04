@@ -2,6 +2,8 @@
 
 #include "bus.h"
 #include "cdrom.h"
+#include "common/asserts.h"
+#include "common/config.h"
 #include "common/log.h"
 #include "cpu/cpu.h"
 #include "debugger/debugger.h"
@@ -47,6 +49,16 @@ void System::Reset() {
     cycles_until_next_event = 0;
 
     RecalculateCyclesUntilNextEvent();
+
+    // can't run both at the same time
+    DebugAssert(!(!Config::ps_bin_file_path.empty() && !Config::psexe_file_path.empty()));
+
+    if (!Config::ps_bin_file_path.empty()) {
+        // TODO: load game file
+    }
+    if (!Config::psexe_file_path.empty()) {
+        bus->LoadPsExe();
+    }
 
     LogInfo("System reset");
 }
