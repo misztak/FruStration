@@ -7,6 +7,10 @@
 
 </div>
 
+<p align="center">
+  <img src="res/md_full_screenshot.png" alt="Screenshot" />
+</p>
+
 ## Usage
 
 Compiled binaries of the latest master commit can be downloaded from the _Release_ section. SDL2 needs to be installed on the system. A reasonably modern version of OpenGL is required for the hardware renderer.
