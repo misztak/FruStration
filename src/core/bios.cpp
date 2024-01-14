@@ -25,8 +25,12 @@ bool IsPatched() {
 }
 
 static void Patch(std::vector<u8>& bios_image, u32 address, u32 value) {
-    Assert(address >= 0xBFC00000);
-    const u32 img_addr = address - 0xBFC00000;
+    static constexpr u32 BIOS_START = 0x1FC00000;
+    static constexpr u32 ADDR_MASK = 0x1FFFFFFF;
+
+    const u32 masked_addr = address & ADDR_MASK;
+    Assert(masked_addr >= BIOS_START);
+    const u32 img_addr = masked_addr - BIOS_START;
     Assert(img_addr + sizeof(value) <= bios_image.size());
 
     std::memcpy(&bios_image[img_addr], &value, sizeof(value));
@@ -35,7 +39,8 @@ static void Patch(std::vector<u8>& bios_image, u32 address, u32 value) {
 bool PatchBIOSForPSEXEInjection(std::vector<u8>& bios_image, u32 pc, u32 gp, u32 sp, u32 fp) {
     if (bios_image.empty()) return false;
 
-    // injection point (address copied from duckstation)
+    // injection point is inside the 'Main(...)' procedure (which starts at 0xBFC067E8)
+    // after the kernel initialization but before the SHELL is launched
     static constexpr u32 PATCH_START_ADDR = 0xBFC06FF0;
 
     // start with the psexe entry point address and the new gp register value
@@ -207,9 +212,7 @@ static void TraceAFunction(System* sys, u32 index) {
         case 0x6B: FN_WITH_ARGS_2("dev_card_erase(fcb=0x{:08x},'path/name'=0x{:08x})"); break;
         case 0x6C: FN_WITH_ARGS_2("dev_card_undelete(fcb=0x{:08x},'path/name'=0x{:08x})"); break;
         case 0x6D: FN_WITH_ARGS_1("dev_card_format(fcb=0x{:08x})"); break;
-        case 0x6E:
-            FN_WITH_ARGS_4("dev_card_rename(fcb1=0x{:08x},'path/name1'=0x{:08x},fcb2=0x{:08x},'path/name2'=0x{:08x})");
-            break;
+        case 0x6E: FN_WITH_ARGS_4("dev_card_rename(fcb1=0x{:08x},'path/name1'=0x{:08x},fcb2=0x{:08x},'path/name2'=0x{:08x})"); break;
         case 0x6F: FN_WITH_ARGS_1("card_clear_error(fcb=0x{:08x})"); break;
         case 0x70: FN_WITH_ARGS_0("_bu_init()"); break;
         case 0x71: FN_WITH_ARGS_0("_96_init()"); break;
