@@ -95,11 +95,14 @@ void PutChar(u8 value) {
 #define FN_WITH_ARGS_2(format) LogTrace(format, sys->cpu->gp.a0, sys->cpu->gp.a1)
 #define FN_WITH_ARGS_3(format) LogTrace(format, sys->cpu->gp.a0, sys->cpu->gp.a1, sys->cpu->gp.a2)
 #define FN_WITH_ARGS_4(format) LogTrace(format, sys->cpu->gp.a0, sys->cpu->gp.a1, sys->cpu->gp.a2, sys->cpu->gp.a3)
-#define FN_WITH_ARGS_5(format) LogTrace(format, sys->cpu->gp.a0, sys->cpu->gp.a1, sys->cpu->gp.a2, sys->cpu->gp.a3, arg_5)
+#define FN_WITH_ARGS_5(format)                                                                       \
+    {                                                                                                \
+        const u32 arg_5 = sys->bus->Peek32(sys->cpu->gp.sp + 16);                                    \
+        LogTrace(format, sys->cpu->gp.a0, sys->cpu->gp.a1, sys->cpu->gp.a2, sys->cpu->gp.a3, arg_5); \
+    }                                                                                                \
+    while (0)
 
 static void TraceAFunction(System* sys, u32 index) {
-    const u32 arg_5 = sys->bus->Peek32(sys->cpu->gp.sp + 16);
-
     switch (index) {
         case 0x00: FN_WITH_ARGS_2("open(filename=0x{:08x},accessmode=0x{:8x})"); break;
         case 0x01: FN_WITH_ARGS_3("lseek(fd={},offset={},seektype={})"); break;
