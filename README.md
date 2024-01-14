@@ -8,7 +8,7 @@
 </div>
 
 <p align="center">
-  <img src="res/md_full_screenshot.png" alt="Screenshot" />
+  <img src=".github/md_full_screenshot.png" alt="Screenshot" />
 </p>
 
 ## Usage
