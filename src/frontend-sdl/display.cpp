@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <ctime>
 #include <thread>
 #include <filesystem>
 #include <optional>
@@ -11,6 +12,7 @@
 #include "imgui_internal.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl2.h"
+#include "stb_image_write.h"
 
 #ifdef USE_NFD
 #include "nfd.h"
@@ -166,7 +168,9 @@ void Display::Draw() {
                 auto open_result = OpenFileDialog("bin,BIN");
                 if (open_result.has_value()) Config::bios_path.Set(open_result.value());
             }
+            ImGui::Separator();
 #endif
+            if (ImGui::MenuItem("Take Screenshot", "F12")) SaveScreenshot();
 
             ImGui::Separator();
             if (ImGui::MenuItem("Quit")) emu->done = true;
@@ -332,6 +336,34 @@ void Display::DrawDragAndDropPopup() {
         }
 
         ImGui::EndPopup();
+    }
+}
+
+void Display::SaveScreenshot() {
+    auto now = std::chrono::system_clock::now();
+    std::time_t current_time = std::chrono::system_clock::to_time_t(now);
+    std::tm* local_time = std::localtime(&current_time);
+
+    if (local_time == nullptr) {
+        LogWarn("Failed to fetch local time during screenshot creation");
+        return;
+    }
+
+    char buffer[128] {};
+    std::strftime(buffer, sizeof(buffer), "screenshot_%Y-%m-%d:%H-%M-%S.png", local_time);
+    std::string filename(buffer);
+
+    auto [hres, vres, _] = emu->DisplayInfo();
+    std::vector<u8> image_buffer(usize(hres) * usize(vres) * 3);
+
+    glBindTexture(GL_TEXTURE_2D, output_tex_handler);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)image_buffer.data());
+
+    int result = stbi_write_png(filename.c_str(), s32(hres), s32(vres), 3, image_buffer.data(), s32(hres) * 3);
+    if (result == 0) {
+        LogWarn("Failed to create screenshot");
+    } else {
+        LogInfo("Created screenshot '{}'", filename);
     }
 }
 

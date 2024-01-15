@@ -6,3 +6,4 @@ imgui - v1.89.5
 nativefiledialog - v116 (@67345b8)
 spdlog - v1.11
 sdl2 (bundled) - v2.26.5
+stb_image_write - v1.16

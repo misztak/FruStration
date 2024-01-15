@@ -3,7 +3,7 @@ add_executable(frustration
         display.cpp)
 
 target_include_directories(frustration PRIVATE ${SDL2_INCLUDE_DIRS})
-target_link_libraries(frustration PRIVATE common core gl3w imgui ${SDL2_LIBRARIES})
+target_link_libraries(frustration PRIVATE common core gl3w imgui stb ${SDL2_LIBRARIES})
 
 if (USE_NATIVE_FILE_PICKER)
     target_link_libraries(frustration PRIVATE nfd)

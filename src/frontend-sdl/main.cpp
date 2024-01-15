@@ -232,6 +232,7 @@ void HandleInput(Emulator& emulator, Controller& controller, Display& display, S
             {
                 if (event.key.keysym.scancode == SDL_SCANCODE_H) emulator.SetPaused(!emulator.IsPaused());
                 if (event.key.keysym.scancode == SDL_SCANCODE_R) emulator.Reset();
+                if (event.key.keysym.scancode == SDL_SCANCODE_F12) display.SaveScreenshot();
 
                 auto& key_map = controller.GetKeyMap();
                 const u32 key = static_cast<u32>(event.key.keysym.scancode);
