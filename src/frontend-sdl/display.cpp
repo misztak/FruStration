@@ -349,8 +349,11 @@ void Display::SaveScreenshot() {
         return;
     }
 
-    char buffer[128] {};
-    std::strftime(buffer, sizeof(buffer), "screenshot_%Y-%m-%d:%H-%M-%S.png", local_time);
+    char buffer[128];
+    if (std::strftime(buffer, sizeof(buffer), "screenshot_%Y-%m-%d:%H-%M-%S.png", local_time) == 0) {
+        LogWarn("Failed to format datetime string during screenshot creation");
+        return;
+    }
     std::string filename(buffer);
 
     auto [hres, vres, _] = emu->DisplayInfo();
