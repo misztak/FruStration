@@ -8,6 +8,11 @@
 </div>
 
 <p align="center">
+  <img src=".github/bios_intro.png" height="250" />
+  <img src=".github/3d_cube_demo.png" height="250" />
+</p>
+
+<p align="center">
   <img src=".github/md_full_screenshot.png" alt="Screenshot" />
 </p>
 
@@ -39,6 +44,7 @@ Additionally, a built-in GDB server can be used to connect the emulator to a GDB
 
 - **H**: Pause or resume emulator execution (the emulator starts paused)
 - **R**: Reset the emulator
+- **F12**: Take screenshot
 
 ### Default Controller Keybindings (Digital Pad)
 
