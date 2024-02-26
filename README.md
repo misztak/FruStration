@@ -32,7 +32,7 @@ The emulator will save the BIOS file location and other settings in a config fil
 
 Game ISOs and PS-EXE files can be launched by **dragging them into the emulator window** or by using the corresponding command line arguments. Use `--help` to see all available options.
 
-If no executable files are provided the emulator will launch the PS1 main menu.
+If no executable files are provided the emulator will launch the BIOS main menu.
 
 ### Debugger
 
