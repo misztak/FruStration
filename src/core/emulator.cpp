@@ -32,7 +32,11 @@ void Emulator::ResetDrawFrame() {
 
     // at this point the next frame has been reached
     // stop now if single_frame stepping is enabled
-    sys.cpu->halt = sys.debugger->single_frame;
+    if (sys.debugger->single_frame) sys.cpu->halt = true;
+
+    // only reset stats if the emulator is still running
+    // otherwise all stats will be displayed as 0 while the emulator is paused
+    if (!sys.cpu->halt) sys.stats->ResetPerFrameStats();
 }
 
 void Emulator::Reset() {
@@ -83,6 +87,7 @@ void Emulator::DrawDebugWindows() {
     if (Config::draw_mem_viewer) sys.bus->DrawMemEditor(&Config::draw_mem_viewer);
     if (Config::draw_cpu_state) sys.cpu->DrawCpuState(&Config::draw_cpu_state);
     if (Config::draw_gpu_state) sys.gpu->DrawGpuState(&Config::draw_gpu_state);
+    if (Config::draw_renderer_state) sys.gpu->DrawRendererState(&Config::draw_renderer_state);
     if (Config::draw_debugger) sys.debugger->DrawDebugger(&Config::draw_debugger);
     if (Config::draw_timer_state) sys.timers->DrawTimerState(&Config::draw_timer_state);
 }

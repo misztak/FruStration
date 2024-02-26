@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
 
     // initialize logger
 #ifndef NDEBUG
-    Log::Init(spdlog::level::trace);
+    Log::Init(spdlog::level::info);
 #else
     Log::Init(spdlog::level::info);
 #endif
@@ -187,9 +187,9 @@ int main(int argc, char* argv[]) {
             // check if ready to draw next frame again because the cpu could have hit a breakpoint
             // before reaching the next vblank
             if (emulator.DrawNextFrame()) {
-                emulator.ResetDrawFrame();
                 HandleInput(emulator, controller, display, window);
                 display.Update();
+                emulator.ResetDrawFrame();
             }
 
             //display.Throttle(60);

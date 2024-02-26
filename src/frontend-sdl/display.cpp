@@ -53,9 +53,6 @@ static void UpdateWindowTitle(SDL_Window* window) {
     SDL_SetWindowTitle(window, new_window_title.c_str());
 }
 
-
-Display::Display() = default;
-
 bool Display::Init(Emulator* system, SDL_Window* win, SDL_GLContext context, const char* glsl_version) {
     emu = system;
     window = win;
@@ -186,6 +183,7 @@ void Display::Draw() {
         if (ImGui::BeginMenu("Window")) {
             ImGui::MenuItem("CPU Stats", nullptr, &Config::draw_cpu_state);
             ImGui::MenuItem("GPU Stats", nullptr, &Config::draw_gpu_state);
+            ImGui::MenuItem("Renderer Stats", nullptr, &Config::draw_renderer_state);
             ImGui::MenuItem("Timer Stats", nullptr, &Config::draw_timer_state);
             ImGui::MenuItem("Debugger", nullptr, &Config::draw_debugger);
             ImGui::MenuItem("Mem Editor", nullptr, &Config::draw_mem_viewer);
@@ -360,7 +358,7 @@ void Display::SaveScreenshot() {
     std::vector<u8> image_buffer(usize(hres) * usize(vres) * 3);
 
     glBindTexture(GL_TEXTURE_2D, output_tex_handler);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)image_buffer.data());
+    glGetnTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, (GLsizei)image_buffer.size(), (GLvoid*)image_buffer.data());
 
     int result = stbi_write_png(filename.c_str(), s32(hres), s32(vres), 3, image_buffer.data(), s32(hres) * 3);
     if (result == 0) {

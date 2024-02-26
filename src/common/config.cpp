@@ -38,6 +38,7 @@ std::string ps_bin_file_path;
 bool draw_mem_viewer = true;
 bool draw_cpu_state = true;
 bool draw_gpu_state = true;
+bool draw_renderer_state = true;
 bool draw_debugger = true;
 bool draw_timer_state = true;
 

@@ -15,7 +15,6 @@ public:
     static constexpr u32 WIDTH = 1200;
     static constexpr u32 HEIGHT = 800;
 
-    Display();
     bool Init(Emulator* system, SDL_Window* window, SDL_GLContext context, const char* glsl_version);
     void Draw();
     void Render();

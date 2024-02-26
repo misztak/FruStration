@@ -7,6 +7,7 @@
 #include <string>
 
 #include "util/types.h"
+#include "stats.h"
 
 namespace CPU {
 class CPU;
@@ -42,7 +43,9 @@ public:
     std::unique_ptr<InterruptController> interrupt;
     std::unique_ptr<TimerController> timers;
     std::unique_ptr<Peripherals> peripherals;
+
     std::unique_ptr<Debugger> debugger;
+    std::unique_ptr<Stats> stats;
 
     enum class TimedEvent : u32 { Timer = 0, GPU = 1, CDROM = 2, Count = 3 };
 

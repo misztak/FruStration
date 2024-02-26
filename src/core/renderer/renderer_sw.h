@@ -14,6 +14,7 @@ public:
 
     void Draw(u32 cmd) override;
 
+    void DrawImguiRendererState(bool* open) override;
 private:
     // draw flags
     static constexpr u32 MONO               = 1u << 0;

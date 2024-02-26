@@ -6,6 +6,8 @@
 #include "common/asserts.h"
 #include "common/log.h"
 #include "gpu.h"
+#include "imgui.h"
+#include "system.h"
 
 LOG_CHANNEL(Renderer);
 
@@ -185,6 +187,7 @@ void Renderer_SW::DrawTriangle() {
         w20_row += B20;
     }
 
+    gpu->sys->stats->frame_triangle_draw_count++;
 }
 
 template<u32 draw_flags>
@@ -263,9 +266,13 @@ void Renderer_SW::DrawRectangle() {
             } else {
                 gpu->vram[x + GPU::VRAM_WIDTH * y] = px_color.To5551();
             }
+
+            // debug (print every rectangle red)
+            //gpu->vram[x + GPU::VRAM_WIDTH * y] = 0x1F;
         }
     }
 
+    gpu->sys->stats->frame_rectangle_draw_count++;
 }
 
 template<u32 draw_flags>
@@ -315,6 +322,8 @@ void Renderer_SW::DrawLine() {
             }
         }
     }
+
+    gpu->sys->stats->frame_line_draw_count++;
 }
 
 #undef DRAW_FLAGS_SET
@@ -440,4 +449,17 @@ void Renderer_SW::Draw(u32 cmd) {
     }
 
     // clang-format on
+}
+
+void Renderer_SW::DrawImguiRendererState(bool* open) {
+    ImGui::Begin("Software Renderer", open);
+
+    ImGui::Text("Primitives");
+    ImGui::Separator();
+    ImGui::Text("Triangles per frame: %lu", gpu->sys->stats->frame_triangle_draw_count);
+    ImGui::Text("Rectangles per frame: %lu", gpu->sys->stats->frame_rectangle_draw_count);
+    ImGui::Text("Lines per frame: %lu", gpu->sys->stats->frame_line_draw_count);
+    ImGui::Separator();
+
+    ImGui::End();
 }

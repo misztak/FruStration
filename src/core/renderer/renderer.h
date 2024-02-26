@@ -39,9 +39,11 @@ struct Rectangle {
 enum class RectSize : u32 { ONE, EIGHT, SIXTEEN, VARIABLE };
 
 // Base class for a render backend
-struct Renderer {
-
+class Renderer {
+public:
     virtual ~Renderer() = default;
 
     virtual void Draw(u32 cmd) = 0;
+
+    virtual void DrawImguiRendererState(bool* open) = 0;
 };

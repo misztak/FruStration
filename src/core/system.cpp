@@ -25,7 +25,9 @@ System::System() {
     interrupt = std::make_unique<InterruptController>(this);
     timers = std::make_unique<TimerController>(this);
     peripherals = std::make_unique<Peripherals>(this);
+
     debugger = std::make_unique<Debugger>(this);
+    stats = std::make_unique<Stats>();
 
     RecalculateCyclesUntilNextEvent();
 
@@ -43,7 +45,12 @@ void System::Reset() {
     cdrom->Reset();
     interrupt->Reset();
     timers->Reset();
+    //peripherals->Reset();
+
     debugger->Reset();
+
+    // Stats is POD, so just use memset for reset purposes
+    std::memset(stats.get(), 0, sizeof(Stats));
 
     accumulated_cycles = 0;
     cycles_until_next_event = 0;

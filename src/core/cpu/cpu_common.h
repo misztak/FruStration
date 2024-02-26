@@ -256,8 +256,8 @@ static const char* const SYSCALL_NAMES[5] = {
 };
 
 static const char* const EXCEPT_NAMES[13] = {
-    "Interrupt", "", "", "", "LoadAddress", "StoreAddress", "",
-    "", "Syscall", "Break", "ReservedInstr", "COPError", "Overflow"
+    "Interrupt", "???", "???", "???", "LoadAddress", "StoreAddress", "???",
+    "???", "Syscall", "Break", "ReservedInstr", "COPError", "Overflow"
 };
 
 // clang-format on

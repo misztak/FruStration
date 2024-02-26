@@ -861,3 +861,7 @@ void GPU::DrawGpuState(bool* open) {
 
     ImGui::End();
 }
+
+void GPU::DrawRendererState(bool* open) {
+    if (renderer) renderer->DrawImguiRendererState(open);
+}

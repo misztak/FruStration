@@ -50,6 +50,7 @@ void Debugger::DrawDebugger(bool* open) {
     if (ImGui::Button("Next Frame") || ImGui::IsKeyReleased(ImGuiKey_F6)) {
         if (single_frame) {
             sys->cpu->halt = false;
+            sys->stats->ResetPerFrameStats();
             LogInfo("Next Frame");
         }
     }

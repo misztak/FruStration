@@ -46,6 +46,7 @@ public:
     u8* GetVideoOutput();
 
     void DrawGpuState(bool* open);
+    void DrawRendererState(bool* open);
 
     bool draw_frame = false;
 

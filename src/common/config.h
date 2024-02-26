@@ -47,6 +47,7 @@ extern std::string ps_bin_file_path;
 extern bool draw_mem_viewer;
 extern bool draw_cpu_state;
 extern bool draw_gpu_state;
+extern bool draw_renderer_state;
 extern bool draw_debugger;
 extern bool draw_timer_state;
 
