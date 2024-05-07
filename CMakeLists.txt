@@ -31,6 +31,8 @@ else()
     endif()
 endif()
 
+add_compile_options(-fno-omit-frame-pointer)
+
 # sanity checks for default build flags after above changes
 #message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
 #message("CMAKE_CXX_FLAGS_RELEASE is ${CMAKE_CXX_FLAGS_RELEASE}")
