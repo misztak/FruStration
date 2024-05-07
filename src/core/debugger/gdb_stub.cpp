@@ -77,7 +77,7 @@ static std::string ValuesToHex(u8* start, u32 length) {
     return ss.str();
 }
 
-static std::optional<u32> FromHexChars(std::string_view& string_view) {
+static std::optional<u32> FromHexChars(std::string_view string_view) {
     constexpr s32 BASE_16 = 16;
 
     u32 value;
@@ -86,7 +86,7 @@ static std::optional<u32> FromHexChars(std::string_view& string_view) {
     return (result.ec == std::errc()) ? std::optional(value) : std::nullopt;
 }
 
-static std::string CalcChecksum(std::string_view& packet) {
+static std::string CalcChecksum(std::string_view packet) {
     u8 csum = 0;
     for (auto& c : packet) {
         csum += (u8)c;
@@ -94,7 +94,7 @@ static std::string CalcChecksum(std::string_view& packet) {
     return ValuesToHex(&csum, 1);
 }
 
-static std::tuple<u32, u32> ParseStartAndOffset(std::string_view& packet) {
+static std::tuple<u32, u32> ParseStartAndOffset(std::string_view packet) {
     u32 start_delim = packet.find_last_of(':');
     u32 offset_delim = packet.find_last_of(',');
 
